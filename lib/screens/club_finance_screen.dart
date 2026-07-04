@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/game_provider.dart';
+import 'development_screen.dart';
+import 'transfer_history_screen.dart';
 
 class ClubFinanceScreen extends StatelessWidget {
   const ClubFinanceScreen({super.key});
@@ -50,6 +52,22 @@ class ClubFinanceScreen extends StatelessWidget {
                           title: const Text('Tesis Seviyesi'),
                           trailing: Text('${club.trainingFacilityLevel}'),
                         ),
+                      ),
+                      const SizedBox(height: 24),
+                      ElevatedButton.icon(
+                        onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const DevelopmentScreen()),
+                        ),
+                        icon: const Icon(Icons.upgrade),
+                        label: const Text('Kulüp Geliştirme'),
+                      ),
+                      const SizedBox(height: 12),
+                      ElevatedButton.icon(
+                        onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const TransferHistoryScreen()),
+                        ),
+                        icon: const Icon(Icons.history),
+                        label: const Text('Transfer Geçmişi'),
                       ),
                     ],
                   ),

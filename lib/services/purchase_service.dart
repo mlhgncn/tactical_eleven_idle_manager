@@ -1,13 +1,19 @@
 import 'package:purchases_flutter/purchases_flutter.dart';
 
+import '../config.dart';
+
 class PurchaseService {
   PurchaseService._();
 
   static final PurchaseService instance = PurchaseService._();
 
   Future<void> initialize() async {
+    if (Config.revenueCatApiKey.isEmpty) {
+      throw Exception('RevenueCat API anahtarı yapılandırılmamış. REVENUECAT_API_KEY ortam değişkenini ayarlayın.');
+    }
+
     await Purchases.setLogLevel(LogLevel.debug);
-    await Purchases.configure(PurchasesConfiguration('REVENUECAT_APP_USER_ID'));
+    await Purchases.configure(PurchasesConfiguration(Config.revenueCatApiKey));
   }
 
   Future<void> purchaseCredits() async {

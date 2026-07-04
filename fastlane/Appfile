@@ -1,4 +1,4 @@
-apple_id(ENV['APPLE_ID'] || "your@appleid.com")
-itc_team_id(ENV['TEAM_ID'] || "")
-team_id(ENV['TEAM_ID'] || "")
+apple_id(ENV['APPLE_ID'] || "mlhgncn01@gmail.com")
+itc_team_id(ENV['TEAM_ID'] || "B689345RR6")
+team_id(ENV['TEAM_ID'] || "B689345RR6")
 app_identifier(ENV['BUNDLE_ID'] || "com.melih.tacticaleleven")

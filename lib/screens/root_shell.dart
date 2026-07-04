@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../services/auth_service.dart';
 
 import '../providers/game_provider.dart';
 import 'club_finance_screen.dart';
+import 'inbox_screen.dart';
+import 'match_schedule_screen.dart';
 import 'squad_screen.dart';
-import 'transfer_market_screen.dart';
+import 'tactics_screen.dart';
 
 class RootShell extends StatefulWidget {
   const RootShell({super.key});
@@ -21,7 +24,9 @@ class _RootShellState extends State<RootShell> {
   static final List<Widget> _pages = <Widget>[
     const ClubFinanceScreen(),
     const SquadScreen(),
-    const TransferMarketScreen(),
+    const TacticsScreen(),
+    const MatchScheduleScreen(),
+    const InboxScreen(),
   ];
 
   void _onItemTapped(int index) {
@@ -30,8 +35,10 @@ class _RootShellState extends State<RootShell> {
     });
   }
 
+  final AuthService _authService = AuthService();
+
   Future<void> _signOut() async {
-    await Supabase.instance.client.auth.signOut();
+    await _authService.signOut();
     if (!mounted) return;
     Navigator.of(context).pushReplacementNamed('/auth');
   }
@@ -59,12 +66,15 @@ class _RootShellState extends State<RootShell> {
       ),
       body: _pages[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed,
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
-        items: [
-          BottomNavigationBarItem(icon: const Icon(Icons.account_balance_wallet), label: 'menu.play'.tr()),
-          BottomNavigationBarItem(icon: const Icon(Icons.group), label: 'menu.squad'.tr()),
-          BottomNavigationBarItem(icon: const Icon(Icons.sports_soccer), label: 'menu.tactics'.tr()),
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.account_balance_wallet), label: 'Finans'),
+          BottomNavigationBarItem(icon: Icon(Icons.group), label: 'Kadro'),
+          BottomNavigationBarItem(icon: Icon(Icons.sports_soccer), label: 'Taktik'),
+          BottomNavigationBarItem(icon: Icon(Icons.calendar_month), label: 'Takvim'),
+          BottomNavigationBarItem(icon: Icon(Icons.inbox), label: 'Gelen'),
         ],
       ),
     );

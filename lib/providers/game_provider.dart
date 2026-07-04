@@ -1,98 +1,71 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../models/club_info.dart';
+import '../models/inbox_message.dart';
+import '../models/match_fixture.dart';
+import '../models/match_result.dart';
 import '../models/player_fm.dart';
+import '../models/profile.dart';
+import '../models/tactics.dart';
 import '../models/transfer_market_item.dart';
-
-class ClubInfo {
-  final String id;
-  final int budget;
-  final int stadiumCapacity;
-  final int ticketPrice;
-  final int trainingFacilityLevel;
-
-  const ClubInfo({
-    required this.id,
-    required this.budget,
-    required this.stadiumCapacity,
-    required this.ticketPrice,
-    required this.trainingFacilityLevel,
-  });
-
-  ClubInfo copyWith({
-    int? budget,
-    int? stadiumCapacity,
-    int? ticketPrice,
-    int? trainingFacilityLevel,
-  }) {
-    return ClubInfo(
-      id: id,
-      budget: budget ?? this.budget,
-      stadiumCapacity: stadiumCapacity ?? this.stadiumCapacity,
-      ticketPrice: ticketPrice ?? this.ticketPrice,
-      trainingFacilityLevel: trainingFacilityLevel ?? this.trainingFacilityLevel,
-    );
-  }
-}
-
-class InboxMessage {
-  final String id;
-  final String title;
-  final String body;
-  final bool isRead;
-  final DateTime createdAt;
-
-  const InboxMessage({
-    required this.id,
-    required this.title,
-    required this.body,
-    required this.isRead,
-    required this.createdAt,
-  });
-
-  factory InboxMessage.fromMap(Map<String, dynamic> map) {
-    return InboxMessage(
-      id: map['id'] as String,
-      title: map['title'] as String,
-      body: map['body'] as String,
-      isRead: map['is_read'] as bool? ?? false,
-      createdAt: DateTime.parse(map['created_at'] as String),
-    );
-  }
-}
+import '../repositories/match_repository.dart';
+import '../repositories/repository_interface.dart';
+import '../repositories/supabase_repository.dart';
 
 class GameProvider extends ChangeNotifier {
-  GameProvider({SupabaseClient? supabase}) : _supabase = supabase ?? Supabase.instance.client {
-    _initRealtimeStreams();
+  GameProvider({
+    GameRepository? repository,
+    MatchRepository? matchRepository,
+    bool enableRealtime = true,
+  })  : _repository = repository ?? SupabaseRepository(),
+        _matchRepository = matchRepository ?? MatchRepository(),
+        _enableRealtime = enableRealtime {
+    if (_enableRealtime) {
+      _initRealtimeStreams();
+    }
   }
 
-  final SupabaseClient _supabase;
+  final GameRepository _repository;
+  final MatchRepository _matchRepository;
+  final bool _enableRealtime;
+  SupabaseClient get _supabase => Supabase.instance.client;
   RealtimeChannel? _transferChannel;
 
   ClubInfo? _activeClub;
+  Profile? _profile;
   List<PlayerFM> _squadPlayers = <PlayerFM>[];
   List<InboxMessage> _inboxMessages = <InboxMessage>[];
   List<TransferMarketItem> _transferMarketItems = <TransferMarketItem>[];
+  List<MatchFixture> _fixtures = <MatchFixture>[];
+  List<MatchResult> _results = <MatchResult>[];
+  Tactics? _tactics;
   bool _isLoading = false;
   bool _isBusy = false;
   bool _isSyncing = false;
 
   ClubInfo? get activeClub => _activeClub;
+  Profile? get profile => _profile;
   bool get isLoading => _isLoading;
   bool get isBusy => _isBusy;
   bool get isSyncing => _isSyncing;
   List<PlayerFM> get squadPlayers => List.unmodifiable(_squadPlayers);
   List<InboxMessage> get inboxMessages => List.unmodifiable(_inboxMessages);
   List<TransferMarketItem> get transferMarketItems => List.unmodifiable(_transferMarketItems);
+  List<MatchFixture> get fixtures => List.unmodifiable(_fixtures);
+  List<MatchResult> get results => List.unmodifiable(_results);
+  Tactics? get tactics => _tactics;
 
   Future<void> refreshGameState() async {
     _setLoading(true);
     try {
       await _loadActiveClub();
+      await _loadUserProfile();
       await Future.wait(<Future<void>>[
         _loadSquadPlayers(),
         _loadInboxMessages(),
         _loadTransferMarket(),
+        _loadFixturesAndResults(),
       ]);
     } catch (error) {
       debugPrint('GameProvider refresh failed: $error');
@@ -102,31 +75,12 @@ class GameProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> _loadUserProfile() async {
+    _profile = await _repository.loadProfile();
+  }
+
   Future<void> _loadActiveClub() async {
-    final userId = _supabase.auth.currentUser?.id;
-    if (userId == null) {
-      _activeClub = null;
-      return;
-    }
-
-    final response = await _supabase
-        .from('clubs')
-        .select('id,budget,stadium_capacity,ticket_price,training_facility_level')
-        .eq('user_id', userId)
-        .maybeSingle();
-
-    if (response == null) {
-      _activeClub = null;
-      return;
-    }
-
-    _activeClub = ClubInfo(
-      id: response['id'] as String,
-      budget: (response['budget'] as num).toInt(),
-      stadiumCapacity: (response['stadium_capacity'] as num).toInt(),
-      ticketPrice: (response['ticket_price'] as num).toInt(),
-      trainingFacilityLevel: (response['training_facility_level'] as num).toInt(),
-    );
+    _activeClub = await _repository.loadActiveClub();
   }
 
   Future<void> _loadSquadPlayers() async {
@@ -135,69 +89,92 @@ class GameProvider extends ChangeNotifier {
       return;
     }
 
-    final data = await _supabase
-        .from('players')
-        .select('id,club_id,name,position,age,current_ability,potential_ability,morale,fitness,finishing,passing,tackling,composure,determination,consistency,injury_proneness')
-        .eq('club_id', _activeClub!.id)
-        .order('name', ascending: true);
-
-    _squadPlayers = (data as List<dynamic>)
-        .cast<Map<String, dynamic>>()
-        .map((raw) => PlayerFM(
-              id: raw['id'] as String,
-              clubId: raw['club_id'] as String,
-              name: raw['name'] as String,
-              position: raw['position'] as String,
-              age: (raw['age'] as num).toInt(),
-              currentAbility: (raw['current_ability'] as num).toInt(),
-              potentialAbility: (raw['potential_ability'] as num).toInt(),
-              morale: (raw['morale'] as num).toInt(),
-              fitness: (raw['fitness'] as num).toInt(),
-              finishing: (raw['finishing'] as num).toInt(),
-              passing: (raw['passing'] as num).toInt(),
-              tackling: (raw['tackling'] as num).toInt(),
-              composure: (raw['composure'] as num).toInt(),
-              determination: (raw['determination'] as num).toInt(),
-              consistency: (raw['consistency'] as num).toInt(),
-              injuryProneness: (raw['injury_proneness'] as num).toInt(),
-            ))
-        .toList();
+    _squadPlayers = await _repository.loadSquadPlayers(_activeClub!.id);
   }
 
   Future<void> _loadInboxMessages() async {
-    final userId = _supabase.auth.currentUser?.id;
-    if (userId == null) {
-      _inboxMessages = <InboxMessage>[];
-      return;
-    }
-
-    final data = await _supabase
-        .from('inbox_messages')
-        .select('id,title,body,is_read,created_at')
-        .eq('recipient_id', userId)
-        .order('created_at', ascending: false);
-
-    _inboxMessages = (data as List<dynamic>)
-        .cast<Map<String, dynamic>>()
-        .map(InboxMessage.fromMap)
-        .toList();
+    _inboxMessages = await _repository.loadInboxMessages();
   }
 
   Future<void> _loadTransferMarket() async {
     _setSyncing(true);
     try {
-      final data = await _supabase
-          .from('transfer_market')
-          .select('id,player_id,current_highest_bid,highest_bidder_id,end_time')
-          .order('end_time', ascending: true);
-
-      _transferMarketItems = (data as List<dynamic>)
-          .cast<Map<String, dynamic>>()
-          .map(TransferMarketItem.fromMap)
-          .toList();
+      _transferMarketItems = await _repository.loadTransferMarket();
     } finally {
       _setSyncing(false);
     }
+  }
+
+  Future<void> _loadFixturesAndResults() async {
+    final now = DateTime.now();
+    if (_tactics == null && _activeClub != null) {
+      final defaultPlayer = _squadPlayers.isNotEmpty ? _squadPlayers.first.id : '';
+      _tactics = Tactics(
+        clubId: _activeClub!.id,
+        captainId: defaultPlayer,
+        penaltyTakerId: defaultPlayer,
+      );
+    }
+
+    _fixtures = List<MatchFixture>.generate(
+      5,
+      (index) {
+        final matchDate = now.add(Duration(days: 2 + index * 3));
+        return MatchFixture(
+          id: 'fixture-${index + 1}',
+          opponentName: 'Rakip ${index + 1}',
+          kickoff: matchDate,
+          isHome: index.isEven,
+          status: 'Yaklaşan',
+          homeScore: 0,
+          awayScore: 0,
+        );
+      },
+    );
+
+    _results = List<MatchResult>.generate(
+      4,
+      (index) {
+        final homeScore = index % 3 + 1;
+        final awayScore = (index + 1) % 4;
+        return MatchResult(
+          homeTeamId: 'home',
+          awayTeamId: 'away-${index + 1}',
+          homeScore: homeScore,
+          awayScore: awayScore,
+          homeShots: 8 + index * 2,
+          awayShots: 5 + index,
+          homeXg: homeScore * 1.1,
+          awayXg: awayScore * 0.9,
+          homePossession: 50 + index,
+          commentary: [
+            'Maç başlangıcı',
+            'Skor: $homeScore - $awayScore',
+            'Maç bitti',
+          ],
+        );
+      },
+    );
+  }
+
+  Future<MatchResult> simulateMatch({
+    required String homeTeamName,
+    required String awayTeamName,
+    required List<PlayerFM> homeSquad,
+    required List<PlayerFM> awaySquad,
+    required Tactics homeTactics,
+    required Tactics awayTactics,
+  }) async {
+    return _matchRepository.simulateMatch(
+      homeTeamId: _activeClub?.id ?? 'home',
+      awayTeamId: 'away',
+      homeTeamName: homeTeamName,
+      awayTeamName: awayTeamName,
+      homeSquad: homeSquad,
+      awaySquad: awaySquad,
+      homeTactics: homeTactics,
+      awayTactics: awayTactics,
+    );
   }
 
   void _initRealtimeStreams() {
@@ -230,8 +207,7 @@ class GameProvider extends ChangeNotifier {
   }
 
   Future<void> placeBid({required String marketId, required int bidAmount}) async {
-    final userId = _supabase.auth.currentUser?.id;
-    if (userId == null) {
+    if (_repository.currentUserId == null) {
       throw Exception('Kullanıcı oturumu bulunamadı.');
     }
 
@@ -239,19 +215,10 @@ class GameProvider extends ChangeNotifier {
 
     _setBusy(true);
     try {
-      final updated = await _supabase
-          .from('transfer_market')
-          .update({
-            'current_highest_bid': bidAmount,
-            'highest_bidder_id': userId,
-          })
-          .eq('id', marketId)
-          .lt('current_highest_bid', bidAmount)
-          .select()
-          .single();
-
-      _upsertTransferMarketItem(TransferMarketItem.fromMap(Map<String, dynamic>.from(updated as Map<String, dynamic>)));
-      notifyListeners();
+      final updatedItem = await _repository.placeBid(marketId, bidAmount);
+      if (updatedItem != null) {
+        _upsertTransferMarketItem(updatedItem);
+      }
     } finally {
       _setBusy(false);
     }
@@ -266,24 +233,77 @@ class GameProvider extends ChangeNotifier {
       final newBudget = _activeClub!.budget - transferFee;
       if (newBudget < 0) throw Exception('Yeterli bütçe yok.');
 
-      await _supabase.from('clubs').update({'budget': newBudget}).eq('id', _activeClub!.id).select().single();
-      await _supabase.from('players').update({'club_id': null}).eq('id', playerId);
+      final updatedClub = await _repository.acceptTransferOffer(
+        clubId: _activeClub!.id,
+        newBudget: newBudget,
+        playerId: playerId,
+      );
 
-      _activeClub = _activeClub!.copyWith(budget: newBudget);
+      if (updatedClub != null) {
+        _activeClub = updatedClub;
+      } else {
+        _activeClub = _activeClub!.copyWith(budget: newBudget);
+      }
+
       _squadPlayers.removeWhere((player) => player.id == playerId);
       notifyListeners();
-      await refreshGameState();
     } finally {
       _setBusy(false);
     }
   }
 
-  void markMessageAsRead(String messageId) {
+  Future<void> upgradeClub({
+    int? stadiumCapacity,
+    int? trainingFacilityLevel,
+    int? ticketPrice,
+  }) async {
+    if (_activeClub == null) throw Exception('Aktif kulüp bulunamadı.');
+    if (_isBusy) return;
+
+    _setBusy(true);
+    try {
+      final newBudget = _activeClub!.budget - 500;
+      if (newBudget < 0) throw Exception('Yeterli bütçe yok.');
+
+      final updatedClub = await _repository.upgradeClub(
+        clubId: _activeClub!.id,
+        stadiumCapacity: stadiumCapacity,
+        trainingFacilityLevel: trainingFacilityLevel,
+        ticketPrice: ticketPrice,
+        budget: newBudget,
+      );
+
+      if (updatedClub != null) {
+        _activeClub = updatedClub;
+      } else {
+        _activeClub = _activeClub!.copyWith(
+          budget: newBudget,
+          stadiumCapacity: stadiumCapacity ?? _activeClub!.stadiumCapacity,
+          trainingFacilityLevel: trainingFacilityLevel ?? _activeClub!.trainingFacilityLevel,
+          ticketPrice: ticketPrice ?? _activeClub!.ticketPrice,
+        );
+      }
+
+      notifyListeners();
+    } finally {
+      _setBusy(false);
+    }
+  }
+
+  Future<void> saveTactics(Tactics tactics) async {
+    _tactics = tactics;
+    notifyListeners();
+  }
+
+  Future<void> markMessageAsRead(String messageId) async {
     final index = _inboxMessages.indexWhere((message) => message.id == messageId);
     if (index < 0) return;
 
     final message = _inboxMessages[index];
     if (message.isRead) return;
+
+    final updated = await _repository.markMessageAsRead(messageId);
+    if (!updated) return;
 
     _inboxMessages[index] = InboxMessage(
       id: message.id,

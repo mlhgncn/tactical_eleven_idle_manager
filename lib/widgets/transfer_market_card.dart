@@ -86,7 +86,7 @@ class _TransferMarketCardState extends State<TransferMarketCard> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Oyuncu: ${widget.item.playerId}', style: theme.textTheme.titleMedium),
+                Text('${widget.item.playerName} (${widget.item.playerPosition})', style: theme.textTheme.titleMedium),
                 const SizedBox(height: 12),
                 Text('Mevcut En Yüksek Teklif: ${widget.item.currentHighestBid} GP', style: theme.textTheme.bodyLarge),
                 const SizedBox(height: 6),

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../providers/game_provider.dart';
+import '../services/auth_service.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -15,6 +16,7 @@ class _AuthScreenState extends State<AuthScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final AuthService _authService = AuthService();
   bool _isLoading = false;
   bool _isLoginMode = true;
 
@@ -47,13 +49,26 @@ class _AuthScreenState extends State<AuthScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final supabase = Supabase.instance.client;
       final response = _isLoginMode
-          ? await supabase.auth.signInWithPassword(email: email, password: password)
-          : await supabase.auth.signUp(email: email, password: password);
+          ? await _authService.signIn(email, password)
+          : await _authService.signUp(email, password);
 
-      if (response.session == null && response.user == null) {
+      if (response.user == null) {
         _showSnackbar('Kullanıcı doğrulaması tamamlanamadı.');
+        return;
+      }
+
+      final isVerified = response.session?.user.emailConfirmedAt != null;
+      if (!_isLoginMode && response.session == null) {
+        if (!mounted) return;
+        Navigator.of(context).pushReplacementNamed('/email-verification');
+        return;
+      }
+
+      if (response.session != null && !isVerified) {
+        await _authService.signOut();
+        if (!mounted) return;
+        Navigator.of(context).pushReplacementNamed('/email-verification');
         return;
       }
 

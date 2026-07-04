@@ -35,6 +35,8 @@
   <string>This app needs access to your photo library for profile images.</string>
   <key>NSUserTrackingUsageDescription</key>
   <string>This app uses tracking to personalize ads and analytics.</string>
+  <key>GADApplicationIdentifier</key>
+  <string>ca-app-pub-3621419452103208~8380492399</string>
   <key>UIBackgroundModes</key>
   <array>
     <string>remote-notification</string>

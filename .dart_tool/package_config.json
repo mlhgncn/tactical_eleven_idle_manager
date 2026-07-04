@@ -218,6 +218,12 @@
       "languageVersion": "3.10"
     },
     {
+      "name": "flutter_lints",
+      "rootUri": "file:///C:/Users/Melih/AppData/Local/Pub/Cache/hosted/pub.dev/flutter_lints-5.0.0",
+      "packageUri": "lib/",
+      "languageVersion": "3.5"
+    },
+    {
       "name": "flutter_localizations",
       "rootUri": "file:///C:/src/flutter/packages/flutter_localizations",
       "packageUri": "lib/",
@@ -249,9 +255,9 @@
     },
     {
       "name": "google_mobile_ads",
-      "rootUri": "file:///C:/Users/Melih/AppData/Local/Pub/Cache/hosted/pub.dev/google_mobile_ads-9.0.0",
+      "rootUri": "file:///C:/Users/Melih/AppData/Local/Pub/Cache/hosted/pub.dev/google_mobile_ads-5.3.1",
       "packageUri": "lib/",
-      "languageVersion": "3.10"
+      "languageVersion": "2.17"
     },
     {
       "name": "gotrue",
@@ -342,6 +348,12 @@
       "rootUri": "file:///C:/Users/Melih/AppData/Local/Pub/Cache/hosted/pub.dev/leak_tracker_testing-3.0.2",
       "packageUri": "lib/",
       "languageVersion": "3.2"
+    },
+    {
+      "name": "lints",
+      "rootUri": "file:///C:/Users/Melih/AppData/Local/Pub/Cache/hosted/pub.dev/lints-5.1.1",
+      "packageUri": "lib/",
+      "languageVersion": "3.6"
     },
     {
       "name": "logging",
