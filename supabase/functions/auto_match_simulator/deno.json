@@ -1,0 +1,8 @@
+{
+  "compilerOptions": {
+    "lib": ["esnext", "dom"],
+    "strict": true,
+    "useDefineForClassFields": true,
+    "jsx": "react-jsx"
+  }
+}

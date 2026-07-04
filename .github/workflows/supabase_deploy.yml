@@ -1,0 +1,32 @@
+name: Supabase Schema Deploy
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'supabase/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Validate secrets
+        run: |
+          if [ -z "${{ secrets.SUPABASE_DB_URL }}" ]; then
+            echo "Missing SUPABASE_DB_URL secret" && exit 1
+          fi
+
+      - name: Apply schema
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          echo "Applying supabase/schema.sql to $SUPABASE_DB_URL"
+          psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f supabase/schema.sql

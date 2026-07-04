@@ -1,0 +1,30 @@
+default_platform(:ios)
+
+platform :ios do
+  desc "Build and upload to TestFlight using App Store Connect API key and match"
+  lane :beta do
+    api_key = app_store_connect_api_key(
+      key_id: ENV['APP_STORE_CONNECT_KEY_ID'],
+      issuer_id: ENV['APP_STORE_CONNECT_ISSUER_ID'],
+      key: File.read(ENV['APP_AUTH_KEY_PATH'] || '/tmp/AuthKey.p8')
+    )
+
+    # Use match to install certificates/profiles (requires MATCH_GIT_URL and MATCH_PASSWORD secrets)
+    if ENV['MATCH_GIT_URL']
+      match(
+        type: "appstore",
+        readonly: false,
+        git_url: ENV['MATCH_GIT_URL'],
+        username: ENV['APPLE_ID']
+      )
+    end
+
+    build_ios_app(
+      workspace: "ios/Runner.xcworkspace",
+      scheme: "Runner",
+      export_method: "app-store"
+    )
+
+    upload_to_app_store(api_key: api_key, skip_waiting_for_build_processing: true)
+  end
+end

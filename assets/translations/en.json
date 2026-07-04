@@ -1,0 +1,19 @@
+{
+  "Oyna": "Play",
+  "Kadro": "Squad",
+  "Taktik": "Tactics",
+  "Ayarlar": "Settings",
+
+  "match": {
+    "goal": "Goal!",
+    "red_card": "Red Card!",
+    "injury": "Injury occurred"
+  },
+
+  "menu": {
+    "play": "Play",
+    "squad": "Squad",
+    "tactics": "Tactics",
+    "settings": "Settings"
+  }
+}

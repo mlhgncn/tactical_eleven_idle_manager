@@ -1,0 +1,5 @@
+apple_id("your@appleid.com")
+itc_team_id(ENV['TEAM_ID'] || "")
+team_id(ENV['TEAM_ID'] || "")
+# Default bundle id placeholder for Tactical Eleven
+app_identifier(ENV['BUNDLE_ID'] || "com.yourcompany.tacticaleleven")

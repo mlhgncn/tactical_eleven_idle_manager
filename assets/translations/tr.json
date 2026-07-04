@@ -1,0 +1,19 @@
+{
+  "Oyna": "Oyna",
+  "Kadro": "Kadro",
+  "Taktik": "Taktik",
+  "Ayarlar": "Ayarlar",
+
+  "match": {
+    "goal": "Gol!",
+    "red_card": "Kırmızı Kart!",
+    "injury": "Sakatlık Yaşandı"
+  },
+
+  "menu": {
+    "play": "Oyna",
+    "squad": "Kadro",
+    "tactics": "Taktik",
+    "settings": "Ayarlar"
+  }
+}

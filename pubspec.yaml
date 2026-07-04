@@ -1,0 +1,37 @@
+﻿name: tactical_eleven_idle_manager
+description: "Tactical Eleven: Idle Manager — Mobil menajerlik oyunu"
+publish_to: 'none'
+version: 1.0.0+1
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_svg: ^2.0.7
+  audioplayers: ^5.2.1
+  supabase_flutter: ^1.10.0
+  provider: ^6.1.5+1
+  easy_localization: ^3.0.0
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/translations/
+    - assets/images/ball_icon.svg
+    - assets/images/club_badge.svg
+    - assets/images/pitch_background.svg
+    - assets/images/trophy.svg
+    - assets/images/stadium_upgrade.svg
+    - assets/images/medical_pack.svg
+    - assets/images/manager_avatar.svg
+    - assets/images/financial_up.svg
+    - assets/images/scout_magnifier.svg
+    - assets/images/contract_scroll.svg
+    - assets/images/match_cards.svg
+    - assets/images/substitution_arrows.svg
+    - assets/images/performance_trend.svg
+    - assets/images/performance_down.svg
+    - assets/images/training_icon.svg
+    - assets/images/manager_badge.svg
+    - assets/images/sponsor_board.svg
+    - assets/images/lock_icon.svg
+    - assets/images/jersey_icon.svg
