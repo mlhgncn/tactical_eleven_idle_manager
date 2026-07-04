@@ -10,6 +10,16 @@ jobs:
     runs-on: macos-latest
     env:
       FLUTTER_CHANNEL: stable
+      APP_STORE_CONNECT_PRIVATE_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY_BASE64 }}
+      APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+      APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+      MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
+      MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+      BUNDLE_ID: ${{ secrets.BUNDLE_ID }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      TEAM_ID: ${{ secrets.TEAM_ID }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -29,12 +39,19 @@ jobs:
       - name: Restore packages
         run: flutter pub get
 
-      - name: Prepare App Store Connect API key
+      - name: Debug App Store Connect secret
         run: |
+          echo "APP_STORE_CONNECT_PRIVATE_KEY_BASE64 length: ${#APP_STORE_CONNECT_PRIVATE_KEY_BASE64}"
           if [ -z "$APP_STORE_CONNECT_PRIVATE_KEY_BASE64" ]; then
             echo "Missing APP_STORE_CONNECT_PRIVATE_KEY_BASE64 secret" >&2
             exit 1
           fi
+          if [ ${#APP_STORE_CONNECT_PRIVATE_KEY_BASE64} -lt 100 ]; then
+            echo "APP_STORE_CONNECT_PRIVATE_KEY_BASE64 looks too short" >&2
+            exit 1
+          fi
+      - name: Prepare App Store Connect API key
+        run: |
           echo "$APP_STORE_CONNECT_PRIVATE_KEY_BASE64" | base64 --decode > /tmp/AuthKey.p8
           echo "APP_AUTH_KEY_PATH=/tmp/AuthKey.p8" >> "$GITHUB_ENV"
 
