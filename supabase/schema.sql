@@ -1,4 +1,5 @@
-﻿ALTER TABLE public.players ADD COLUMN IF NOT EXISTS current_ability INT DEFAULT 50;
+﻿-- CI trigger: update to force supabase_deploy.yml push
+ALTER TABLE public.players ADD COLUMN IF NOT EXISTS current_ability INT DEFAULT 50;
 ALTER TABLE public.players ADD COLUMN IF NOT EXISTS potential_ability INT DEFAULT 75;
 ALTER TABLE public.players ADD COLUMN IF NOT EXISTS age INT DEFAULT 22;
 ALTER TABLE public.players ADD COLUMN IF NOT EXISTS morale INT DEFAULT 75;
