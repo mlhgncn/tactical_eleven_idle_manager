@@ -32,7 +32,7 @@ jobs:
         run: |
           if [ -n "$APP_STORE_CONNECT_PRIVATE_KEY_BASE64" ]; then
             echo "$APP_STORE_CONNECT_PRIVATE_KEY_BASE64" | base64 --decode > /tmp/AuthKey.p8
-            export APP_AUTH_KEY_PATH=/tmp/AuthKey.p8
+            echo "APP_AUTH_KEY_PATH=/tmp/AuthKey.p8" >> "$GITHUB_ENV"
           fi
 
       - name: Run Fastlane beta lane
@@ -43,5 +43,7 @@ jobs:
           MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
           MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
           BUNDLE_ID: ${{ secrets.BUNDLE_ID }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          TEAM_ID: ${{ secrets.TEAM_ID }}
         run: |
           bundle exec fastlane beta || fastlane beta

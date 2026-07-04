@@ -62,20 +62,20 @@ class InboxMessage {
 }
 
 class GameProvider extends ChangeNotifier {
+  GameProvider({SupabaseClient? supabase}) : _supabase = supabase ?? Supabase.instance.client {
+    _initRealtimeStreams();
+  }
+
   final SupabaseClient _supabase;
   RealtimeChannel? _transferChannel;
 
   ClubInfo? _activeClub;
-  List<PlayerFM> _squadPlayers = [];
-  List<InboxMessage> _inboxMessages = [];
-  List<TransferMarketItem> _transferMarketItems = [];
+  List<PlayerFM> _squadPlayers = <PlayerFM>[];
+  List<InboxMessage> _inboxMessages = <InboxMessage>[];
+  List<TransferMarketItem> _transferMarketItems = <TransferMarketItem>[];
   bool _isLoading = false;
   bool _isBusy = false;
   bool _isSyncing = false;
-
-  GameProvider({SupabaseClient? supabase}) : _supabase = supabase ?? Supabase.instance.client {
-    _initRealtimeChannels();
-  }
 
   ClubInfo? get activeClub => _activeClub;
   bool get isLoading => _isLoading;
@@ -89,7 +89,14 @@ class GameProvider extends ChangeNotifier {
     _setLoading(true);
     try {
       await _loadActiveClub();
-      await Future.wait([_loadSquadPlayers(), _loadInboxMessages(), _loadTransferMarket()]);
+      await Future.wait(<Future<void>>[
+        _loadSquadPlayers(),
+        _loadInboxMessages(),
+        _loadTransferMarket(),
+      ]);
+    } catch (error) {
+      debugPrint('GameProvider refresh failed: $error');
+      rethrow;
     } finally {
       _setLoading(false);
     }
@@ -102,46 +109,41 @@ class GameProvider extends ChangeNotifier {
       return;
     }
 
-    try {
-      final club = await _supabase
-          .from('clubs')
-          .select('id,budget,stadium_capacity,ticket_price,training_facility_level')
-          .eq('user_id', userId)
-          .single() as Map<String, dynamic>?;
+    final response = await _supabase
+        .from('clubs')
+        .select('id,budget,stadium_capacity,ticket_price,training_facility_level')
+        .eq('user_id', userId)
+        .maybeSingle();
 
-      if (club == null) {
-        throw Exception('Aktif kulüp bulunamadı.');
-      }
-
-      _activeClub = ClubInfo(
-        id: club['id'] as String,
-        budget: (club['budget'] as num).toInt(),
-        stadiumCapacity: (club['stadium_capacity'] as num).toInt(),
-        ticketPrice: (club['ticket_price'] as num).toInt(),
-        trainingFacilityLevel: (club['training_facility_level'] as num).toInt(),
-      );
-    } on PostgrestException catch (error) {
-      throw Exception('Kulüp verisi yüklenemedi: ${error.message}');
+    if (response == null) {
+      _activeClub = null;
+      return;
     }
+
+    _activeClub = ClubInfo(
+      id: response['id'] as String,
+      budget: (response['budget'] as num).toInt(),
+      stadiumCapacity: (response['stadium_capacity'] as num).toInt(),
+      ticketPrice: (response['ticket_price'] as num).toInt(),
+      trainingFacilityLevel: (response['training_facility_level'] as num).toInt(),
+    );
   }
 
   Future<void> _loadSquadPlayers() async {
     if (_activeClub == null) {
-      _squadPlayers = [];
+      _squadPlayers = <PlayerFM>[];
       return;
     }
 
-    try {
-      final data = await _supabase
-          .from('players')
-          .select('id,club_id,name,position,age,current_ability,potential_ability,morale,fitness,finishing,passing,tackling,composure,determination,consistency,injury_proneness')
-          .eq('club_id', _activeClub!.id)
-          .order('name', ascending: true) as List<dynamic>;
+    final data = await _supabase
+        .from('players')
+        .select('id,club_id,name,position,age,current_ability,potential_ability,morale,fitness,finishing,passing,tackling,composure,determination,consistency,injury_proneness')
+        .eq('club_id', _activeClub!.id)
+        .order('name', ascending: true);
 
-      _squadPlayers = data
-          .cast<Map<String, dynamic>>()
-          .map((raw) {
-            return PlayerFM(
+    _squadPlayers = (data as List<dynamic>)
+        .cast<Map<String, dynamic>>()
+        .map((raw) => PlayerFM(
               id: raw['id'] as String,
               clubId: raw['club_id'] as String,
               name: raw['name'] as String,
@@ -158,95 +160,82 @@ class GameProvider extends ChangeNotifier {
               determination: (raw['determination'] as num).toInt(),
               consistency: (raw['consistency'] as num).toInt(),
               injuryProneness: (raw['injury_proneness'] as num).toInt(),
-            );
-          })
-          .toList();
-    } on PostgrestException catch (error) {
-      throw Exception('Kadro verisi yüklenemedi: ${error.message}');
-    }
+            ))
+        .toList();
   }
 
   Future<void> _loadInboxMessages() async {
     final userId = _supabase.auth.currentUser?.id;
     if (userId == null) {
-      _inboxMessages = [];
+      _inboxMessages = <InboxMessage>[];
       return;
     }
 
-    try {
-      final data = await _supabase
-          .from('inbox_messages')
-          .select('id,title,body,is_read,created_at')
-          .eq('recipient_id', userId)
-          .order('created_at', ascending: false) as List<dynamic>;
+    final data = await _supabase
+        .from('inbox_messages')
+        .select('id,title,body,is_read,created_at')
+        .eq('recipient_id', userId)
+        .order('created_at', ascending: false);
 
-      _inboxMessages = data.cast<Map<String, dynamic>>().map(InboxMessage.fromMap).toList();
-    } on PostgrestException catch (error) {
-      throw Exception('Gelen kutusu mesajları yüklenemedi: ${error.message}');
-    }
+    _inboxMessages = (data as List<dynamic>)
+        .cast<Map<String, dynamic>>()
+        .map(InboxMessage.fromMap)
+        .toList();
   }
 
   Future<void> _loadTransferMarket() async {
     _setSyncing(true);
     try {
-      try {
-        final data = await _supabase
-            .from('transfer_market')
-            .select('id,player_id,current_highest_bid,highest_bidder_id,end_time')
-            .order('end_time', ascending: true) as List<dynamic>;
+      final data = await _supabase
+          .from('transfer_market')
+          .select('id,player_id,current_highest_bid,highest_bidder_id,end_time')
+          .order('end_time', ascending: true);
 
-        _transferMarketItems = data.cast<Map<String, dynamic>>().map(TransferMarketItem.fromMap).toList();
-      } on PostgrestException catch (error) {
-        throw Exception('Transfer pazarı yüklenemedi: ${error.message}');
-      }
+      _transferMarketItems = (data as List<dynamic>)
+          .cast<Map<String, dynamic>>()
+          .map(TransferMarketItem.fromMap)
+          .toList();
     } finally {
       _setSyncing(false);
     }
   }
 
-  void _initRealtimeChannels() {
+  void _initRealtimeStreams() {
     _transferChannel = _supabase.channel('realtime-transfer-market');
-
     _transferChannel!.on(
       RealtimeListenTypes.postgresChanges,
       ChannelFilter(event: '*', schema: 'public', table: 'transfer_market'),
       (payload, [ref]) {
         final record = payload.newRecord ?? payload.record;
         if (record == null) return;
-        _updateTransferMarketItem(TransferMarketItem.fromMap(Map<String, dynamic>.from(record as Map<String, dynamic>)));
+        _upsertTransferMarketItem(TransferMarketItem.fromMap(Map<String, dynamic>.from(record as Map<String, dynamic>)));
       },
     );
-
     _transferChannel!.subscribe();
   }
 
-  void _updateTransferMarketItem(TransferMarketItem item) {
-    final currentList = List<TransferMarketItem>.from(_transferMarketItems);
-    final index = currentList.indexWhere((element) => element.id == item.id);
+  void _upsertTransferMarketItem(TransferMarketItem item) {
+    final items = List<TransferMarketItem>.from(_transferMarketItems);
+    final index = items.indexWhere((element) => element.id == item.id);
 
     if (index >= 0) {
-      currentList[index] = item;
+      items[index] = item;
     } else {
-      currentList.add(item);
+      items.add(item);
     }
 
-    currentList.sort((a, b) => a.endTime.compareTo(b.endTime));
-    _transferMarketItems = currentList;
+    items.sort((a, b) => a.endTime.compareTo(b.endTime));
+    _transferMarketItems = items;
     notifyListeners();
   }
 
-  Future<void> placeBid({
-    required String marketId,
-    required int bidAmount,
-  }) async {
+  Future<void> placeBid({required String marketId, required int bidAmount}) async {
     final userId = _supabase.auth.currentUser?.id;
     if (userId == null) {
       throw Exception('Kullanıcı oturumu bulunamadı.');
     }
 
-    if (_isBusy) {
-      return;
-    }
+    if (_isBusy) return;
 
     _setBusy(true);
     try {
@@ -259,61 +248,31 @@ class GameProvider extends ChangeNotifier {
           .eq('id', marketId)
           .lt('current_highest_bid', bidAmount)
           .select()
-          .single() as Map<String, dynamic>?;
+          .single();
 
-      if (updated == null) {
-        throw Exception('Teklif mevcut en yüksek tekliften yüksek olmalı.');
-      }
-
-      _updateTransferMarketItem(TransferMarketItem.fromMap(updated));
-    } on PostgrestException catch (error) {
-      throw Exception(error.message);
+      _upsertTransferMarketItem(TransferMarketItem.fromMap(Map<String, dynamic>.from(updated as Map<String, dynamic>)));
+      notifyListeners();
     } finally {
       _setBusy(false);
     }
   }
 
-  Future<void> acceptTransferOffer({
-    required String playerId,
-    required int transferFee,
-  }) async {
-    if (_activeClub == null) {
-      throw Exception('Aktif kulüp bulunamadı.');
-    }
-
-    if (_isBusy) {
-      return;
-    }
+  Future<void> acceptTransferOffer({required String playerId, required int transferFee}) async {
+    if (_activeClub == null) throw Exception('Aktif kulüp bulunamadı.');
+    if (_isBusy) return;
 
     _setBusy(true);
     try {
       final newBudget = _activeClub!.budget - transferFee;
-      if (newBudget < 0) {
-        throw Exception('Yeterli bütçe yok.');
-      }
+      if (newBudget < 0) throw Exception('Yeterli bütçe yok.');
 
-      final clubData = await _supabase
-          .from('clubs')
-          .update({'budget': newBudget})
-          .eq('id', _activeClub!.id)
-          .select()
-          .single() as Map<String, dynamic>?;
-
-      if (clubData == null) {
-        throw Exception('Bütçe güncellenemedi.');
-      }
-
-      await _supabase
-          .from('players')
-          .update({'club_id': null})
-          .eq('id', playerId);
+      await _supabase.from('clubs').update({'budget': newBudget}).eq('id', _activeClub!.id).select().single();
+      await _supabase.from('players').update({'club_id': null}).eq('id', playerId);
 
       _activeClub = _activeClub!.copyWith(budget: newBudget);
       _squadPlayers.removeWhere((player) => player.id == playerId);
       notifyListeners();
       await refreshGameState();
-    } on PostgrestException catch (error) {
-      throw Exception('Transfer işlemi başarısız oldu: ${error.message}');
     } finally {
       _setBusy(false);
     }

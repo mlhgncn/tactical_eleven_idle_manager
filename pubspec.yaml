@@ -1,4 +1,4 @@
-﻿name: tactical_eleven_idle_manager
+name: tactical_eleven_idle_manager
 description: "Tactical Eleven: Idle Manager — Mobil menajerlik oyunu"
 publish_to: 'none'
 version: 1.0.0+1
@@ -12,6 +12,12 @@ dependencies:
   supabase_flutter: ^1.10.0
   provider: ^6.1.5+1
   easy_localization: ^3.0.0
+  firebase_core: ^4.11.0
+  firebase_analytics: ^12.4.3
+  firebase_crashlytics: ^5.2.4
+  firebase_messaging: ^16.4.1
+  google_mobile_ads: ^9.0.0
+  purchases_flutter: ^10.4.0
 flutter:
   uses-material-design: true
   assets:

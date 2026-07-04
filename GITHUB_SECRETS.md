@@ -1,26 +1,35 @@
 GitHub Secrets required for CI (iOS build & Supabase deploy)
 
+Ready-to-fill values for this repo
+
 iOS Build (Fastlane / App Store Connect)
-- APP_STORE_CONNECT_KEY_ID: App Store Connect API Key ID (key identifier)
-- APP_STORE_CONNECT_ISSUER_ID: App Store Connect Issuer ID
-- APP_STORE_CONNECT_PRIVATE_KEY_BASE64: Base64 encoded .p8 private key content
-- APPLE_ID: Apple developer account email
-- TEAM_ID: Apple team id
-- BUNDLE_ID: App bundle identifier (e.g. com.yourcompany.tacticaleleven)
-- MATCH_GIT_URL: (optional) Git URL for fastlane match certificates
-- MATCH_PASSWORD: (optional) password for match repo
+- APP_STORE_CONNECT_KEY_ID: your App Store Connect API key ID
+- APP_STORE_CONNECT_ISSUER_ID: your App Store Connect issuer ID
+- APP_STORE_CONNECT_PRIVATE_KEY_BASE64: base64 of your App Store Connect .p8 private key
+- APPLE_ID: your Apple developer account email
+- TEAM_ID: your Apple Developer Team ID
+- BUNDLE_ID: com.melih.tacticaleleven
+- MATCH_GIT_URL: optional, only if you use fastlane match
+- MATCH_PASSWORD: optional, only if you use fastlane match
 
 Supabase deploy
-- SUPABASE_DB_URL: Postgres connection string for the project (e.g. "postgres://postgres:password@db.host:5432/postgres")
+- SUPABASE_DB_URL: your Supabase Postgres connection string
 
 Other useful secrets
-- SENTRY_DSN
-- FIREBASE_SERVICE_ACCOUNT (if using Firebase)
+- SENTRY_DSN: optional
+- FIREBASE_SERVICE_ACCOUNT: optional, if you enable Firebase admin deployment
 
 How to add secrets
-1. Go to your GitHub repository → Settings → Secrets → Actions → New repository secret
-2. Add the name and value from above
+1. Open your GitHub repository → Settings → Secrets and variables → Actions → New repository secret
+2. Add each secret name and value exactly as listed above
+3. Keep the values private and do not commit them into the repository
+
+Quick generation examples
+- macOS/Linux:
+  - base64 -i AuthKey_XXXXXX.p8 | tr -d '\n'
+- PowerShell:
+  - [Convert]::ToBase64String([IO.File]::ReadAllBytes("AuthKey_XXXXXX.p8"))
 
 Security notes
 - Never commit secrets into repo files.
-- Use `service_role` keys only on server/CI; do not expose in mobile client.
+- Use service_role keys only on server/CI; do not expose them in the mobile client.

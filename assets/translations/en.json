@@ -1,19 +1,27 @@
 {
-  "Oyna": "Play",
-  "Kadro": "Squad",
-  "Taktik": "Tactics",
-  "Ayarlar": "Settings",
-
-  "match": {
-    "goal": "Goal!",
-    "red_card": "Red Card!",
-    "injury": "Injury occurred"
+  "app": {
+    "title": "Tactical Eleven: Idle Manager"
   },
-
   "menu": {
     "play": "Play",
     "squad": "Squad",
     "tactics": "Tactics",
     "settings": "Settings"
+  },
+  "match": {
+    "goal": "Goal!",
+    "red_card": "Red Card!",
+    "injury": "Injury occurred",
+    "live_commentary": {
+      "start": "The match has started.",
+      "pressure": "They are pressing hard.",
+      "chance": "A great chance!"
+    }
+  },
+  "tactics": {
+    "title": "Tactics",
+    "balanced": "Balanced",
+    "attacking": "Attacking",
+    "defensive": "Defensive"
   }
 }

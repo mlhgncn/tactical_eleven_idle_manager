@@ -61,10 +61,10 @@ class _RootShellState extends State<RootShell> {
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.account_balance_wallet), label: 'menu.play'.tr()),
-          BottomNavigationBarItem(icon: Icon(Icons.group), label: 'menu.squad'.tr()),
-          BottomNavigationBarItem(icon: Icon(Icons.sports_soccer), label: 'menu.tactics'.tr()),
+        items: [
+          BottomNavigationBarItem(icon: const Icon(Icons.account_balance_wallet), label: 'menu.play'.tr()),
+          BottomNavigationBarItem(icon: const Icon(Icons.group), label: 'menu.squad'.tr()),
+          BottomNavigationBarItem(icon: const Icon(Icons.sports_soccer), label: 'menu.tactics'.tr()),
         ],
       ),
     );

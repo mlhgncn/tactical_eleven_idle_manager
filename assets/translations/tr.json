@@ -1,19 +1,27 @@
 {
-  "Oyna": "Oyna",
-  "Kadro": "Kadro",
-  "Taktik": "Taktik",
-  "Ayarlar": "Ayarlar",
-
-  "match": {
-    "goal": "Gol!",
-    "red_card": "Kırmızı Kart!",
-    "injury": "Sakatlık Yaşandı"
+  "app": {
+    "title": "Tactical Eleven: Idle Manager"
   },
-
   "menu": {
     "play": "Oyna",
     "squad": "Kadro",
     "tactics": "Taktik",
     "settings": "Ayarlar"
+  },
+  "match": {
+    "goal": "Gol!",
+    "red_card": "Kırmızı Kart!",
+    "injury": "Sakatlık yaşandı",
+    "live_commentary": {
+      "start": "Maç başladı.",
+      "pressure": "Şiddetli baskı yaşıyorlar.",
+      "chance": "İyi bir atak!"
+    }
+  },
+  "tactics": {
+    "title": "Taktikler",
+    "balanced": "Dengeli",
+    "attacking": "Ofansif",
+    "defensive": "Defansif"
   }
 }
