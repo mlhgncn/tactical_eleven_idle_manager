@@ -80,12 +80,12 @@ class SoccerManagerApp extends StatelessWidget {
           colorScheme: ThemeData.dark().colorScheme.copyWith(primary: Colors.greenAccent),
           scaffoldBackgroundColor: const Color(0xFF101820),
         ),
-        home: initialHome ?? const AuthGate(),
+        home: initialHome ?? AuthGate(),
         routes: {
           '/auth': (_) => const AuthScreen(),
           '/email-verification': (_) => const EmailVerificationScreen(),
-          '/setup-club': (_) => const SetupClubScreen(),
-          '/root': (_) => const RootShell(),
+          '/setup-club': (_) => SetupClubScreen(),
+          '/root': (_) => RootShell(),
           '/settings': (_) => const SettingsScreen(),
         },
       ),
@@ -94,7 +94,7 @@ class SoccerManagerApp extends StatelessWidget {
 }
 
 class AuthGate extends StatefulWidget {
-  const AuthGate({super.key});
+  AuthGate({super.key});
 
   @override
   State<AuthGate> createState() => _AuthGateState();
@@ -133,10 +133,10 @@ class _AuthGateState extends State<AuthGate> {
         }
 
         if (provider.activeClub == null) {
-          return const SetupClubScreen();
+          return SetupClubScreen();
         }
 
-        return const RootShell();
+        return RootShell();
       },
     );
   }

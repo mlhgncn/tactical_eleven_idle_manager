@@ -50,6 +50,15 @@ class _TestGameRepository extends GameRepository {
 
   @override
   Future<void> updateFcmToken(String token) async {}
+
+  @override
+  Future<List<ClubInfo>> loadAvailableClubs() async => <ClubInfo>[];
+
+  @override
+  Future<ClubInfo?> createClub(String name) async => null;
+
+  @override
+  Future<ClubInfo?> claimClub(String clubId) async => null;
 }
 
 void main() {

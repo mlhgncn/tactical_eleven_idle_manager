@@ -8,6 +8,9 @@ abstract class GameRepository {
   String? get currentUserId;
   Future<ClubInfo?> loadActiveClub();
   Future<Profile?> loadProfile();
+  Future<List<ClubInfo>> loadAvailableClubs();
+  Future<ClubInfo?> createClub(String name);
+  Future<ClubInfo?> claimClub(String clubId);
   Future<List<PlayerFM>> loadSquadPlayers(String clubId);
   Future<List<InboxMessage>> loadInboxMessages();
   Future<List<TransferMarketItem>> loadTransferMarket();

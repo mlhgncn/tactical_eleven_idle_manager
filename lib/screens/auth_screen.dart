@@ -3,10 +3,13 @@ import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../providers/game_provider.dart';
+import '../services/auth_repository.dart';
 import '../services/auth_service.dart';
 
 class AuthScreen extends StatefulWidget {
-  const AuthScreen({super.key});
+  AuthScreen({super.key, AuthRepository? authRepository}) : _authRepository = authRepository ?? AuthService();
+
+  final AuthRepository _authRepository;
 
   @override
   State<AuthScreen> createState() => _AuthScreenState();
@@ -16,7 +19,6 @@ class _AuthScreenState extends State<AuthScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final AuthService _authService = AuthService();
   bool _isLoading = false;
   bool _isLoginMode = true;
 
@@ -24,7 +26,7 @@ class _AuthScreenState extends State<AuthScreen> {
     if (value == null || value.trim().isEmpty) {
       return 'E-posta giriniz.';
     }
-    final emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+\$');
+    final emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
     if (!emailRegex.hasMatch(value.trim())) {
       return 'Geçerli bir e-posta adresi giriniz.';
     }
@@ -42,42 +44,67 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
+    print('[AUTH] _submit called, validating form');
+    if (!_formKey.currentState!.validate()) {
+      print('[AUTH] Form validation failed');
+      return;
+    }
 
     final email = _emailController.text.trim();
     final password = _passwordController.text;
+    print('[AUTH] Form is valid, setting loading state');
     setState(() => _isLoading = true);
 
     try {
+      print('[AUTH] Starting auth flow. Mode: ${_isLoginMode ? 'login' : 'signup'}');
       final response = _isLoginMode
-          ? await _authService.signIn(email, password)
-          : await _authService.signUp(email, password);
+          ? await widget._authRepository.signIn(email, password)
+          : await widget._authRepository.signUp(email, password);
 
+      print('[AUTH] Got response. User: ${response.user}, Session: ${response.session}');
+      
       if (response.user == null) {
+        print('[AUTH] User is null, showing error');
         _showSnackbar('Kullanıcı doğrulaması tamamlanamadı.');
         return;
       }
 
       final isVerified = response.session?.user.emailConfirmedAt != null;
+      print('[AUTH] isVerified: $isVerified, emailConfirmedAt: ${response.session?.user.emailConfirmedAt}');
+      
       if (!_isLoginMode && response.session == null) {
+        print('[AUTH] No session on signup, navigating to email verification');
         if (!mounted) return;
         Navigator.of(context).pushReplacementNamed('/email-verification');
         return;
       }
 
       if (response.session != null && !isVerified) {
-        await _authService.signOut();
+        print('[AUTH] Session exists but not verified, navigating to email verification');
+        await widget._authRepository.signOut();
         if (!mounted) return;
         Navigator.of(context).pushReplacementNamed('/email-verification');
         return;
       }
 
+      print('[AUTH] About to refresh game state');
       await context.read<GameProvider>().refreshGameState();
-      if (!mounted) return;
-      Navigator.of(context).pushReplacementNamed('/root');
+      print('[AUTH] Game state refreshed');
+      
+      if (!mounted) {
+        print('[AUTH] Not mounted after refresh, returning');
+        return;
+      }
+      
+      final nextRoute = context.read<GameProvider>().activeClub == null ? '/setup-club' : '/root';
+      print('[AUTH] Navigating to: $nextRoute');
+      Navigator.of(context).pushReplacementNamed(nextRoute);
+      print('[AUTH] Navigation complete');
     } on AuthException catch (error) {
+      print('[AUTH] AuthException: ${error.message}');
       _showSnackbar(error.message);
     } catch (e) {
+      print('[AUTH] Exception: $e');
       _showSnackbar('Hata: ${e.toString()}');
     } finally {
       if (mounted) setState(() => _isLoading = false);

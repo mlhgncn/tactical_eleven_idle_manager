@@ -12,7 +12,7 @@ import 'squad_screen.dart';
 import 'tactics_screen.dart';
 
 class RootShell extends StatefulWidget {
-  const RootShell({super.key});
+  RootShell({super.key});
 
   @override
   State<RootShell> createState() => _RootShellState();

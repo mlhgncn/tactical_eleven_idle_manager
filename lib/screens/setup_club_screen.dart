@@ -4,10 +4,9 @@ import 'package:easy_localization/easy_localization.dart';
 
 import '../models/club_info.dart';
 import '../providers/game_provider.dart';
-import '../repositories/supabase_repository.dart';
 
 class SetupClubScreen extends StatefulWidget {
-  const SetupClubScreen({super.key});
+  SetupClubScreen({super.key});
 
   @override
   State<SetupClubScreen> createState() => _SetupClubScreenState();
@@ -15,7 +14,6 @@ class SetupClubScreen extends StatefulWidget {
 
 class _SetupClubScreenState extends State<SetupClubScreen> {
   final _clubNameController = TextEditingController();
-  final _repository = SupabaseRepository();
   bool _isLoading = true;
   List<ClubInfo> _availableClubs = <ClubInfo>[];
 
@@ -27,7 +25,7 @@ class _SetupClubScreenState extends State<SetupClubScreen> {
 
   Future<void> _loadClubInitialization() async {
     try {
-      final availableClubs = await _repository.loadAvailableClubs();
+      final availableClubs = await context.read<GameProvider>().loadAvailableClubs();
       if (!mounted) return;
       setState(() {
         _availableClubs = availableClubs;
@@ -47,8 +45,7 @@ class _SetupClubScreenState extends State<SetupClubScreen> {
     setState(() => _isLoading = true);
 
     try {
-      await _repository.createClub(_clubNameController.text.trim());
-      await context.read<GameProvider>().refreshGameState();
+      await context.read<GameProvider>().createClub(_clubNameController.text.trim());
       _navigateToRoot();
     } catch (error) {
       if (!mounted) return;
@@ -63,8 +60,7 @@ class _SetupClubScreenState extends State<SetupClubScreen> {
     setState(() => _isLoading = true);
 
     try {
-      await _repository.claimClub(clubId);
-      await context.read<GameProvider>().refreshGameState();
+      await context.read<GameProvider>().claimClub(clubId);
       _navigateToRoot();
     } catch (error) {
       if (!mounted) return;

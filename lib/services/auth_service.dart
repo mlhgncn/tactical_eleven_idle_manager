@@ -1,6 +1,8 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-class AuthService {
+import 'auth_repository.dart';
+
+class AuthService implements AuthRepository {
   AuthService({SupabaseClient? supabase}) : _supabase = supabase ?? Supabase.instance.client;
 
   final SupabaseClient _supabase;
