@@ -1,3 +1,5 @@
+require 'shellwords'
+
 default_platform(:ios)
 
 platform :ios do
@@ -19,12 +21,18 @@ platform :ios do
       )
     end
 
-    build_ios_app(
-      workspace: "ios/Runner.xcworkspace",
-      scheme: "Runner",
-      export_method: "app-store"
-    )
+    sh("flutter pub get")
 
-    upload_to_app_store(api_key: api_key, skip_waiting_for_build_processing: true)
+    flutter_build_args = []
+    flutter_build_args << "--dart-define=SUPABASE_URL=#{Shellwords.escape(ENV['SUPABASE_URL'] || '')}" if ENV['SUPABASE_URL']
+    flutter_build_args << "--dart-define=SUPABASE_ANON_KEY=#{Shellwords.escape(ENV['SUPABASE_ANON_KEY'] || '')}" if ENV['SUPABASE_ANON_KEY']
+
+    sh("flutter build ipa --release #{flutter_build_args.join(' ')}")
+
+    upload_to_app_store(
+      ipa: "build/ios/ipa/Runner.ipa",
+      api_key: api_key,
+      skip_waiting_for_build_processing: true
+    )
   end
 end

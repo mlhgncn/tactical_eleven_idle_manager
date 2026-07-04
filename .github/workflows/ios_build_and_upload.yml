@@ -46,5 +46,7 @@ jobs:
           BUNDLE_ID: ${{ secrets.BUNDLE_ID }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           TEAM_ID: ${{ secrets.TEAM_ID }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
           bundle exec fastlane beta || fastlane beta

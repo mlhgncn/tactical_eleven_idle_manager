@@ -14,6 +14,8 @@ iOS Build (Fastlane / App Store Connect)
 
 Supabase deploy
 - SUPABASE_DB_URL: your Supabase Postgres connection string
+- SUPABASE_URL: your Supabase project URL (e.g. https://xyz.supabase.co)
+- SUPABASE_ANON_KEY: your Supabase anon/public API key
 
 Other useful secrets
 - SENTRY_DSN: optional
