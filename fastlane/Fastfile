@@ -209,7 +209,7 @@ platform :ios do
     UI.user_error!("Certificate #{target_id} not found — nothing to do, it may already be revoked.") unless cert
 
     UI.message("Revoking only #{cert.id} (type=#{cert.certificate_type}, serial=#{cert.serial_number}, name=#{cert.display_name}) — leaving every other certificate on the account untouched.")
-    cert.revoke!
+    cert.delete!
     UI.success("Revoked #{target_id}. The next `beta` run can mint a fresh one and cache it.")
   end
 end
