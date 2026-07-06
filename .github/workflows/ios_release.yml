@@ -137,8 +137,23 @@ jobs:
           REVENUECAT_API_KEY: ${{ secrets.REVENUECAT_API_KEY }}
           ADMOB_INTERSTITIAL_ID: ${{ secrets.ADMOB_INTERSTITIAL_ID }}
 
+      # Guards against ever caching an incomplete ios_signing_cache/ (e.g. if
+      # cert/sigh fails before producing the .p12/.mobileprovision) — cache
+      # keys are immutable once written, so saving an empty/partial directory
+      # here would permanently "poison" this key and force every future run
+      # to mint (and orphan) a brand new certificate forever.
+      - name: Check signing assets exist
+        id: check-signing-assets
+        if: always()
+        run: |
+          if [ -f ios_signing_cache/distribution.p12 ] && [ -f ios_signing_cache/AppStore.mobileprovision ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Save iOS signing assets cache
-        if: ${{ always() && steps.restore-signing-cache.outputs.cache-hit != 'true' }}
+        if: ${{ always() && steps.restore-signing-cache.outputs.cache-hit != 'true' && steps.check-signing-assets.outputs.exists == 'true' }}
         uses: actions/cache/save@v4
         with:
           path: ios_signing_cache

@@ -148,6 +148,22 @@ def signing_via_cert_and_sigh(bundle_id:, team_id:, api_key:)
 end
 
 platform :ios do
+  desc "Read-only: list current iOS Distribution certificates (id, name, expiry) so we can see what's consuming Apple's 3-cert cap"
+  lane :list_certs do
+    key_contents = Base64.decode64(ENV['APP_STORE_CONNECT_PRIVATE_KEY_BASE64'])
+    app_store_connect_api_key(
+      key_id: ENV['APP_STORE_CONNECT_KEY_ID'],
+      issuer_id: ENV['APP_STORE_CONNECT_ISSUER_ID'],
+      key_content: key_contents
+    )
+
+    certs = Spaceship::ConnectAPI::Certificate.all(filter: { certificateType: "IOS_DISTRIBUTION" })
+    UI.message("Found #{certs.size} IOS_DISTRIBUTION certificate(s):")
+    certs.each do |c|
+      UI.message(" - id=#{c.id} name=#{c.display_name} serial=#{c.serial_number} expires=#{c.expiration_date}")
+    end
+  end
+
   desc "Build and upload to TestFlight using the App Store Connect API key"
   lane :beta do
     key_contents = if env_present?('APP_STORE_CONNECT_PRIVATE_KEY_BASE64')
