@@ -408,13 +408,15 @@ serve(async (req: Request) => {
     const { error: clubUpdateError } = await supabase
       .from('clubs')
       .update({
-        budget: supabase.raw('budget + ?', [netIncome]),
+        budget: clubBudget + netIncome,
       })
       .eq('id', clubId);
 
     if (clubUpdateError) {
       return createResponse({ error: `Kulüp bütçesi güncellenirken hata oluştu: ${clubUpdateError.message}` }, 500);
     }
+
+    const summaryText = `Maç sonucu ${homeScore}-${awayScore}. Gelir: Stadyum +${stadiumRevenue} GP, Sponsor +${sponsorRevenue} GP, Bonus ${matchBonus} GP. Gider: Oyuncu -${playerWages} GP, Bakım -${maintenanceCost} GP. Net: ${netIncome > 0 ? '+' : ''}${netIncome} GP`;
 
     const { error: transactionInsertError } = await supabase.from('financial_transactions').insert({
       club_id: clubId,
@@ -428,7 +430,6 @@ serve(async (req: Request) => {
       return createResponse({ error: `Finans işlemi kaydedilemedi: ${transactionInsertError.message}` }, 500);
     }
 
-    const summaryText = `Maç sonucu ${homeScore}-${awayScore}. Gelir: Stadyum +${stadiumRevenue} GP, Sponsor +${sponsorRevenue} GP, Bonus ${matchBonus} GP. Gider: Oyuncu -${playerWages} GP, Bakım -${maintenanceCost} GP. Net: ${netIncome > 0 ? '+' : ''}${netIncome} GP`;
     await supabase.from('inbox_messages').insert({
       recipient_id: user.id,
       title: 'Maç Sonucu',

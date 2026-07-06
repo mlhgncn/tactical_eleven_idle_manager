@@ -61,7 +61,12 @@ serve(async (req: Request) => {
     const offlineDurationMinutes = Math.max(0, Math.floor((now.getTime() - lastActivity.getTime()) / 60000));
     const cappedMinutes = Math.min(offlineDurationMinutes, 24 * 60 * 3);
 
-    if (cappedMinutes <= 0) {
+    // A minimum threshold, not just >0: without it, rapidly
+    // force-quitting/reopening the app (once a minute is enough) would each
+    // time grant at least one "match" of income, since matchesSimulated
+    // below was floored to a minimum of 1 regardless of how little time
+    // had actually passed.
+    if (cappedMinutes < 5) {
       await supabase.from('clubs').update({ last_activity_at: now.toISOString() }).eq('id', club.id);
       return createResponse({
         matchesSimulated: 0,
@@ -74,7 +79,13 @@ serve(async (req: Request) => {
       });
     }
 
-    const weeksElapsed = Math.max(1, Math.floor(cappedMinutes / (7 * 24 * 60)));
+    // Fractional weeks, not floored-with-a-forced-minimum-of-1: the previous
+    // Math.max(1, ...) meant *any* offline period, even five minutes,
+    // knocked a full week off every injured player's recovery timer -
+    // repeatedly reopening the app would clear all injuries almost
+    // instantly. Math.ceil on the remainder preserves integer week storage
+    // while only actually decrementing once a full week has really elapsed.
+    const weeksElapsed = cappedMinutes / (7 * 24 * 60);
     const { data: injuredPlayers, error: injuredError } = await supabase
       .from('players')
       .select('id, injury_duration_weeks, is_suspended')
@@ -82,7 +93,7 @@ serve(async (req: Request) => {
 
     if (!injuredError && injuredPlayers) {
       for (const player of injuredPlayers) {
-        const remainingWeeks = Math.max(0, (player.injury_duration_weeks ?? 0) - weeksElapsed);
+        const remainingWeeks = Math.max(0, Math.ceil((player.injury_duration_weeks ?? 0) - weeksElapsed));
         await supabase
           .from('players')
           .update({
