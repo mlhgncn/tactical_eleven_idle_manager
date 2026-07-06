@@ -157,10 +157,10 @@ platform :ios do
       key_content: key_contents
     )
 
-    certs = Spaceship::ConnectAPI::Certificate.all(filter: { certificateType: "IOS_DISTRIBUTION" })
-    UI.message("Found #{certs.size} IOS_DISTRIBUTION certificate(s):")
+    certs = Spaceship::ConnectAPI::Certificate.all
+    UI.message("Found #{certs.size} certificate(s) total:")
     certs.each do |c|
-      UI.message(" - id=#{c.id} name=#{c.display_name} serial=#{c.serial_number} expires=#{c.expiration_date}")
+      UI.message(" - id=#{c.id} type=#{c.certificate_type} name=#{c.display_name} serial=#{c.serial_number} expires=#{c.expiration_date}")
     end
   end
 
