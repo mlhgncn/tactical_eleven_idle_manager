@@ -24,6 +24,47 @@ class _AuthScreenState extends State<AuthScreen> {
   bool _isLoading = false;
   bool _isLoginMode = true;
 
+  // Supabase persists sessions to local storage by default, so a returning
+  // user already has a valid currentUserId the moment this screen builds.
+  // Without this check every cold start forced a fresh login - unacceptable
+  // for an idle manager game where players expect to reopen straight into
+  // their club.
+  bool _checkingExistingSession = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _tryResumeSession();
+  }
+
+  Future<void> _tryResumeSession() async {
+    if (widget._authRepository.currentUserId == null) {
+      setState(() => _checkingExistingSession = false);
+      return;
+    }
+    await _enterApp();
+    if (mounted) setState(() => _checkingExistingSession = false);
+  }
+
+  /// Loads game state for the already-authenticated user and navigates to
+  /// the appropriate next screen. Shared by the resumed-session path and by
+  /// a fresh sign in/sign up.
+  Future<void> _enterApp() async {
+    try {
+      await context.read<GameProvider>().refreshGameState();
+    } catch (e) {
+      print('[AUTH] refreshGameState failed while entering app: $e');
+      if (mounted) {
+        _showSnackbar('auth.generic_error'.tr(namedArgs: {'error': e.toString()}));
+      }
+      return;
+    }
+
+    if (!mounted) return;
+    final nextRoute = context.read<GameProvider>().activeClub == null ? '/setup-club' : '/root';
+    Navigator.of(context).pushReplacementNamed(nextRoute);
+  }
+
   String? _validateEmail(String? value) {
     if (value == null || value.trim().isEmpty) {
       return 'auth.email_required'.tr();
@@ -89,24 +130,15 @@ class _AuthScreenState extends State<AuthScreen> {
         return;
       }
 
-      print('[AUTH] About to refresh game state');
-      await context.read<GameProvider>().refreshGameState();
-        try {
-          if (!_isLoginMode) {
-            AnalyticsService.instance.logEvent('register');
-          }
-        } catch (_) {}
-      print('[AUTH] Game state refreshed');
-      
-      if (!mounted) {
-        print('[AUTH] Not mounted after refresh, returning');
-        return;
-      }
-      
-      final nextRoute = context.read<GameProvider>().activeClub == null ? '/setup-club' : '/root';
-      print('[AUTH] Navigating to: $nextRoute');
-      Navigator.of(context).pushReplacementNamed(nextRoute);
-      print('[AUTH] Navigation complete');
+      try {
+        if (!_isLoginMode) {
+          AnalyticsService.instance.logEvent('register');
+        }
+      } catch (_) {}
+
+      print('[AUTH] About to enter app');
+      await _enterApp();
+      print('[AUTH] Enter app complete');
     } on AuthException catch (error) {
       print('[AUTH] AuthException: ${error.message}');
       _showSnackbar(error.message);
@@ -134,6 +166,12 @@ class _AuthScreenState extends State<AuthScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_checkingExistingSession) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     final theme = Theme.of(context);
 
     return Scaffold(

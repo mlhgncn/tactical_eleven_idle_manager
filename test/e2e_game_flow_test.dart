@@ -21,11 +21,17 @@ import 'package:tactical_eleven_idle_manager/screens/setup_club_screen.dart';
 import 'package:tactical_eleven_idle_manager/services/auth_repository.dart';
 
 class _FakeAuthRepository implements AuthRepository {
+  // Starts signed-out like a real fresh Supabase session, so AuthScreen's
+  // resume-existing-session check doesn't skip straight past the login form
+  // in tests.
+  String? _currentUserId;
+
   @override
-  String? get currentUserId => 'test-user-1';
+  String? get currentUserId => _currentUserId;
 
   @override
   Future<dynamic> signIn(String email, String password) async {
+    _currentUserId = 'test-user-1';
     return _FakeAuthResponse(
       user: _FakeUser(id: currentUserId!),
       session: _FakeSession(user: _FakeUser(id: currentUserId!)),
@@ -34,6 +40,7 @@ class _FakeAuthRepository implements AuthRepository {
 
   @override
   Future<dynamic> signUp(String email, String password) async {
+    _currentUserId = 'test-user-1';
     return _FakeAuthResponse(
       user: _FakeUser(id: currentUserId!),
       session: _FakeSession(user: _FakeUser(id: currentUserId!)),
@@ -42,7 +49,7 @@ class _FakeAuthRepository implements AuthRepository {
 
   @override
   Future<void> signOut() async {
-    return;
+    _currentUserId = null;
   }
 }
 
