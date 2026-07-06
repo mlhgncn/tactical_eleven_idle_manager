@@ -1,0 +1,31 @@
+name: TEMP - Cleanup Distribution Certs
+
+# One-off, user-authorized: revoke ONLY certificate GTK77GK2X2 (minted by an
+# earlier CI run before the signing cache was reliable; never used to sign
+# anything). Does not touch any other certificate on the account. Delete
+# this workflow file (and the cleanup_orphaned_ci_cert lane) once it has
+# run successfully.
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  cleanup:
+    runs-on: macos-15
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Ruby (for fastlane)
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler-cache: true
+
+      - name: Run cleanup lane
+        run: bundle exec fastlane ios cleanup_orphaned_ci_cert
+        env:
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APP_STORE_CONNECT_PRIVATE_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY_BASE64 }}
