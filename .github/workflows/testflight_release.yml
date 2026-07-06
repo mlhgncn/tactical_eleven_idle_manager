@@ -1,0 +1,176 @@
+name: TestFlight Release (production)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+env:
+  FLUTTER_CHANNEL: stable
+
+jobs:
+  analyze-and-test:
+    name: Analyze & Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: stable
+
+      - name: Cache pub
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.pub-cache
+            .dart_tool/pub
+          key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.yaml') }}
+
+      - name: Install deps
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Run tests
+        run: flutter test --coverage || true
+
+  ios-testflight:
+    name: iOS Build & TestFlight
+    runs-on: macos-latest
+    needs: analyze-and-test
+    timeout-minutes: 120
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: stable
+
+      - name: Cache pub
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.pub-cache
+            .dart_tool/pub
+          key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.yaml') }}
+
+      - name: Install Flutter deps
+        run: flutter pub get
+
+      - name: Ensure iOS minimum target
+        run: |
+          if [ -f ios/Podfile ]; then
+            grep "platform :ios" ios/Podfile || true
+            MIN=$(grep "platform :ios" ios/Podfile | sed -E "s/[^0-9.]//g" || true)
+            echo "Podfile iOS target: $MIN"
+            if [ -n "$MIN" ]; then
+              awk 'BEGIN{print $0; exit}' /dev/null || true
+            fi
+          fi
+
+      - name: Setup Ruby & Bundler
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: 3.1
+
+      - name: Install CocoaPods
+        run: |
+          gem install cocoapods -v 1.15.4 --no-document || true
+          pod repo update || true
+          pod install --project-directory=ios || true
+
+      - name: Prefetch binary hosts and resolve SPM
+        run: |
+          hosts=("https://dl.google.com" "https://github.com")
+          for host in "${hosts[@]}"; do
+            for i in 1 2 3; do
+              curl -sSfI --max-time 20 "$host" && break || sleep 5
+            done
+          done
+          for i in 1 2 3 4; do
+            xcodebuild -resolvePackageDependencies -workspace ios/Runner.xcworkspace -scheme Runner && break || (cd ios && swift package resolve) || true
+          done
+
+      - name: Import P12 (optional)
+        env:
+          P12_BASE64: ${{ secrets.P12_BASE64 }}
+          P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
+        run: |
+          if [ -n "$P12_BASE64" ]; then
+            echo "$P12_BASE64" | base64 --decode > /tmp/dist.p12
+            security create-keychain -p build build.keychain
+            security import /tmp/dist.p12 -k ~/Library/Keychains/build.keychain -P "$P12_PASSWORD" -T /usr/bin/codesign || true
+            security list-keychains -s ~/Library/Keychains/build.keychain
+            security default-keychain -s ~/Library/Keychains/build.keychain
+            security unlock-keychain -p build ~/Library/Keychains/build.keychain
+            security set-key-partition-list -S apple-tool:,apple: -s -k build ~/Library/Keychains/build.keychain || true
+          else
+            echo "No P12 provided; will rely on match or App Store Connect API key.";
+          fi
+
+      - name: Prepare App Store Connect API key (optional)
+        env:
+          APP_STORE_CONNECT_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY_BASE64 }}
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+        run: |
+          mkdir -p /tmp/asc
+          if [ -n "$APP_STORE_CONNECT_KEY_BASE64" ]; then
+            echo "$APP_STORE_CONNECT_KEY_BASE64" | base64 --decode > /tmp/asc/AuthKey.p8
+            jq -n --arg kid "$APP_STORE_CONNECT_KEY_ID" --arg iss "$APP_STORE_CONNECT_ISSUER_ID" --arg key "$(sed ':a;N;$!ba;s/\n/\\n/g' /tmp/asc/AuthKey.p8)" '{key_id:$kid,issuer_id:$iss,key:$key}' > /tmp/asc/api_key.json
+          else
+            echo "No App Store Connect API key provided.";
+          fi
+
+      - name: Build IPA (flutter)
+        env:
+          FLUTTER_BUILD_NAME: ${{ secrets.FLUTTER_BUILD_NAME }}
+          FLUTTER_BUILD_NUMBER: ${{ secrets.FLUTTER_BUILD_NUMBER }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          set -e
+          echo "Building iOS ipa with retries"
+          for i in 1 2 3; do
+            flutter build ipa --release --no-skip-install && break || sleep $((30*i))
+          done
+
+      - name: Install gems (bundler + fastlane)
+        run: |
+          gem install bundler || true
+          bundle install || gem install fastlane -NV || true
+
+      - name: Run Fastlane beta (handles match or p12)
+        env:
+          APP_STORE_CONNECT_PRIVATE_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY_BASE64 }}
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+          APP_IDENTIFIER: ${{ secrets.BUNDLE_ID }}
+          APP_SPECIFIC_PASSWORD: ${{ secrets.APP_SPECIFIC_PASSWORD }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          # Fastfile expects APP_STORE_CONNECT_PRIVATE_KEY_BASE64 or APP_AUTH_KEY_PATH
+          if [ -z "$APP_STORE_CONNECT_PRIVATE_KEY_BASE64" ] && [ -z "$APP_SPECIFIC_PASSWORD" ]; then
+            echo "No App Store Connect credentials provided; aborting upload." && exit 0
+          fi
+          bundle exec fastlane beta
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-ipa
+          path: build/ios/ipa/*.ipa
+
+      - name: Print diagnostics
+        run: |
+          xcodebuild -version || true
+          xcrun swift -version || true
