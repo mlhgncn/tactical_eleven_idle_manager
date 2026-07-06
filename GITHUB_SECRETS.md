@@ -9,13 +9,8 @@ iOS Build (Fastlane / App Store Connect)
 - APPLE_ID: your Apple developer account email
 - TEAM_ID: your Apple Developer Team ID
 - BUNDLE_ID: com.melih.tacticaleleven
-- MATCH_GIT_URL: required to build — a separate private git repo where `fastlane match` stores your appstore cert/profile (see notes below)
-- MATCH_PASSWORD: required alongside MATCH_GIT_URL — passphrase used to encrypt the match repo
-- MATCH_KEYCHAIN_PASSWORD: optional, password for the CI keychain match creates (any value; only needs to be consistent within a run)
-- MATCH_GIT_BASIC_AUTHORIZATION: base64 `user:PAT` — required if MATCH_GIT_URL is an HTTPS repo the default GITHUB_TOKEN can't reach (i.e. any repo other than this one); generate a fine-grained PAT scoped to just that signing repo with Contents: Read and write
 - FLUTTER_BUILD_NAME: optional, overrides CFBundleShortVersionString (defaults to the version in pubspec.yaml)
-
-Note on MATCH_GIT_URL: the regular build workflow (`ios_release.yml`) always runs `match` with `readonly: true`, so it only *fetches* an existing cert/profile — it never creates or revokes one. No Mac required to seed it: run the separate `.github/workflows/ios_match_setup.yml` workflow once (GitHub → Actions → "iOS Signing Setup (one-time)" → Run workflow, type `YES` to confirm) — it creates the Distribution cert + App Store profile on GitHub's macOS runner and pushes them into that repo. Requires the App Store Connect API key to have the **Admin** role (Developer/App Manager roles can't create certificates).
+- MATCH_GIT_URL / MATCH_PASSWORD: optional — only needed if you later switch to a separate `fastlane match` cert repo. Without them (the default in this repo), `fastlane/Fastfile` creates the Distribution cert + App Store provisioning profile itself via `cert`/`sigh`, using only the App Store Connect API key above, and caches them in `ios_signing_cache/` across CI runs via `actions/cache` (key `ios-signing-v1`) so it only ever mints one certificate. Requires the App Store Connect API key to have the **Admin** role (Developer/App Manager roles can't create certificates). See [README_IOS.md](README_IOS.md) for details.
 
 Supabase deploy
 - SUPABASE_DB_URL: your Supabase Postgres connection string (used to apply schema/migrations/seed via psql)
@@ -29,10 +24,8 @@ Other useful secrets
 - SENTRY_DSN: optional
 - FIREBASE_SERVICE_ACCOUNT: optional, if you enable Firebase admin deployment
  - FIREBASE_GOOGLE_SERVICE_INFO_PLIST_BASE64: base64 of ios/Runner/GoogleService-Info.plist (used in iOS CI)
- - REVENUECAT_API_KEY: RevenueCat API key for client SDK (store in CI)
- - ADMOB_APP_ID: AdMob app id for release builds
- - ADMOB_INTERSTITIAL_AD_UNIT_ID: AdMob interstitial ad unit id (release)
- - ADMOB_REWARDED_AD_UNIT_ID: AdMob rewarded ad unit id (release)
+ - REVENUECAT_API_KEY: RevenueCat API key for client SDK (store in CI) — not wired into any screen yet, safe to leave unset
+ - ADMOB_INTERSTITIAL_ID: AdMob interstitial ad unit id override (matches `lib/config.dart`'s `ADMOB_INTERSTITIAL_ID`) — AdMob isn't wired into any screen yet either, safe to leave unset
 
 How to add secrets
 1. Open your GitHub repository → Settings → Secrets and variables → Actions → New repository secret

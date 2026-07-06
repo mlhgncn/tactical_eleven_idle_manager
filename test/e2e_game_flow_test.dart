@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tactical_eleven_idle_manager/models/club_info.dart';
 import 'package:tactical_eleven_idle_manager/models/inbox_message.dart';
 import 'package:tactical_eleven_idle_manager/models/player_fm.dart';
@@ -69,6 +70,7 @@ class _FakeSession {
 class _FakeGameRepository implements GameRepository {
   String? _currentUserId = 'test-user-1';
   ClubInfo? _activeClub;
+  final List<InboxMessage> _inboxMessages = [];
   final List<ClubInfo> _availableClubs = [
     const ClubInfo(
       id: 'club-1',
@@ -162,13 +164,25 @@ class _FakeGameRepository implements GameRepository {
   }
 
   @override
-  Future<List<InboxMessage>> loadInboxMessages() async => <InboxMessage>[];
+  Future<List<InboxMessage>> loadInboxMessages() async => List<InboxMessage>.from(_inboxMessages);
 
   @override
   Future<InboxMessage?> addInboxMessage({required String title, required String body}) async => null;
 
   @override
-  Future<List<Map<String, dynamic>>> loadFixturesForClub(String clubId) async => <Map<String, dynamic>>[];
+  Future<List<Map<String, dynamic>>> loadFixturesForClub(String clubId) async => [
+        {
+          'id': 'fixture-1',
+          'home_club_id': clubId,
+          'away_club_id': 'opponent-club-1',
+          'away_club': {'name': 'Rakip FC'},
+          'match_date': DateTime.now().add(const Duration(days: 1)).toIso8601String(),
+          'is_played': false,
+          'home_score': 0,
+          'away_score': 0,
+          'week': 1,
+        },
+      ];
 
   @override
   Future<Map<String, dynamic>?> awardAdReward({required String rewardType, int? amount}) async => null;
@@ -251,7 +265,42 @@ class _FakeGameRepository implements GameRepository {
   Future<List<FinancialTransaction>> loadFinancialTransactions(String clubId) async => <FinancialTransaction>[];
 
   @override
-  Future<MatchResult?> playNextFixture() async => null;
+  Future<MatchResult?> playNextFixture() async {
+    final activeClub = _activeClub;
+    if (activeClub == null) return null;
+
+    const homeScore = 2;
+    const awayScore = 1;
+    const ticketRevenue = 500;
+
+    _activeClub = activeClub.copyWith(budget: activeClub.budget + ticketRevenue);
+
+    _inboxMessages.insert(
+      0,
+      InboxMessage(
+        id: 'inbox-${_inboxMessages.length + 1}',
+        title: 'Maç Sonucu',
+        body: '${activeClub.name} $homeScore - $awayScore Rakip FC',
+        isRead: false,
+        createdAt: DateTime.now(),
+      ),
+    );
+
+    return MatchResult(
+      homeTeamId: activeClub.id,
+      awayTeamId: 'opponent-club-1',
+      homeScore: homeScore,
+      awayScore: awayScore,
+      homeShots: 10,
+      awayShots: 6,
+      homeXg: 1.8,
+      awayXg: 0.9,
+      homePossession: 55,
+      summary: 'Ev sahibi takım maçı kazandı.',
+      commentary: const ['Maç başladı.', 'Gol!', 'Maç sona erdi.'],
+      events: const [],
+    );
+  }
 
   @override
   Future<OfflineSimulationResult> simulateOfflineProgress() async {
@@ -292,12 +341,12 @@ void main() {
   testWidgets('Full game flow from zero account to match play', (WidgetTester tester) async {
     print('TEST: start');
     TestWidgetsFlutterBinding.ensureInitialized();
-    
+    SharedPreferences.setMockInitialValues({});
+    await EasyLocalization.ensureInitialized();
+
     // Skip Supabase initialization in widget tests to avoid network and plugin issues.
     print('TEST: skipping Supabase.initialize in widget test');
-    
-    // Skip EasyLocalization.ensureInitialized() since it blocks in tests
-    // We provide a fixed locale in the widget tree instead
+
     final fakeAuth = _FakeAuthRepository();
     final fakeRepo = _FakeGameRepository();
     
@@ -323,14 +372,24 @@ void main() {
         fallbackLocale: const Locale('tr'),
         child: ChangeNotifierProvider<GameProvider>.value(
           value: gameProvider,
-          child: MaterialApp(
-            initialRoute: '/auth',
-            routes: {
-              '/auth': (_) => AuthScreen(authRepository: fakeAuth),
-              '/email-verification': (_) => const EmailVerificationScreen(),
-              '/setup-club': (_) => SetupClubScreen(),
-              '/root': (_) => RootShell(),
-            },
+          // Builder gives us a BuildContext that's a descendant of
+          // EasyLocalization, so context.localizationDelegates/supportedLocales
+          // below actually resolve to easy_localization's loaded delegate
+          // instead of silently falling back to Flutter's defaults (which is
+          // what left every `.tr()` call unresolved before this fix).
+          child: Builder(
+            builder: (context) => MaterialApp(
+              initialRoute: '/auth',
+              localizationsDelegates: context.localizationDelegates,
+              supportedLocales: context.supportedLocales,
+              locale: context.locale,
+              routes: {
+                '/auth': (_) => AuthScreen(authRepository: fakeAuth),
+                '/email-verification': (_) => const EmailVerificationScreen(),
+                '/setup-club': (_) => SetupClubScreen(),
+                '/root': (_) => RootShell(),
+              },
+            ),
           ),
         ),
       ),
