@@ -1,16 +1,35 @@
 #!/usr/bin/env bash
-# Trigger Codemagic build for workflow 'ios-release'
-# Requires: CODEMAGIC_API_TOKEN, APP_ID (Codemagic app id), WORKFLOW_ID
-# Usage: CODEMAGIC_API_TOKEN=xxx APP_ID=your-app-id WORKFLOW_ID=ios-release ./scripts/trigger_codemagic_build.sh
+# Trigger GitHub Actions workflow dispatch for iOS release
+# Uses the repository: mlhgncn/tactical_eleven_idle_manager by default
+# Requires: GITHUB_TOKEN (Personal Access Token with `repo` and `workflow` scopes) or GH_TOKEN
+# Optional environment variables:
+# - WORKFLOW_FILE (default: ios_release.yml)
+# - REF (default: main)
+# Usage:
+# GITHUB_TOKEN=ghp_xxx ./scripts/trigger_codemagic_build.sh
 
-if [ -z "$CODEMAGIC_API_TOKEN" ] || [ -z "$APP_ID" ] || [ -z "$WORKFLOW_ID" ]; then
-  echo "Missing required env vars: CODEMAGIC_API_TOKEN, APP_ID, WORKFLOW_ID"
+set -euo pipefail
+
+GITHUB_TOKEN=${GITHUB_TOKEN:-${GH_TOKEN:-}}
+WORKFLOW_FILE=${WORKFLOW_FILE:-ios_release.yml}
+REF=${REF:-main}
+OWNER=${OWNER:-mlhgncn}
+REPO=${REPO:-tactical_eleven_idle_manager}
+
+if [ -z "$GITHUB_TOKEN" ]; then
+  echo "Missing GITHUB_TOKEN or GH_TOKEN. Create a PAT with 'repo' and 'workflow' scopes."
   exit 1
 fi
 
+API_URL="https://api.github.com/repos/${OWNER}/${REPO}/actions/workflows/${WORKFLOW_FILE}/dispatches"
+
+echo "Triggering workflow ${WORKFLOW_FILE} on ${OWNER}/${REPO} (ref=${REF})"
+
 curl -s -X POST \
+  -H "Accept: application/vnd.github+json" \
+  -H "Authorization: Bearer ${GITHUB_TOKEN}" \
   -H "Content-Type: application/json" \
-  -H "x-auth-token: $CODEMAGIC_API_TOKEN" \
-  -d '{"workflow_id":"'$WORKFLOW_ID'","branch":"main","environment":{}}' \
-  "https://api.codemagic.io/apps/$APP_ID/builds" \
-  | jq '.'
+  -d "{\"ref\": \"${REF}\"}" \
+  "$API_URL" | jq '.' || true
+
+echo "Dispatched. Check Actions tab for progress."
