@@ -1,23 +1,24 @@
-name: iOS Release (build + TestFlight)
+name: CI — Analyze, Test, Build (Android + iOS)
 
 on:
   workflow_dispatch:
   push:
     branches: [ main ]
 
-env:
-  FLUTTER_CHANNEL: stable
-
 jobs:
-  build-and-upload:
-    name: Build iOS and upload to TestFlight
-    runs-on: macos-latest
-    timeout-minutes: 90
+  analyze-and-test:
+    name: Analyze & Test
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Cache Flutter pub
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: stable
+
+      - name: Cache pub
         uses: actions/cache@v4
         with:
           path: |
@@ -25,51 +26,92 @@ jobs:
             .dart_tool/pub
           key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.yaml') }}
 
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Dart analysis
+        run: flutter analyze --no-fatal-infos || true
+
+      - name: Run unit/widget tests
+        run: flutter test --coverage
+
+      - name: Upload test coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage
+
+  android-build:
+    name: Android Build
+    runs-on: ubuntu-latest
+    needs: analyze-and-test
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: 'stable'
+          flutter-version: stable
+
+      - name: Install deps
+        run: flutter pub get
+
+      - name: Build APK (release)
+        run: flutter build apk --release
+
+      - name: Build App Bundle (AAB)
+        run: flutter build appbundle --release || true
+
+      - name: Upload Android artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-build
+          path: build/app/outputs/**/release/*.apk,build/app/outputs/bundle/release/*.aab
+
+  ios-release:
+    name: iOS Build & optional TestFlight
+    runs-on: macos-latest
+    needs: analyze-and-test
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: stable
+
+      - name: Cache pub
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.pub-cache
+            .dart_tool/pub
+          key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.yaml') }}
 
       - name: Install Flutter deps
         run: flutter pub get
 
-      - name: Setup Ruby and CocoaPods cache
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: 3.1
-
-      - name: Cache CocoaPods
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/Library/Caches/CocoaPods
-            ios/Pods
-            Pods
-          key: ${{ runner.os }}-cocoapods-${{ hashFiles('ios/Podfile.lock') }}
-
       - name: Install CocoaPods
         run: |
-          gem install cocoapods -v 1.15.4 --no-document || true
-          pod repo update || true
+          sudo gem install cocoapods -v 1.15.4 --no-document || true
           pod install --project-directory=ios || true
 
-      - name: Prefetch binary hosts and resolve SPM (retries)
+      - name: Prefetch and resolve SPM
         run: |
-          set -e
           hosts=("https://dl.google.com" "https://github.com")
           for host in "${hosts[@]}"; do
-            for i in 1 2 3 4; do
+            for i in 1 2 3; do
               curl -sSfI --max-time 20 "$host" && break || sleep 5
             done
           done
-          for i in 1 2 3 4 5; do
-            xcodebuild -resolvePackageDependencies -workspace ios/Runner.xcworkspace -scheme Runner && break || {
-              (cd ios && swift package resolve) || true
-              sleep 15
-            }
+          for i in 1 2 3 4; do
+            xcodebuild -resolvePackageDependencies -workspace ios/Runner.xcworkspace -scheme Runner && break || (cd ios && swift package resolve) || true
           done
 
-      - name: Import cert & provisioning (if provided)
+      - name: Import cert & provisioning (optional)
         env:
           P12_BASE64: ${{ secrets.P12_BASE64 }}
           P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
@@ -90,26 +132,19 @@ jobs:
             echo "$MOBILEPROVISION_BASE64" | base64 --decode > ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision
           fi
 
-      - name: Build IPA (with retries)
+      - name: Build IPA
         env:
           FLUTTER_BUILD_NAME: ${{ secrets.FLUTTER_BUILD_NAME }}
           FLUTTER_BUILD_NUMBER: ${{ secrets.FLUTTER_BUILD_NUMBER }}
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
-          set -e
-          echo "Building ipa"
-          for i in 1 2 3 4; do
-            flutter build ipa --release --no-skip-install && break || {
-              echo "flutter build failed, attempt $i"
-              sleep $((30*i))
-            }
+          for i in 1 2 3; do
+            flutter build ipa --release --no-skip-install && break || sleep $((30*i))
           done
 
       - name: Install fastlane
         run: gem install fastlane -NV || true
 
-      - name: Prepare App Store Connect API key
+      - name: Prepare App Store Connect API key (optional)
         env:
           APP_STORE_CONNECT_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_KEY_BASE64 }}
           APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
@@ -119,34 +154,26 @@ jobs:
           if [ -n "$APP_STORE_CONNECT_KEY_BASE64" ]; then
             echo "$APP_STORE_CONNECT_KEY_BASE64" | base64 --decode > /tmp/asc/AuthKey.p8
             jq -n --arg kid "$APP_STORE_CONNECT_KEY_ID" --arg iss "$APP_STORE_CONNECT_ISSUER_ID" --arg key "$(sed ':a;N;$!ba;s/\n/\\n/g' /tmp/asc/AuthKey.p8)" '{key_id:$kid,issuer_id:$iss,key:$key}' > /tmp/asc/api_key.json
-          else
-            echo "No APP_STORE_CONNECT_KEY_BASE64 provided; upload step will be skipped if not set."
           fi
 
-      - name: Upload to TestFlight (if API key provided)
+      - name: Upload to TestFlight (optional)
         if: ${{ secrets.APP_STORE_CONNECT_KEY_BASE64 != '' || secrets.APP_SPECIFIC_PASSWORD != '' }}
         env:
           APP_IDENTIFIER: ${{ secrets.APP_IDENTIFIER }}
         run: |
           IPA=$(ls build/ios/ipa/*.ipa | head -n1 || true)
-          if [ -z "$IPA" ]; then
-            echo "No IPA found; aborting upload"; exit 1
-          fi
+          if [ -z "$IPA" ]; then echo "No IPA found"; exit 1; fi
           if [ -f /tmp/asc/api_key.json ]; then
             bundle exec fastlane pilot upload -i "$IPA" --api_key_path /tmp/asc/api_key.json || fastlane pilot upload -i "$IPA" --api_key_path /tmp/asc/api_key.json
           elif [ -n "${{ secrets.APP_SPECIFIC_PASSWORD }}" ]; then
-            fastlane pilot upload -i "$IPA" -u "$APP_IDENTIFIER" --apple_id "$APP_IDENTIFIER" --app_specific_password "${{ secrets.APP_SPECIFIC_PASSWORD }}" || true
+            fastlane pilot upload -i "$IPA" -u "$APP_IDENTIFIER" --app_specific_password "${{ secrets.APP_SPECIFIC_PASSWORD }}" || true
           else
-            echo "No upload credentials provided; skipping upload step."
+            echo "No upload credentials provided; skipping upload"
           fi
 
-      - name: Upload artifacts
+      - name: Upload iOS artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ios-ipa
           path: build/ios/ipa/*.ipa
 
-      - name: Diagnostics
-        run: |
-          xcodebuild -version || true
-          xcrun swift -version || true
