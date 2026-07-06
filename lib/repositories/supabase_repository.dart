@@ -385,6 +385,18 @@ class SupabaseRepository implements GameRepository {
     });
   }
 
+  Future<TransferMarketItem?> listPlayerForTransfer({required String playerId, required int askingPrice}) async {
+    return _wrap(() async {
+      final created = await _client.rpc('list_player_for_transfer', params: {
+        'p_player_id': playerId,
+        'p_asking_price': askingPrice,
+      }).single();
+
+      if (created == null) return null;
+      return TransferMarketItem.fromMap(created as Map<String, dynamic>);
+    });
+  }
+
   Future<ClubInfo?> acceptTransferOffer({required String playerId}) async {
     return _wrap(() async {
       final updated = await _client.rpc('accept_transfer_offer', params: {

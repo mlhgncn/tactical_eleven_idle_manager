@@ -590,6 +590,30 @@ class GameProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> listPlayerForTransfer({required String playerId, required int askingPrice}) async {
+    if (_repository.currentUserId == null) {
+      throw Exception('Kullanıcı oturumu bulunamadı.');
+    }
+
+    if (_isBusy) return;
+
+    _setBusy(true);
+    try {
+      final item = await _repository.listPlayerForTransfer(playerId: playerId, askingPrice: askingPrice);
+      if (item != null) {
+        try {
+          AnalyticsService.instance.logEvent('transfer_listed', parameters: {
+            'player_id': playerId,
+            'asking_price': askingPrice,
+          });
+        } catch (_) {}
+        _upsertTransferMarketItem(item);
+      }
+    } finally {
+      _setBusy(false);
+    }
+  }
+
   Future<void> acceptTransferOffer({required String playerId}) async {
     if (_activeClub == null) throw Exception('Aktif kulüp bulunamadı.');
     if (_isBusy) return;

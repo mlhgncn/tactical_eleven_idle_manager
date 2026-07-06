@@ -736,3 +736,48 @@ BEGIN
   RETURN updated_row;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+-- The transfer_market table had no way to ever get a row inserted into it -
+-- place_transfer_bid/accept_transfer_offer only operate on listings that
+-- already exist, but nothing anywhere created one. Lets a club list its own
+-- player with an asking price (used as the starting bid).
+CREATE OR REPLACE FUNCTION public.list_player_for_transfer(p_player_id UUID, p_asking_price BIGINT, p_duration_hours INT DEFAULT 24)
+RETURNS public.transfer_market AS $$
+DECLARE
+  owner_club_id UUID;
+  existing_listing_id UUID;
+  new_row public.transfer_market;
+BEGIN
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'Unauthenticated user cannot list a player for transfer';
+  END IF;
+
+  IF p_asking_price <= 0 THEN
+    RAISE EXCEPTION 'Asking price must be positive';
+  END IF;
+
+  SELECT club_id INTO owner_club_id FROM public.players WHERE id = p_player_id;
+  IF owner_club_id IS NULL THEN
+    RAISE EXCEPTION 'Player not found or has no club';
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM public.clubs WHERE id = owner_club_id AND user_id = auth.uid()) THEN
+    RAISE EXCEPTION 'You do not own this player''s club';
+  END IF;
+
+  SELECT id INTO existing_listing_id FROM public.transfer_market WHERE player_id = p_player_id AND end_time > now();
+  IF existing_listing_id IS NOT NULL THEN
+    RAISE EXCEPTION 'This player is already listed for transfer';
+  END IF;
+
+  INSERT INTO public.transfer_market (player_id, current_highest_bid, highest_bidder_id, end_time)
+  VALUES (p_player_id, p_asking_price, NULL, now() + (p_duration_hours::text || ' hours')::interval)
+  ON CONFLICT (player_id) DO UPDATE SET
+    current_highest_bid = EXCLUDED.current_highest_bid,
+    highest_bidder_id = NULL,
+    end_time = EXCLUDED.end_time
+  RETURNING * INTO new_row;
+
+  RETURN new_row;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;

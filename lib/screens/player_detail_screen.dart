@@ -16,6 +16,15 @@ class PlayerDetailScreen extends StatefulWidget {
 class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
   int minutesPlayed = 90;
   bool isUpdating = false;
+  bool isListing = false;
+  late final TextEditingController _askingPriceController =
+      TextEditingController(text: widget.player.marketValue.toString());
+
+  @override
+  void dispose() {
+    _askingPriceController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -119,6 +128,66 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
                           : const Text('Gelişimi uygula'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Transfer Pazarı', style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _askingPriceController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(labelText: 'İstenen fiyat (GP)'),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      onPressed: isListing
+                          ? null
+                          : () async {
+                              final askingPrice = int.tryParse(_askingPriceController.text.trim());
+                              if (askingPrice == null || askingPrice <= 0) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Geçerli bir fiyat girin')),
+                                );
+                                return;
+                              }
+                              setState(() => isListing = true);
+                              try {
+                                await provider.listPlayerForTransfer(
+                                  playerId: player.id,
+                                  askingPrice: askingPrice,
+                                );
+                                if (!mounted) return;
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Oyuncu transfer pazarına çıkarıldı')),
+                                );
+                              } catch (error) {
+                                if (!mounted) return;
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text(error.toString())),
+                                );
+                              } finally {
+                                if (mounted) setState(() => isListing = false);
+                              }
+                            },
+                      child: isListing
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Text('Transfere Çıkar'),
                     ),
                   ),
                 ],
