@@ -162,7 +162,6 @@ jobs:
           bundle install || gem install fastlane -NV || true
 
       - name: Run fastlane beta (if credentials provided)
-        if: ${{ secrets.APP_STORE_CONNECT_KEY_BASE64 != '' || secrets.APP_SPECIFIC_PASSWORD != '' }}
         env:
           APP_STORE_CONNECT_PRIVATE_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_KEY_BASE64 }}
           APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
@@ -175,9 +174,14 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
-          IPA=$(ls build/ios/ipa/*.ipa | head -n1 || true)
-          if [ -z "$IPA" ]; then echo "No IPA found, but fastlane will run build/upload lane which also builds."; fi
-          bundle exec fastlane beta
+          # Only run fastlane if we have upload credentials
+          if [ -n "$APP_STORE_CONNECT_PRIVATE_KEY_BASE64" ] || [ -n "$APP_SPECIFIC_PASSWORD" ]; then
+            IPA=$(ls build/ios/ipa/*.ipa | head -n1 || true)
+            if [ -z "$IPA" ]; then echo "No IPA found, fastlane lane will build then upload."; fi
+            bundle exec fastlane beta
+          else
+            echo "No App Store Connect credentials provided; skipping fastlane upload."
+          fi
 
 
       - name: Upload iOS artifacts
@@ -190,7 +194,6 @@ jobs:
     name: Supabase Deploy (optional)
     runs-on: ubuntu-latest
     needs: analyze-and-test
-    if: ${{ secrets.SUPABASE_PROJECT_REF != '' && secrets.SUPABASE_ACCESS_TOKEN != '' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -201,12 +204,16 @@ jobs:
           sudo apt-get install -y build-essential curl || true
           npm install -g supabase || true
 
-      - name: Run Supabase migrations
+      - name: Run Supabase migrations (if credentials provided)
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
         run: |
           set -e
+          if [ -z "$SUPABASE_PROJECT_REF" ] || [ -z "$SUPABASE_ACCESS_TOKEN" ]; then
+            echo "Supabase credentials not provided; skipping migrations."
+            exit 0
+          fi
           supabase db remote set "$SUPABASE_PROJECT_REF" || true
           supabase db push --file supabase/schema.sql || true
 
