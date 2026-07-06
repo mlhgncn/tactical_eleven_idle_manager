@@ -89,7 +89,13 @@ def signing_via_cert_and_sigh(bundle_id:, team_id:, api_key:)
   profile_path = File.join(cache_dir, "AppStore.mobileprovision")
   p12_password = env_present?('P12_EXPORT_PASSWORD') ? ENV['P12_EXPORT_PASSWORD'] : "ci-signing-cache"
 
+  # create_keychain resolves a bare name against ~/Library/Keychains/ fine
+  # (as does import_certificate's keychain_name:), but `cert`'s
+  # keychain_path: does NOT do that resolution — it needs the real absolute
+  # path, and macOS's modern keychain format silently appends "-db" to
+  # whatever name you give `security create-keychain`.
   keychain_name = "ci-build.keychain"
+  keychain_file = File.expand_path("~/Library/Keychains/#{keychain_name}-db")
   keychain_password = "ci-build-pass"
 
   create_keychain(
@@ -112,7 +118,7 @@ def signing_via_cert_and_sigh(bundle_id:, team_id:, api_key:)
     UI.message("No cached signing assets found — creating a new Distribution certificate + App Store profile via the App Store Connect API key.")
     cert(
       output_path: cache_dir,
-      keychain_path: keychain_name,
+      keychain_path: keychain_file,
       username: ENV['APPLE_ID'],
       team_id: team_id,
       api_key: api_key
@@ -125,12 +131,12 @@ def signing_via_cert_and_sigh(bundle_id:, team_id:, api_key:)
       filename: "AppStore.mobileprovision"
     )
 
-    sh("security export -k #{keychain_name.shellescape} -t identities -f pkcs12 -o #{p12_path.shellescape} -P #{p12_password.shellescape}")
+    sh("security export -k #{keychain_file.shellescape} -t identities -f pkcs12 -o #{p12_path.shellescape} -P #{p12_password.shellescape}")
     UI.user_error!("cert/sigh ran but no signing assets ended up in #{cache_dir}") unless File.exist?(p12_path) && File.exist?(profile_path)
   end
 
   # Let codesign/xcodebuild use the imported key non-interactively.
-  sh("security set-key-partition-list -S apple-tool:,apple: -s -k #{keychain_password.shellescape} #{keychain_name.shellescape}", log: false)
+  sh("security set-key-partition-list -S apple-tool:,apple: -s -k #{keychain_password.shellescape} #{keychain_file.shellescape}", log: false)
 
   profile_info = read_provisioning_profile_info(profile_path)
 
