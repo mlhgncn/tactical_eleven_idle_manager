@@ -63,6 +63,18 @@ dev_dependencies:
 # The following section is specific to Flutter packages.
 flutter:
 
+  # Flutter's Swift Package Manager plugin integration generates a local
+  # "FlutterGeneratedPluginSwiftPackage" whose minimum iOS version is
+  # hardcoded to 13.0 in the Flutter SDK itself (FlutterDarwinPlatform.ios
+  # .deploymentTarget() in darwin.dart) - it does NOT read the app's actual
+  # IPHONEOS_DEPLOYMENT_TARGET. Several plugins here (firebase_*) pull in
+  # SPM packages that require iOS 15.0, so Xcode's package "Target
+  # Integrity" check fails no matter what the Xcode project settings say.
+  # Disabling SPM integration falls back to pure CocoaPods (already pinned
+  # to 15.0 in ios/Podfile), which doesn't have this hardcoded-floor issue.
+  config:
+    enable-swift-package-manager: false
+
   assets:
     - assets/translations/
 
