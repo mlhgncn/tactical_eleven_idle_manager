@@ -90,10 +90,15 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pods-
 
+      # Use the CocoaPods gem pinned in the Gemfile (installed for the same
+      # Ruby ruby/setup-ruby just activated) instead of whatever CocoaPods
+      # ships with the runner image for its default Ruby — a version
+      # mismatch there is what makes `flutter build ipa` report "CocoaPods
+      # is installed but broken" later.
       - name: Install CocoaPods dependencies
         run: |
           cd ios
-          pod install --repo-update
+          bundle exec pod install --repo-update
 
       # Persists the Distribution cert + App Store provisioning profile
       # across runs so we only ever mint one via `cert`/`sigh` (Apple caps an
