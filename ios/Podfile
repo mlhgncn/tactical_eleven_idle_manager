@@ -1,4 +1,40 @@
-require File.expand_path(File.join('Flutter', 'pod_helper'), __dir__)
+# Uncomment this line to define a global platform for your project
+# platform :ios, '13.0'
+
+# CocoaPods analytics sends network stats synchronously affecting flutter build latency.
+ENV['COCOAPODS_DISABLE_STATS'] = 'true'
+
+project 'Runner', {
+  'Debug' => :debug,
+  'Profile' => :release,
+  'Release' => :release,
+}
+
+def flutter_root
+  generated_xcode_build_settings_path = File.expand_path(File.join('Flutter', 'Generated.xcconfig'), __dir__)
+  unless File.exist?(generated_xcode_build_settings_path)
+    raise "#{generated_xcode_build_settings_path} must exist. If you're running pod install manually, make sure flutter pub get is executed first"
+  end
+
+  File.foreach(generated_xcode_build_settings_path) do |line|
+    matches = line.match(/FLUTTER_ROOT\=(.*)/)
+    return matches[1].strip if matches
+  end
+  raise "FLUTTER_ROOT not found in #{generated_xcode_build_settings_path}. Try deleting Generated.xcconfig, then run flutter pub get"
+end
+
+# Load the real podhelper.rb shipped with the active Flutter SDK - this is
+# what actually wires each plugin's podspec into the Podfile. The project
+# previously required a local ios/Flutter/pod_helper.rb stub instead, which
+# only ran `flutter packages get` and never added any plugin pods at all;
+# every plugin was silently being integrated via Swift Package Manager
+# instead. That's fine as long as SPM integration is enabled, but breaks
+# completely (e.g. "Module 'app_links' not found") now that SPM is disabled
+# (see pubspec.yaml) to work around Flutter's hardcoded 13.0 minimum iOS
+# version for its generated SPM package.
+require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelper'), flutter_root)
+
+flutter_ios_podfile_setup
 
 platform :ios, '15.0'
 
@@ -7,13 +43,17 @@ use_modular_headers!
 
 target 'Runner' do
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
+  target 'RunnerTests' do
+    inherit! :search_paths
+  end
 end
 
 post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
   end
-  # Ensure all targets use a minimum deployment target compatible with SPM dependencies
+  # Ensure all targets use a minimum deployment target compatible with
+  # plugins that require iOS 15 (e.g. current Firebase SDKs).
   installer.pods_project.targets.each do |target|
     target.build_configurations.each do |config|
       config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
