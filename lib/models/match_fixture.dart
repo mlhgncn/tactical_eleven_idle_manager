@@ -6,6 +6,7 @@ class MatchFixture {
   final String status;
   final int homeScore;
   final int awayScore;
+  final int week;
 
   MatchFixture({
     required this.id,
@@ -15,5 +16,6 @@ class MatchFixture {
     required this.status,
     required this.homeScore,
     required this.awayScore,
+    this.week = 1,
   });
 }

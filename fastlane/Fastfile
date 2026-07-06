@@ -34,6 +34,10 @@ platform :ios do
     flutter_build_args = []
     flutter_build_args << "--dart-define=SUPABASE_URL=#{Shellwords.escape(ENV['SUPABASE_URL'] || '')}" if ENV['SUPABASE_URL']
     flutter_build_args << "--dart-define=SUPABASE_ANON_KEY=#{Shellwords.escape(ENV['SUPABASE_ANON_KEY'] || '')}" if ENV['SUPABASE_ANON_KEY']
+    flutter_build_args << "--dart-define=REVENUECAT_API_KEY=#{Shellwords.escape(ENV['REVENUECAT_API_KEY'] || '')}" if ENV['REVENUECAT_API_KEY']
+    flutter_build_args << "--dart-define=ADMOB_APP_ID=#{Shellwords.escape(ENV['ADMOB_APP_ID'] || '')}" if ENV['ADMOB_APP_ID']
+    flutter_build_args << "--dart-define=ADMOB_INTERSTITIAL_AD_UNIT_ID=#{Shellwords.escape(ENV['ADMOB_INTERSTITIAL_AD_UNIT_ID'] || '')}" if ENV['ADMOB_INTERSTITIAL_AD_UNIT_ID']
+    flutter_build_args << "--dart-define=ADMOB_REWARDED_AD_UNIT_ID=#{Shellwords.escape(ENV['ADMOB_REWARDED_AD_UNIT_ID'] || '')}" if ENV['ADMOB_REWARDED_AD_UNIT_ID']
 
     sh("flutter build ipa --release #{flutter_build_args.join(' ')}")
 

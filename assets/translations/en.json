@@ -2,11 +2,85 @@
   "app": {
     "title": "Tactical Eleven: Idle Manager"
   },
+  "auth": {
+    "login": "Sign In",
+    "signup": "Sign Up",
+    "email": "Email",
+    "password": "Password",
+    "subtitle": "Use your email and password to enter the manager world.",
+    "no_account": "Don't have an account yet? Sign up",
+    "have_account": "Already have an account? Sign in",
+    "email_required": "Please enter your email.",
+    "email_invalid": "Please enter a valid email address.",
+    "password_required": "Please enter your password.",
+    "password_short": "Password must be at least 6 characters.",
+    "verification_failed": "User verification could not be completed.",
+    "generic_error": "Error: {error}"
+  },
+  "settings": {
+    "title": "Settings",
+    "language_notice": "All text will update when the app language changes.",
+    "notifications": "Notifications",
+    "notifications_desc": "Receive app notifications"
+  },
+  "clubSetup": {
+    "title": "Club Setup",
+    "description": "You don't have an active club yet. Select one from below or create your own club.",
+    "existingClubs": "Existing Clubs",
+    "budget": "Budget: {budget}",
+    "select": "Select",
+    "newClub": "Create New Club",
+    "clubName": "Club Name",
+    "create": "Create Club",
+    "errors": {
+      "load": "An error occurred while loading club information: {error}",
+      "create": "An error occurred while creating the club: {error}",
+      "claim": "An error occurred while selecting the club: {error}"
+    }
+  },
   "menu": {
     "play": "Play",
     "squad": "Squad",
     "tactics": "Tactics",
     "settings": "Settings"
+  },
+  "navigation": {
+    "finance": "Finance",
+    "squad": "Squad",
+    "tactics": "Tactics",
+    "transfer": "Transfer",
+    "calendar": "Calendar",
+    "table": "Standings",
+    "inbox": "Inbox",
+    "manager_panel": "Manager Panel",
+    "club_prefix": "Club: {name}",
+    "settings_tooltip": "Settings",
+    "logout_tooltip": "Log out",
+    "transfer_required": "You must select a club before accessing the transfer market."
+  },
+  "squad": {
+    "title": "Squad",
+    "transferMarketTooltip": "Transfer Market",
+    "noSquad": "No squad found",
+    "position": "Position",
+    "noPlayersInPosition": "No players found for this position.",
+    "starter": "Starter",
+    "bench": "Bench",
+    "age": "Age",
+    "ca": "CA",
+    "pa": "PA",
+    "morale": "Morale",
+    "fitness": "Fitness",
+    "form": "Form",
+    "salary": "Salary",
+    "marketValue": "Market",
+    "status": "Status",
+    "healthy": "Healthy",
+    "suspended": "Suspended",
+    "injured": "Injured",
+    "starting11": "Starting 11",
+    "benchLabel": "Bench",
+    "transfer": "Transfer"
   },
   "match": {
     "goal": "Goal!",

@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -5,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../providers/game_provider.dart';
 import '../services/auth_repository.dart';
 import '../services/auth_service.dart';
+import '../services/analytics_service.dart';
 
 class AuthScreen extends StatefulWidget {
   AuthScreen({super.key, AuthRepository? authRepository}) : _authRepository = authRepository ?? AuthService();
@@ -24,28 +26,28 @@ class _AuthScreenState extends State<AuthScreen> {
 
   String? _validateEmail(String? value) {
     if (value == null || value.trim().isEmpty) {
-      return 'E-posta giriniz.';
+      return 'auth.email_required'.tr();
     }
     final emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
     if (!emailRegex.hasMatch(value.trim())) {
-      return 'Geçerli bir e-posta adresi giriniz.';
+      return 'auth.email_invalid'.tr();
     }
     return null;
   }
 
   String? _validatePassword(String? value) {
     if (value == null || value.isEmpty) {
-      return 'Şifre giriniz.';
+      return 'auth.password_required'.tr();
     }
     if (value.length < 6) {
-      return 'Şifre en az 6 karakter olmalıdır.';
+      return 'auth.password_short'.tr();
     }
     return null;
   }
 
   Future<void> _submit() async {
     print('[AUTH] _submit called, validating form');
-    if (!_formKey.currentState!.validate()) {
+    if (!(_formKey.currentState?.validate() ?? false)) {
       print('[AUTH] Form validation failed');
       return;
     }
@@ -65,7 +67,7 @@ class _AuthScreenState extends State<AuthScreen> {
       
       if (response.user == null) {
         print('[AUTH] User is null, showing error');
-        _showSnackbar('Kullanıcı doğrulaması tamamlanamadı.');
+        _showSnackbar('auth.verification_failed'.tr());
         return;
       }
 
@@ -89,6 +91,11 @@ class _AuthScreenState extends State<AuthScreen> {
 
       print('[AUTH] About to refresh game state');
       await context.read<GameProvider>().refreshGameState();
+        try {
+          if (!_isLoginMode) {
+            AnalyticsService.instance.logEvent('register');
+          }
+        } catch (_) {}
       print('[AUTH] Game state refreshed');
       
       if (!mounted) {
@@ -105,7 +112,7 @@ class _AuthScreenState extends State<AuthScreen> {
       _showSnackbar(error.message);
     } catch (e) {
       print('[AUTH] Exception: $e');
-      _showSnackbar('Hata: ${e.toString()}');
+      _showSnackbar('auth.generic_error'.tr(namedArgs: {'error': e.toString()}));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -139,12 +146,12 @@ class _AuthScreenState extends State<AuthScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  _isLoginMode ? 'Giriş Yap' : 'Kayıt Ol',
+                  _isLoginMode ? 'auth.login'.tr() : 'auth.signup'.tr(),
                   style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Menajerlik dünyasına giriş yapmak için e-posta ve şifrenizi kullanın.',
+                  'auth.subtitle'.tr(),
                   style: theme.textTheme.bodyMedium,
                 ),
                 const SizedBox(height: 28),
@@ -156,9 +163,9 @@ class _AuthScreenState extends State<AuthScreen> {
                         controller: _emailController,
                         keyboardType: TextInputType.emailAddress,
                         autocorrect: false,
-                        decoration: const InputDecoration(
-                          labelText: 'E-posta',
-                          prefixIcon: Icon(Icons.email_outlined),
+                        decoration: InputDecoration(
+                          labelText: 'auth.email'.tr(),
+                          prefixIcon: const Icon(Icons.email_outlined),
                         ),
                         validator: _validateEmail,
                       ),
@@ -166,9 +173,9 @@ class _AuthScreenState extends State<AuthScreen> {
                       TextFormField(
                         controller: _passwordController,
                         obscureText: true,
-                        decoration: const InputDecoration(
-                          labelText: 'Şifre',
-                          prefixIcon: Icon(Icons.lock_outline),
+                        decoration: InputDecoration(
+                          labelText: 'auth.password'.tr(),
+                          prefixIcon: const Icon(Icons.lock_outline),
                         ),
                         validator: _validatePassword,
                       ),
@@ -180,7 +187,7 @@ class _AuthScreenState extends State<AuthScreen> {
                           onPressed: _isLoading ? null : _submit,
                           child: _isLoading
                               ? const CircularProgressIndicator(color: Colors.white)
-                              : Text(_isLoginMode ? 'Giriş Yap' : 'Kayıt Ol'),
+                              : Text(_isLoginMode ? 'auth.login'.tr() : 'auth.signup'.tr()),
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -191,7 +198,7 @@ class _AuthScreenState extends State<AuthScreen> {
                                 setState(() => _isLoginMode = !_isLoginMode);
                               },
                         child: Text(
-                          _isLoginMode ? 'Henüz hesabın yok mu? Kayıt ol' : 'Zaten hesabın var mı? Giriş yap',
+                          _isLoginMode ? 'auth.no_account'.tr() : 'auth.have_account'.tr(),
                         ),
                       ),
                     ],

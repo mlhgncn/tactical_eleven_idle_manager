@@ -10,9 +10,25 @@ class TransferMarketScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<GameProvider>();
+    final activeClub = provider.activeClub;
     final items = provider.transferMarketItems;
     final isLoading = provider.isLoading;
     final isSyncing = provider.isSyncing;
+
+    if (activeClub == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Canlı Transfer Pazarı')),
+        body: const Center(
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 24),
+            child: Text(
+              'Transfer pazarına erişmek için önce bir kulüp seçmeli veya oluşturmalısınız.',
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(title: const Text('Canlı Transfer Pazarı')),
@@ -28,6 +44,7 @@ class TransferMarketScreen extends StatelessWidget {
                         final item = items[index];
                         return TransferMarketCard(
                           item: item,
+                          activeClubId: activeClub.id,
                           onBidPressed: item.isSold
                               ? null
                               : () async {

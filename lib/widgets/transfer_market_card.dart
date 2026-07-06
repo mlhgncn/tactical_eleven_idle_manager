@@ -5,11 +5,13 @@ import '../models/transfer_market_item.dart';
 
 class TransferMarketCard extends StatefulWidget {
   final TransferMarketItem item;
+  final String? activeClubId;
   final VoidCallback? onBidPressed;
 
   const TransferMarketCard({
     super.key,
     required this.item,
+    this.activeClubId,
     this.onBidPressed,
   });
 
@@ -88,9 +90,27 @@ class _TransferMarketCardState extends State<TransferMarketCard> {
               children: [
                 Text('${widget.item.playerName} (${widget.item.playerPosition})', style: theme.textTheme.titleMedium),
                 const SizedBox(height: 12),
+                Text('Satıcı Kulüp: ${widget.item.sellerClubDisplayName}', style: theme.textTheme.bodyLarge),
+                if (widget.activeClubId != null && widget.activeClubId == widget.item.sellerClubId)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4.0),
+                    child: Chip(
+                      visualDensity: VisualDensity.compact,
+                      label: const Text('Senin kulübün'),
+                    ),
+                  ),
+                const SizedBox(height: 10),
                 Text('Mevcut En Yüksek Teklif: ${widget.item.currentHighestBid} GP', style: theme.textTheme.bodyLarge),
                 const SizedBox(height: 6),
-                Text('Teklif Sahibi: ${widget.item.highestBidderId ?? 'Bekliyor'}', style: theme.textTheme.bodyMedium),
+                Text('Teklif Sahibi: ${widget.item.highestBidderDisplayName}', style: theme.textTheme.bodyMedium),
+                if (widget.activeClubId != null && widget.activeClubId == widget.item.highestBidderId)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4.0),
+                    child: Chip(
+                      visualDensity: VisualDensity.compact,
+                      label: const Text('Senin kulübün'),
+                    ),
+                  ),
                 const SizedBox(height: 6),
                 Text('Bitiş Tarihi: ${widget.item.endTime.toLocal()}', style: theme.textTheme.bodySmall),
                 const SizedBox(height: 16),

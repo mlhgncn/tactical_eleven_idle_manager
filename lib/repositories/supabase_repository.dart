@@ -1,108 +1,254 @@
+import 'dart:io';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../utils/errors.dart';
+import '../services/error_reporting_service.dart';
 
 import '../models/club_info.dart';
 import '../models/inbox_message.dart';
+import '../models/match_result.dart';
 import '../models/player_fm.dart';
 import '../models/profile.dart';
 import '../models/transfer_market_item.dart';
+import '../models/financial_transaction.dart';
+import '../models/tactics.dart';
+import '../models/offline_simulation_result.dart';
 import 'repository_interface.dart';
 
 class SupabaseRepository implements GameRepository {
-  SupabaseRepository({SupabaseClient? client}) : _client = client ?? Supabase.instance.client;
+  SupabaseRepository({SupabaseClient? client})
+      : _client = client ?? Supabase.instance.client;
 
   final SupabaseClient _client;
 
   String? get currentUserId => _client.auth.currentUser?.id;
 
+  Future<T> _wrap<T>(Future<T> Function() fn) async {
+    try {
+      return await fn();
+    } on PostgrestException catch (e, st) {
+      final msg = normalizeSupabaseMessage(e.message);
+      final appEx = AppException.supabase(msg);
+      // Treat DB errors as critical for reporting
+      ErrorReportingService.report(appEx, st, reason: 'Supabase/PostgrestException');
+      throw appEx;
+    } on SocketException catch (e, st) {
+      final appEx = AppException.network('Ağ bağlantısı bulunamadı. Lütfen internet bağlantınızı kontrol edin.');
+      ErrorReportingService.report(appEx, st, reason: 'Network');
+      throw appEx;
+    } catch (e, st) {
+      final appEx = AppException.unexpected(e.toString());
+      ErrorReportingService.report(appEx, st, reason: 'Unexpected');
+      throw appEx;
+    }
+  }
+
   Future<ClubInfo?> loadActiveClub() async {
-    final userId = currentUserId;
-    if (userId == null) return null;
+    return _wrap(() async {
+      final userId = currentUserId;
+      if (userId == null) return null;
 
-    final response = await _client
-        .from('clubs')
-        .select('id,name,budget,stadium_capacity,ticket_price,training_facility_level')
-        .eq('user_id', userId)
-        .maybeSingle();
+      final response = await _client
+          .from('clubs')
+          .select(
+              'id,name,budget,blocked_budget,stadium_capacity,ticket_price,training_facility_level')
+          .eq('user_id', userId)
+          .order('created_at', ascending: true)
+          .limit(1)
+          .maybeSingle();
 
-    if (response == null) return null;
-    return ClubInfo.fromMap(response as Map<String, dynamic>);
+      if (response == null) return null;
+      return ClubInfo.fromMap(response as Map<String, dynamic>);
+    });
   }
 
   Future<List<ClubInfo>> loadAvailableClubs() async {
-    final data = await _client
+    return _wrap(() async {
+      final data = await _client
         .from('clubs')
-        .select('id,name,budget,stadium_capacity,ticket_price,training_facility_level')
-        .is_('user_id', null)
+        .select(
+          'id,name,budget,blocked_budget,stadium_capacity,ticket_price,training_facility_level')
+        .filter('user_id', 'is', null)
         .order('name', ascending: true);
 
-    return (data as List<dynamic>)
+      return (data as List<dynamic>)
         .cast<Map<String, dynamic>>()
         .map(ClubInfo.fromMap)
         .toList();
+    });
   }
 
   Future<ClubInfo?> createClub(String name) async {
-    final userId = currentUserId;
-    if (userId == null) return null;
+    return _wrap(() async {
+      final userId = currentUserId;
+      if (userId == null) return null;
 
-    final response = await _client
-        .from('clubs')
-        .insert({
-          'name': name,
-          'user_id': userId,
-        })
-        .select()
-        .single();
+      final existingClub = await _client
+          .from('clubs')
+          .select('id')
+          .eq('user_id', userId)
+          .limit(1)
+          .maybeSingle();
 
-    if (response == null) return null;
-    return ClubInfo.fromMap(response as Map<String, dynamic>);
+      if (existingClub != null) {
+        throw AppException('Zaten bir kulübünüz var. Mevcut kulübü kullanın veya önce onu seçin.');
+      }
+
+      final response = await _client
+          .from('clubs')
+          .insert({'name': name, 'user_id': userId}).select().single();
+
+      if (response == null) return null;
+      return ClubInfo.fromMap(response as Map<String, dynamic>);
+    });
   }
 
   Future<ClubInfo?> claimClub(String clubId) async {
-    final response = await _client.rpc('claim_club', params: {
-      'club_id': clubId,
-    }).single();
+    return _wrap(() async {
+      final userId = currentUserId;
+      if (userId == null) return null;
 
-    if (response == null) return null;
-    return ClubInfo.fromMap(response as Map<String, dynamic>);
+      final existingClub = await _client
+          .from('clubs')
+          .select('id')
+          .eq('user_id', userId)
+          .limit(1)
+          .maybeSingle();
+
+      if (existingClub != null) {
+        throw AppException('Zaten bir kulübünüz var. Mevcut kulübü kullanın veya önce onu seçin.');
+      }
+
+      final response = await _client.rpc('claim_club', params: {
+        'club_id': clubId,
+      }).single();
+
+      if (response == null) return null;
+      return ClubInfo.fromMap(response as Map<String, dynamic>);
+    });
+  }
+
+  String _clubOwnershipErrorMessage(String? rawMessage) {
+    final message = (rawMessage ?? '').trim();
+    if (message.isEmpty) {
+      return 'Kulüp işlemi tamamlanamadı.';
+    }
+
+    if (message.contains('already a club') ||
+        message.contains('already owns') ||
+        message.contains('duplicate key')) {
+      return 'Bir kullanıcı birden fazla kulüp sahibi olamaz.';
+    }
+
+    return message;
   }
 
   Future<Profile?> loadProfile() async {
-    final userId = currentUserId;
-    if (userId == null) return null;
+    return _wrap(() async {
+      final userId = currentUserId;
+      if (userId == null) return null;
 
-    final response = await _client
-        .from('profiles')
-        .select('id,full_name,avatar_url,email,language,fcm_token,created_at,updated_at')
-        .eq('id', userId)
-        .maybeSingle();
+      final response = await _client
+          .from('profiles')
+          .select(
+              'id,full_name,avatar_url,email,language,fcm_token,created_at,updated_at')
+          .eq('id', userId)
+          .maybeSingle();
 
-    if (response == null) return null;
-    return Profile.fromMap(response as Map<String, dynamic>);
+      if (response == null) return null;
+      return Profile.fromMap(response as Map<String, dynamic>);
+    });
   }
 
   Future<Profile?> upsertProfile(Profile profile) async {
-    final response = await _client
-        .from('profiles')
-        .upsert(profile.toMap())
-        .select()
-        .single();
+    return _wrap(() async {
+      final response = await _client
+          .from('profiles')
+          .upsert(profile.toMap())
+          .select()
+          .single();
+
+      if (response == null) return null;
+      return Profile.fromMap(response as Map<String, dynamic>);
+    });
+  }
+
+  Future<PlayerFM?> advancePlayerDevelopment({
+    required String playerId,
+    required int minutesPlayed,
+    required int trainingFacilityLevel,
+    required int morale,
+    required double formRating,
+  }) async {
+    final response = await _client.rpc('advance_player_development', params: {
+      'p_player_id': playerId,
+      'p_minutes_played': minutesPlayed,
+      'p_training_facility_level': trainingFacilityLevel,
+      'p_morale': morale,
+      'p_form_rating': formRating,
+    }).select(
+      'id,club_id,name,position,age,current_ability,potential_ability,morale,fitness,finishing,passing,tackling,composure,determination,consistency,injury_proneness,form_rating,injury_type,injury_duration_weeks,is_suspended',
+    ).single();
 
     if (response == null) return null;
-    return Profile.fromMap(response as Map<String, dynamic>);
+    return PlayerFM.fromMap(response as Map<String, dynamic>);
   }
 
   Future<List<PlayerFM>> loadSquadPlayers(String clubId) async {
-    final data = await _client
+    // Try to return starting XI: top 11 by `current_ability`
+    final topData = await _client
         .from('players')
-        .select('id,club_id,name,position,age,current_ability,potential_ability,morale,fitness,finishing,passing,tackling,composure,determination,consistency,injury_proneness')
+        .select(
+            'id,club_id,name,position,age,current_ability,potential_ability,morale,fitness,finishing,passing,tackling,composure,determination,consistency,injury_proneness,injury_type,injury_duration_weeks,is_suspended')
         .eq('club_id', clubId)
-        .order('name', ascending: true);
+        .order('current_ability', ascending: false)
+        .limit(11);
 
-    return (data as List<dynamic>)
-        .cast<Map<String, dynamic>>()
-        .map(PlayerFM.fromMap)
-        .toList();
+    if (topData is List && topData.isNotEmpty) {
+      return topData
+          .cast<Map<String, dynamic>>()
+          .map(PlayerFM.fromMap)
+          .toList();
+    }
+
+    // Fallback: if no players currently assigned to this club, but seed data
+    // or import put a `team_id` value on players, assign those players to the
+    // club (set `club_id = team_id`) and re-query.
+    final teamPlayers = await _client
+        .from('players')
+        .select('id,team_id')
+        .eq('team_id', clubId)
+        .filter('club_id', 'is', null);
+
+    if (teamPlayers is List && teamPlayers.isNotEmpty) {
+      for (final row in teamPlayers.cast<Map<String, dynamic>>()) {
+        final playerId = row['id'] as String?;
+        if (playerId == null) continue;
+        await _client
+            .from('players')
+            .update({'club_id': clubId}).eq('id', playerId);
+      }
+
+      // Re-query after assigning
+      final reassigned = await _client
+          .from('players')
+          .select(
+              'id,club_id,name,position,age,current_ability,potential_ability,morale,fitness,finishing,passing,tackling,composure,determination,consistency,injury_proneness,form_rating,injury_type,injury_duration_weeks,is_suspended')
+          .eq('club_id', clubId)
+          .order('current_ability', ascending: false)
+          .limit(11);
+
+      if (reassigned is List && reassigned.isNotEmpty) {
+        return reassigned
+            .cast<Map<String, dynamic>>()
+            .map(PlayerFM.fromMap)
+            .toList();
+      }
+    }
+
+    // Final fallback: return empty list (caller will handle generation)
+    return <PlayerFM>[];
   }
 
   Future<List<InboxMessage>> loadInboxMessages() async {
@@ -115,80 +261,370 @@ class SupabaseRepository implements GameRepository {
         .eq('recipient_id', userId)
         .order('created_at', ascending: false);
 
-    return (data as List<dynamic>)
-        .cast<Map<String, dynamic>>()
-        .map(InboxMessage.fromMap)
-        .toList();
+    if (data is! List<dynamic>) return <InboxMessage>[];
+
+    return data.cast<Map<String, dynamic>>().map(InboxMessage.fromMap).toList();
+  }
+
+  Future<InboxMessage?> addInboxMessage({required String title, required String body}) async {
+    final userId = currentUserId;
+    if (userId == null) return null;
+
+    final response = await _client
+        .from('inbox_messages')
+        .insert({
+          'recipient_id': userId,
+          'title': title,
+          'body': body,
+          'is_read': false,
+        })
+        .select('id,title,body,is_read,created_at')
+        .single();
+
+    if (response == null) return null;
+    return InboxMessage.fromMap(response as Map<String, dynamic>);
+  }
+
+  Future<Map<String, dynamic>?> awardAdReward({required String rewardType, int? amount}) async {
+    return _wrap(() async {
+      final response = await _client.rpc('award_ad_reward', params: {
+        'p_reward_type': rewardType,
+        'p_amount': amount,
+      }).single();
+
+      if (response == null) return null;
+      if (response is Map<String, dynamic>) return response;
+      return Map<String, dynamic>.from(response as Map);
+    });
   }
 
   Future<List<TransferMarketItem>> loadTransferMarket() async {
+    await _client.rpc('release_expired_transfer_bids');
+
     final data = await _client
         .from('transfer_market')
-        .select('id,player_id,current_highest_bid,highest_bidder_id,end_time,players(name,position)')
+        .select(
+            'id,player_id,current_highest_bid,highest_bidder_id,end_time,players(name,position,club:clubs(id,name)),highest_bidder:clubs(id,name)')
         .order('end_time', ascending: true);
 
-    return (data as List<dynamic>)
+    if (data is! List<dynamic>) {
+      return <TransferMarketItem>[];
+    }
+
+    return data
         .cast<Map<String, dynamic>>()
         .map(TransferMarketItem.fromMap)
         .toList();
   }
 
+  Future<List<Map<String, dynamic>>> loadFixturesForClub(String clubId) async {
+    final data = await _client
+        .from('matches')
+        .select(
+            'id,match_date,is_played,home_score,away_score,home_club_id,away_club_id,home_club(name),away_club(name),week,league_id,season_id')
+        .or('home_club_id.eq.$clubId,away_club_id.eq.$clubId')
+        .order('match_date', ascending: true);
+
+    if (data is! List<dynamic>) return <Map<String, dynamic>>[];
+
+    return data.cast<Map<String, dynamic>>();
+  }
+
+  Future<Map<String, dynamic>?> loadCurrentSeasonState(String clubId) async {
+    final response = await _client
+        .from('seasons')
+        .select(
+            'id,name,current_week,is_active,is_completed,league:leagues(id,name),champion_club:clubs(id,name)')
+        .eq('is_active', true)
+        .limit(1)
+        .maybeSingle();
+
+    if (response == null) return null;
+
+    final season = Map<String, dynamic>.from(response as Map<String, dynamic>);
+    final standingsResponse = await _client
+        .from('league_standings')
+        .select(
+            'position,points,played,wins,draws,losses,goals_for,goals_against,goal_difference,club:clubs(id,name)')
+        .eq('season_id', season['id'])
+        .order('points', ascending: false)
+        .order('goal_difference', ascending: false)
+        .order('goals_for', ascending: false);
+
+    if (standingsResponse is List<dynamic>) {
+      season['standings'] = standingsResponse.cast<Map<String, dynamic>>();
+    }
+
+    return season;
+  }
+
+  Future<List<Map<String, dynamic>>> loadLeagueStandings(
+      String seasonId) async {
+    final data = await _client
+        .from('league_standings')
+        .select(
+            'position,points,played,wins,draws,losses,goals_for,goals_against,goal_difference,club:clubs(id,name)')
+        .eq('season_id', seasonId)
+        .order('points', ascending: false)
+        .order('goal_difference', ascending: false)
+        .order('goals_for', ascending: false);
+
+    if (data is! List<dynamic>) return <Map<String, dynamic>>[];
+    return data.cast<Map<String, dynamic>>();
+  }
+
   Future<TransferMarketItem?> placeBid(String marketId, int bidAmount) async {
-    final updated = await _client.rpc('place_transfer_bid', params: {
-      'market_id': marketId,
-      'bid_amount': bidAmount,
-    }).single();
+    return _wrap(() async {
+      final updated = await _client.rpc('place_transfer_bid', params: {
+        'market_id': marketId,
+        'bid_amount': bidAmount,
+      }).single();
 
-    if (updated == null) return null;
-    return TransferMarketItem.fromMap(updated as Map<String, dynamic>);
+      if (updated == null) return null;
+      return TransferMarketItem.fromMap(updated as Map<String, dynamic>);
+    });
   }
 
-  Future<ClubInfo?> acceptTransferOffer({required String clubId, required int newBudget, required String playerId}) async {
-    final clubResponse = await _client
-        .from('clubs')
-        .update({'budget': newBudget})
-        .eq('id', clubId)
-        .select()
-        .single();
+  Future<ClubInfo?> acceptTransferOffer({required String playerId}) async {
+    return _wrap(() async {
+      final updated = await _client.rpc('accept_transfer_offer', params: {
+        'p_player_id': playerId,
+      }).single();
 
-    await _client.from('players').update({'club_id': null}).eq('id', playerId);
+      if (updated == null) {
+        throw AppException('Transfer işlemi tamamlanamadı. Aktif teklif bulunamadı.');
+      }
 
-    if (clubResponse == null) return null;
-    return ClubInfo.fromMap(clubResponse as Map<String, dynamic>);
+      return ClubInfo.fromMap(updated as Map<String, dynamic>);
+    });
   }
 
+  String _transferErrorMessage(String? rawMessage) {
+    final message = (rawMessage ?? '').trim();
+    if (message.isEmpty) {
+      return 'Transfer işlemi tamamlanamadı. Lütfen tekrar deneyin.';
+    }
+
+    if (message.contains('Unauthenticated')) {
+      return 'Oturum açmanız gerekiyor.';
+    }
+
+    if (message.contains('does not own the selling club') ||
+        message.contains('seller')) {
+      return 'Bu transferi kabul etmek için satıcı kulübün size ait olması gerekiyor.';
+    }
+
+    if (message.contains('No active transfer offer')) {
+      return 'Bu oyuncu için aktif bir transfer teklifi bulunmuyor.';
+    }
+
+    if (message.contains('same club')) {
+      return 'Aynı kulüp içinde transfer kabul edilemez.';
+    }
+
+    if (message.contains('insufficient budget')) {
+      return 'Kulübünüzün bütçesi bu transferi karşılamıyor.';
+    }
+
+    return message;
+  }
+
+  @override
   Future<bool> markMessageAsRead(String messageId) async {
+    final userId = currentUserId;
+    if (userId == null) return false;
+
     final response = await _client
         .from('inbox_messages')
         .update({'is_read': true})
         .eq('id', messageId)
+        .eq('recipient_id', userId)
         .select()
         .single();
 
     return response != null;
   }
 
+  @override
   Future<ClubInfo?> upgradeClub({
     required String clubId,
     int? stadiumCapacity,
     int? trainingFacilityLevel,
     int? ticketPrice,
-    required int budget,
   }) async {
-    final updateFields = <String, dynamic>{'budget': budget};
-    if (stadiumCapacity != null) updateFields['stadium_capacity'] = stadiumCapacity;
-    if (trainingFacilityLevel != null) updateFields['training_facility_level'] = trainingFacilityLevel;
-    if (ticketPrice != null) updateFields['ticket_price'] = ticketPrice;
+    final updated = await _client.rpc('upgrade_club', params: {
+      'club_id': clubId,
+      'stadium_capacity': stadiumCapacity,
+      'training_facility_level': trainingFacilityLevel,
+      'ticket_price': ticketPrice,
+    }).single();
 
-    final response = await _client
-        .from('clubs')
-        .update(updateFields)
-        .eq('id', clubId)
-        .select()
-        .single();
+    if (updated == null) return null;
+    return ClubInfo.fromMap(updated as Map<String, dynamic>);
+  }
 
-    if (response == null) return null;
-    return ClubInfo.fromMap(response as Map<String, dynamic>);
+  @override
+  Future<ClubInfo?> upgradeSponsor({required String clubId}) async {
+    final updated = await _client.rpc('upgrade_sponsor', params: {
+      'club_id': clubId,
+    }).single();
+
+    if (updated == null) return null;
+    return ClubInfo.fromMap(updated as Map<String, dynamic>);
+  }
+
+  @override
+  Future<List<FinancialTransaction>> loadFinancialTransactions(String clubId) async {
+    return _wrap(() async {
+      final data = await _client
+        .from('financial_transactions')
+        .select('id,club_id,type,amount,description,source,created_at')
+        .eq('club_id', clubId)
+        .order('created_at', ascending: false)
+        .limit(50);
+
+      if (data is! List<dynamic>) return <FinancialTransaction>[];
+
+      return data
+        .cast<Map<String, dynamic>>()
+        .map(FinancialTransaction.fromMap)
+        .toList();
+    });
+  }
+
+  Future<Tactics?> loadTacticsForClub(String clubId) async {
+    return loadTactics(clubId);
+  }
+
+  @override
+  Future<bool> isAdmin() async {
+    return _wrap(() async {
+      final dynamic resp = await _client.rpc('is_admin').single();
+      if (resp == null) return false;
+      if (resp is bool) return resp;
+      if (resp is String) return resp == 't' || resp.toLowerCase() == 'true';
+      if (resp is num) return resp == 1;
+      if (resp is Map) {
+        final first = resp.values.isNotEmpty ? resp.values.first : null;
+        if (first is bool) return first;
+        if (first is String) return first == 't' || first.toLowerCase() == 'true';
+        if (first is num) return first == 1;
+      }
+      return false;
+    });
+  }
+
+  Future<List<Map<String, dynamic>>> adminListUsers() async {
+    final data = await _client.rpc('admin_list_users').select();
+    if (data is List<dynamic>) return data.cast<Map<String, dynamic>>();
+    return <Map<String, dynamic>>[];
+  }
+
+  Future<List<Map<String, dynamic>>> adminListClubs() async {
+    final data = await _client.rpc('admin_list_clubs').select();
+    if (data is List<dynamic>) return data.cast<Map<String, dynamic>>();
+    return <Map<String, dynamic>>[];
+  }
+
+  Future<Map<String, dynamic>?> adminCreateGiftCode({required String code, required int amount, DateTime? expiresAt}) async {
+    final params = {
+      'p_code': code,
+      'p_amount': amount,
+      'p_expires_at': expiresAt?.toIso8601String()
+    };
+    final created = await _client.rpc('admin_create_gift_code', params: params).single();
+    if (created == null) return null;
+    return Map<String, dynamic>.from(created as Map);
+  }
+
+  Future<Map<String, dynamic>?> adminCreateEvent({required String title, required String body, DateTime? startsAt, DateTime? endsAt}) async {
+    final params = {
+      'p_title': title,
+      'p_body': body,
+      'p_starts_at': startsAt?.toIso8601String(),
+      'p_ends_at': endsAt?.toIso8601String()
+    };
+    final created = await _client.rpc('admin_create_event', params: params).single();
+    if (created == null) return null;
+    return Map<String, dynamic>.from(created as Map);
+  }
+
+  Future<Map<String, dynamic>?> adminSendPush({required String title, required String body, String? targetUserId}) async {
+    final params = {
+      'p_title': title,
+      'p_body': body,
+      'p_target_user_id': targetUserId
+    };
+    final created = await _client.rpc('admin_send_push', params: params).single();
+    if (created == null) return null;
+    return Map<String, dynamic>.from(created as Map);
+  }
+
+  Future<Map<String, dynamic>?> adminUpdatePlayer({required String playerId, String? name, String? position, int? age, int? currentAbility, int? potentialAbility}) async {
+    final params = {
+      'p_player_id': playerId,
+      'p_name': name,
+      'p_position': position,
+      'p_age': age,
+      'p_current_ability': currentAbility,
+      'p_potential_ability': potentialAbility,
+    };
+    try {
+      final updated = await _client.rpc('admin_update_player', params: params).single();
+      if (updated == null) return null;
+      return Map<String, dynamic>.from(updated as Map);
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<Tactics?> loadTactics(String clubId) async {
+    final data = await _client
+        .from('tactics')
+        .select('club_id,formation,mentality,captain_id,penalty_taker_id')
+        .eq('club_id', clubId)
+        .maybeSingle();
+
+    if (data == null) return null;
+    return Tactics.fromMap(data as Map<String, dynamic>);
+  }
+
+  Future<Tactics?> saveTacticsForClub(String clubId, Tactics tactics) async {
+    return saveTactics(clubId, tactics);
+  }
+
+  Future<Tactics?> saveTactics(String clubId, Tactics tactics) async {
+    final payload = tactics.toMap();
+    payload['club_id'] = clubId;
+    final data =
+        await _client.from('tactics').upsert(payload).select().maybeSingle();
+
+    if (data == null) return null;
+    return Tactics.fromMap(data as Map<String, dynamic>);
+  }
+
+  Future<void> assignPlayersFromTeamIds() async {
+    // Find players with team_id set but club_id null and assign club_id = team_id
+    final rows = await _client
+        .from('players')
+        .select('id,team_id')
+        .filter('club_id', 'is', null)
+        .not('team_id', 'is', null);
+
+    // rows is a List<dynamic> from PostgREST
+    if (rows is! List<dynamic>) return;
+    if (rows.isEmpty) return;
+
+    for (final r in rows.cast<Map<String, dynamic>>()) {
+      final id = r['id'] as String?;
+      final teamId = r['team_id'] as String?;
+      if (id == null || teamId == null) continue;
+      try {
+        await _client.from('players').update({'club_id': teamId}).eq('id', id);
+      } catch (_) {
+        // ignore individual update errors
+      }
+    }
   }
 
   Future<void> updateFcmToken(String token) async {
@@ -200,5 +636,87 @@ class SupabaseRepository implements GameRepository {
       'fcm_token': token,
       'updated_at': DateTime.now().toUtc().toIso8601String(),
     });
+  }
+
+  Future<void> updateNotificationPreference(bool enabled) async {
+    final userId = currentUserId;
+    if (userId == null) return;
+
+    await _client.from('profiles').upsert({
+      'id': userId,
+      'notifications_enabled': enabled,
+      'updated_at': DateTime.now().toUtc().toIso8601String(),
+    });
+  }
+
+  Future<bool?> loadNotificationPreference() async {
+    final userId = currentUserId;
+    if (userId == null) return null;
+
+    final resp = await _client.from('profiles').select('notifications_enabled').eq('id', userId).maybeSingle();
+    if (resp == null) return null;
+    final map = resp as Map<String, dynamic>;
+    return map['notifications_enabled'] as bool?;
+  }
+
+  @override
+  Future<void> touchLastActivity() async {
+    // Offline activity timing is owned by the server-side edge function.
+    // The client should not write the last_activity_at timestamp.
+  }
+
+  @override
+  Future<OfflineSimulationResult> simulateOfflineProgress() async {
+    final response =
+        await _client.functions.invoke('simulate_offline_progress', body: {});
+
+    if (response.status != 200) {
+      throw Exception('Offline ilerleme işlemi başarısız oldu.');
+    }
+
+    final data = response.data;
+    if (data == null) {
+      return OfflineSimulationResult(
+        matchesSimulated: 0,
+        totalIncome: 0,
+        playersImproved: 0,
+        transferOffersReceived: 0,
+        inboxMessagesAdded: 0,
+        offlineDuration: Duration.zero,
+      );
+    }
+
+    final map = Map<String, dynamic>.from(data as Map<String, dynamic>);
+    return OfflineSimulationResult(
+      matchesSimulated: (map['matchesSimulated'] as num?)?.toInt() ?? 0,
+      totalIncome: (map['totalIncome'] as num?)?.toInt() ?? 0,
+      playersImproved: (map['playersImproved'] as num?)?.toInt() ?? 0,
+      transferOffersReceived:
+          (map['transferOffersReceived'] as num?)?.toInt() ?? 0,
+      inboxMessagesAdded: (map['inboxMessagesAdded'] as num?)?.toInt() ?? 0,
+      offlineDuration: Duration(
+          minutes: (map['offlineDurationMinutes'] as num?)?.toInt() ?? 0),
+      serverSummary: map['summary'] as String?,
+    );
+  }
+
+  Future<MatchResult?> playNextFixture() async {
+    final response = await _client.functions.invoke('play_next_fixture', body: {});
+    if (response.status != 200) {
+      throw Exception('Maç oynatma işlemi başarısız oldu.');
+    }
+
+    final data = response.data;
+    if (data == null) {
+      return null;
+    }
+
+    final resultData = Map<String, dynamic>.from(data as Map<String, dynamic>);
+    final result = resultData['result'];
+    if (result == null) {
+      return null;
+    }
+
+    return MatchResult.fromMap(Map<String, dynamic>.from(result as Map<String, dynamic>));
   }
 }

@@ -3,13 +3,17 @@ import 'package:provider/provider.dart';
 import 'package:easy_localization/easy_localization.dart';
 
 import '../services/auth_service.dart';
+import '../services/notification_service.dart';
 
 import '../providers/game_provider.dart';
 import 'club_finance_screen.dart';
 import 'inbox_screen.dart';
+import 'league_table_screen.dart';
 import 'match_schedule_screen.dart';
 import 'squad_screen.dart';
 import 'tactics_screen.dart';
+import 'transfer_market_screen.dart';
+import 'admin/admin_panel_screen.dart';
 
 class RootShell extends StatefulWidget {
   RootShell({super.key});
@@ -18,27 +22,98 @@ class RootShell extends StatefulWidget {
   State<RootShell> createState() => _RootShellState();
 }
 
+class _ShellPage {
+  final Widget page;
+  final Icon icon;
+  final String label;
+
+  const _ShellPage({
+    required this.page,
+    required this.icon,
+    required this.label,
+  });
+}
+
 class _RootShellState extends State<RootShell> {
   int _selectedIndex = 0;
 
-  static final List<Widget> _pages = <Widget>[
-    const ClubFinanceScreen(),
-    const SquadScreen(),
-    const TacticsScreen(),
-    const MatchScheduleScreen(),
-    const InboxScreen(),
+  @override
+  void initState() {
+    super.initState();
+    // Wire notification service to show UI SnackBars
+    NotificationService.instance.onSendNotification = (title, body) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$title: $body')),
+      );
+    };
+  }
+
+  @override
+  void dispose() {
+    // Clear callback
+    NotificationService.instance.onSendNotification = null;
+    super.dispose();
+  }
+
+  static List<_ShellPage> get _navigationPages => <_ShellPage>[
+    _ShellPage(
+      page: ClubFinanceScreen(),
+      icon: const Icon(Icons.account_balance_wallet),
+      label: 'navigation.finance'.tr(),
+    ),
+    _ShellPage(
+      page: SquadScreen(),
+      icon: const Icon(Icons.group),
+      label: 'navigation.squad'.tr(),
+    ),
+    _ShellPage(
+      page: TacticsScreen(),
+      icon: const Icon(Icons.sports_soccer),
+      label: 'navigation.tactics'.tr(),
+    ),
+    _ShellPage(
+      page: TransferMarketScreen(),
+      icon: const Icon(Icons.transfer_within_a_station),
+      label: 'navigation.transfer'.tr(),
+    ),
+    _ShellPage(
+      page: MatchScheduleScreen(),
+      icon: const Icon(Icons.calendar_month),
+      label: 'navigation.calendar'.tr(),
+    ),
+    _ShellPage(
+      page: LeagueTableScreen(),
+      icon: const Icon(Icons.table_chart),
+      label: 'navigation.table'.tr(),
+    ),
+    _ShellPage(
+      page: InboxScreen(),
+      icon: const Icon(Icons.inbox),
+      label: 'navigation.inbox'.tr(),
+    ),
   ];
 
-  void _onItemTapped(int index) {
+  void _onItemTapped(int index, {required bool hasActiveClub}) {
+    if (index == 3 && !hasActiveClub) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('navigation.transfer_required'.tr()),
+        ),
+      );
+      return;
+    }
+
     setState(() {
       _selectedIndex = index;
     });
   }
 
-  final AuthService _authService = AuthService();
+  AuthService? _authService;
+  AuthService get _resolvedAuthService => _authService ??= AuthService();
 
   Future<void> _signOut() async {
-    await _authService.signOut();
+    await _resolvedAuthService.signOut();
     if (!mounted) return;
     Navigator.of(context).pushReplacementNamed('/auth');
   }
@@ -46,7 +121,13 @@ class _RootShellState extends State<RootShell> {
   @override
   Widget build(BuildContext context) {
     final activeClub = context.select((GameProvider provider) => provider.activeClub);
-    final title = activeClub == null ? 'Menajerlik Paneli'.tr() : 'Kulüp: ${activeClub.id.substring(0, 6)}';
+    final isAdmin = context.select((GameProvider p) => p.isAdmin);
+    final title = activeClub == null ? 'navigation.manager_panel'.tr() : 'navigation.club_prefix'.tr(namedArgs: {'name': activeClub.name});
+
+    final pages = List<_ShellPage>.from(_navigationPages);
+    if (isAdmin) {
+      pages.add(_ShellPage(page: const AdminPanelScreen(), icon: const Icon(Icons.admin_panel_settings), label: 'Yönetici'));
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -55,27 +136,65 @@ class _RootShellState extends State<RootShell> {
           IconButton(
             icon: const Icon(Icons.settings),
             onPressed: () => Navigator.of(context).pushNamed('/settings'),
-            tooltip: 'Ayarlar',
+            tooltip: 'navigation.settings_tooltip'.tr(),
           ),
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: _signOut,
-            tooltip: 'Çıkış Yap',
+            tooltip: 'navigation.logout_tooltip'.tr(),
           )
         ],
       ),
-      body: _pages[_selectedIndex],
+      body: pages[_selectedIndex].page,
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
         currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.account_balance_wallet), label: 'Finans'),
-          BottomNavigationBarItem(icon: Icon(Icons.group), label: 'Kadro'),
-          BottomNavigationBarItem(icon: Icon(Icons.sports_soccer), label: 'Taktik'),
-          BottomNavigationBarItem(icon: Icon(Icons.calendar_month), label: 'Takvim'),
-          BottomNavigationBarItem(icon: Icon(Icons.inbox), label: 'Gelen'),
-        ],
+        onTap: (index) => _onItemTapped(
+          index,
+          hasActiveClub: activeClub != null,
+        ),
+        items: List<BottomNavigationBarItem>.generate(
+          pages.length,
+          (index) {
+            final page = pages[index];
+            if (index == 6) {
+              return BottomNavigationBarItem(
+                icon: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    page.icon,
+                    if (context.watch<GameProvider>().unreadInboxCount > 0)
+                      Positioned(
+                        right: -6,
+                        top: -4,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(
+                            color: Colors.red,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Text(
+                            '${context.watch<GameProvider>().unreadInboxCount}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                label: page.label,
+              );
+            }
+
+            return BottomNavigationBarItem(
+              icon: page.icon,
+              label: page.label,
+            );
+          },
+        ),
       ),
     );
   }

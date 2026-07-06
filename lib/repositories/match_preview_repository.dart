@@ -4,7 +4,9 @@ import '../models/match_result.dart';
 import '../models/player_fm.dart';
 import '../models/tactics.dart';
 
-class MatchRepository {
+/// Preview-only client-side match simulation for UI/testing.
+/// Authoritative production match results are produced server-side.
+class MatchPreviewRepository {
   final Random _random = Random();
 
   MatchResult simulateMatch({
@@ -17,8 +19,10 @@ class MatchRepository {
     required Tactics homeTactics,
     required Tactics awayTactics,
   }) {
-    final homeMetrics = _calculateTeamMetrics(homeSquad, homeTactics, isHome: true);
-    final awayMetrics = _calculateTeamMetrics(awaySquad, awayTactics, isHome: false);
+    final homeMetrics =
+        _calculateTeamMetrics(homeSquad, homeTactics, isHome: true);
+    final awayMetrics =
+        _calculateTeamMetrics(awaySquad, awayTactics, isHome: false);
 
     final homeScore = _calculateGoals(homeMetrics, awayMetrics);
     final awayScore = _calculateGoals(awayMetrics, homeMetrics);
@@ -39,34 +43,55 @@ class MatchRepository {
       homeXg: double.parse(homeXg.toStringAsFixed(2)),
       awayXg: double.parse(awayXg.toStringAsFixed(2)),
       homePossession: _calculatePossession(homeMetrics, awayMetrics),
-      commentary: _buildCommentary(homeScore, awayScore, homeTeamName, awayTeamName, homeMetrics, awayMetrics),
+      commentary: _buildCommentary(homeScore, awayScore, homeTeamName,
+          awayTeamName, homeMetrics, awayMetrics),
+      events: [],
     );
   }
 
-  _TeamMetrics _calculateTeamMetrics(List<PlayerFM> squad, Tactics tactics, {required bool isHome}) {
-    if (squad.isEmpty) {
-      return _TeamMetrics(offense: 10, defense: 10, fitness: 50, morale: 50, discipline: 50, injuryRisk: 5);
+  _TeamMetrics _calculateTeamMetrics(List<PlayerFM> squad, Tactics tactics,
+      {required bool isHome}) {
+    final availableSquad = squad.where((player) => !player.hasActiveInjury).toList();
+    final activeSquad = availableSquad.isEmpty ? squad : availableSquad;
+
+    if (activeSquad.isEmpty) {
+      return _TeamMetrics(
+          offense: 10,
+          defense: 10,
+          fitness: 50,
+          morale: 50,
+          discipline: 50,
+          injuryRisk: 5);
     }
 
-    final abilityTotal = squad.fold<int>(0, (sum, player) => sum + player.currentAbility);
-    final finishingTotal = squad.fold<int>(0, (sum, player) => sum + player.finishing);
-    final passingTotal = squad.fold<int>(0, (sum, player) => sum + player.passing);
-    final tacklingTotal = squad.fold<int>(0, (sum, player) => sum + player.tackling);
-    final composureTotal = squad.fold<int>(0, (sum, player) => sum + player.composure);
-    final fitnessTotal = squad.fold<int>(0, (sum, player) => sum + player.fitness);
-    final moraleTotal = squad.fold<int>(0, (sum, player) => sum + player.morale);
-    final consistencyTotal = squad.fold<int>(0, (sum, player) => sum + player.consistency);
-    final injuryRiskTotal = squad.fold<int>(0, (sum, player) => sum + player.injuryProneness);
+    final abilityTotal =
+        activeSquad.fold<int>(0, (sum, player) => sum + player.currentAbility);
+    final finishingTotal =
+        activeSquad.fold<int>(0, (sum, player) => sum + player.finishing);
+    final passingTotal =
+        activeSquad.fold<int>(0, (sum, player) => sum + player.passing);
+    final tacklingTotal =
+        activeSquad.fold<int>(0, (sum, player) => sum + player.tackling);
+    final composureTotal =
+        activeSquad.fold<int>(0, (sum, player) => sum + player.composure);
+    final fitnessTotal =
+        activeSquad.fold<int>(0, (sum, player) => sum + player.fitness);
+    final moraleTotal =
+        activeSquad.fold<int>(0, (sum, player) => sum + player.morale);
+    final consistencyTotal =
+        activeSquad.fold<int>(0, (sum, player) => sum + player.consistency);
+    final injuryRiskTotal =
+        activeSquad.fold<int>(0, (sum, player) => sum + player.injuryProneness);
 
-    final averageAbility = abilityTotal / squad.length;
-    final averageFinishing = finishingTotal / squad.length;
-    final averagePassing = passingTotal / squad.length;
-    final averageTackling = tacklingTotal / squad.length;
-    final averageComposure = composureTotal / squad.length;
-    final averageFitness = fitnessTotal / squad.length;
-    final averageMorale = moraleTotal / squad.length;
-    final averageConsistency = consistencyTotal / squad.length;
-    final averageInjuryRisk = injuryRiskTotal / squad.length;
+    final averageAbility = abilityTotal / activeSquad.length;
+    final averageFinishing = finishingTotal / activeSquad.length;
+    final averagePassing = passingTotal / activeSquad.length;
+    final averageTackling = tacklingTotal / activeSquad.length;
+    final averageComposure = composureTotal / activeSquad.length;
+    final averageFitness = fitnessTotal / activeSquad.length;
+    final averageMorale = moraleTotal / activeSquad.length;
+    final averageConsistency = consistencyTotal / activeSquad.length;
+    final averageInjuryRisk = injuryRiskTotal / activeSquad.length;
 
     final mentalityAttack = switch (tactics.mentality) {
       Mentality.attacking => 12,
@@ -92,13 +117,53 @@ class MatchRepository {
     };
 
     final fitnessModifier = (averageFitness - 75) * 0.4;
-    final moraleModifier = (averageMorale - 70) * 0.25;
+    var moraleModifier = (averageMorale - 70) * 0.25;
     final disciplinePenalty = (100 - averageConsistency) * 0.2;
     final injuryPenalty = (averageInjuryRisk - 20) * 0.15;
     final homeAdvantage = isHome ? 7 : 0;
 
-    final offense = (averageAbility * 0.55) + (averageFinishing * 0.35) + (averagePassing * 0.25) + mentalityAttack + formationAttack + fitnessModifier + moraleModifier + homeAdvantage - disciplinePenalty;
-    final defense = (averageAbility * 0.45) + (averageTackling * 0.4) + (averageComposure * 0.25) + mentalityDefense + formationDefense + fitnessModifier + moraleModifier + homeAdvantage - injuryPenalty;
+    // Captain and penalty taker influence
+    PlayerFM? captain;
+    PlayerFM? penaltyTaker;
+    for (final p in squad) {
+      if (tactics.captainId.isNotEmpty && p.id == tactics.captainId)
+        captain = p;
+      if (tactics.penaltyTakerId.isNotEmpty && p.id == tactics.penaltyTakerId)
+        penaltyTaker = p;
+      if (captain != null && penaltyTaker != null) break;
+    }
+
+    if (captain != null) {
+      // Leadership from captain increases team morale slightly
+      final leadership = ((captain.composure + captain.determination) / 2) - 50;
+      moraleModifier += leadership * 0.12; // small morale boost
+    }
+
+    var offense = (averageAbility * 0.55) +
+        (averageFinishing * 0.35) +
+        (averagePassing * 0.25) +
+        mentalityAttack +
+        formationAttack +
+        fitnessModifier +
+        moraleModifier +
+        homeAdvantage -
+        disciplinePenalty;
+
+    if (penaltyTaker != null) {
+      // Good penalty taker slightly increases scoring potential (finishing + composure)
+      final penBonus =
+          ((penaltyTaker.finishing + penaltyTaker.composure) / 2) - 50;
+      offense += penBonus * 0.15;
+    }
+    final defense = (averageAbility * 0.45) +
+        (averageTackling * 0.4) +
+        (averageComposure * 0.25) +
+        mentalityDefense +
+        formationDefense +
+        fitnessModifier +
+        moraleModifier +
+        homeAdvantage -
+        injuryPenalty;
 
     return _TeamMetrics(
       offense: offense.round().clamp(20, 120),
@@ -110,7 +175,8 @@ class MatchRepository {
     );
   }
 
-  int _calculateGoals(_TeamMetrics offenseMetrics, _TeamMetrics defenseMetrics) {
+  int _calculateGoals(
+      _TeamMetrics offenseMetrics, _TeamMetrics defenseMetrics) {
     final raw = (offenseMetrics.offense / max(defenseMetrics.defense, 1)) * 1.5;
     final variability = (_random.nextDouble() * 2) - 0.8;
     final score = (raw + variability).clamp(0, 6).round();
@@ -124,7 +190,13 @@ class MatchRepository {
     return ((homeBase / (homeBase + awayBase)) * 100).round();
   }
 
-  List<String> _buildCommentary(int homeScore, int awayScore, String homeTeamName, String awayTeamName, _TeamMetrics homeMetrics, _TeamMetrics awayMetrics) {
+  List<String> _buildCommentary(
+      int homeScore,
+      int awayScore,
+      String homeTeamName,
+      String awayTeamName,
+      _TeamMetrics homeMetrics,
+      _TeamMetrics awayMetrics) {
     final commentary = <String>[];
     commentary.add('Maç başladı: $homeTeamName vs $awayTeamName');
 

@@ -1,6 +1,6 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:easy_localization/easy_localization.dart';
 
 import '../models/club_info.dart';
 import '../providers/game_provider.dart';
@@ -35,7 +35,7 @@ class _SetupClubScreenState extends State<SetupClubScreen> {
       if (!mounted) return;
       setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Kulüp bilgileri yüklenirken hata oluştu: ${error.toString()}')),
+        SnackBar(content: Text('clubSetup.errors.load'.tr(namedArgs: {'error': error.toString()}))),
       );
     }
   }
@@ -51,7 +51,7 @@ class _SetupClubScreenState extends State<SetupClubScreen> {
       if (!mounted) return;
       setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Kulüp oluşturulurken hata oluştu: ${error.toString()}')),
+        SnackBar(content: Text('clubSetup.errors.create'.tr(namedArgs: {'error': error.toString()}))),
       );
     }
   }
@@ -66,7 +66,7 @@ class _SetupClubScreenState extends State<SetupClubScreen> {
       if (!mounted) return;
       setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Kulüp seçilirken hata oluştu: ${error.toString()}')),
+        SnackBar(content: Text('clubSetup.errors.claim'.tr(namedArgs: {'error': error.toString()}))),
       );
     }
   }
@@ -87,7 +87,7 @@ class _SetupClubScreenState extends State<SetupClubScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: Text('Kulüp Kurulumu'.tr())),
+      appBar: AppBar(title: Text('clubSetup.title'.tr())),
       body: Padding(
         padding: const EdgeInsets.all(24),
         child: _isLoading
@@ -97,41 +97,41 @@ class _SetupClubScreenState extends State<SetupClubScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Text(
-                      'Aktif bir kulübünüz bulunamadı. Aşağıdan bir kulüp seçin veya kendinize özel bir kulüp oluşturun.'.tr(),
+                      'clubSetup.description'.tr(),
                       style: theme.textTheme.bodyLarge,
                     ),
                     const SizedBox(height: 24),
                     if (_availableClubs.isNotEmpty) ...[
-                      Text('Mevcut Kulüpler'.tr(), style: theme.textTheme.titleMedium),
+                      Text('clubSetup.existingClubs'.tr(), style: theme.textTheme.titleMedium),
                       const SizedBox(height: 12),
                       ..._availableClubs.map((club) {
                         return Card(
                           margin: const EdgeInsets.only(bottom: 12),
                           child: ListTile(
                             title: Text(club.name),
-                            subtitle: Text('Bütçe: ${club.budget}'),
+                            subtitle: Text('clubSetup.budget'.tr(namedArgs: {'budget': club.budget.toString()})),
                             trailing: ElevatedButton(
                               onPressed: () => _claimClub(club.id),
-                              child: Text('Seç'.tr()),
+                              child: Text('clubSetup.select'.tr()),
                             ),
                           ),
                         );
                       }),
                       const Divider(height: 32),
                     ],
-                    Text('Yeni Kulüp Oluştur'.tr(), style: theme.textTheme.titleMedium),
+                    Text('clubSetup.newClub'.tr(), style: theme.textTheme.titleMedium),
                     const SizedBox(height: 12),
                     TextField(
                       controller: _clubNameController,
                       decoration: InputDecoration(
-                        labelText: 'Kulüp Adı'.tr(),
+                        labelText: 'clubSetup.clubName'.tr(),
                         border: const OutlineInputBorder(),
                       ),
                     ),
                     const SizedBox(height: 16),
                     ElevatedButton(
                       onPressed: _createClub,
-                      child: Text('Kulüp Oluştur'.tr()),
+                      child: Text('clubSetup.create'.tr()),
                     ),
                   ],
                 ),

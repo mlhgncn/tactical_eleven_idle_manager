@@ -13,6 +13,7 @@ class TacticsScreen extends StatefulWidget {
 
 class _TacticsScreenState extends State<TacticsScreen> {
   late Tactics _tactics;
+  bool _isSaving = false;
 
   @override
   void didChangeDependencies() {
@@ -34,11 +35,26 @@ class _TacticsScreenState extends State<TacticsScreen> {
     );
   }
 
-  void _saveTactics() {
-    context.read<GameProvider>().saveTactics(_tactics);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Taktikler kaydedildi.')),
-    );
+  Future<void> _saveTactics() async {
+    if (_isSaving) return;
+    setState(() => _isSaving = true);
+
+    try {
+      await context.read<GameProvider>().saveTactics(_tactics);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Taktikler Supabase\'e kaydedildi.')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Taktikler kaydedilemedi: $error')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
+    }
   }
 
   @override
@@ -169,8 +185,14 @@ class _TacticsScreenState extends State<TacticsScreen> {
                     ),
                     const SizedBox(height: 24),
                     ElevatedButton(
-                      onPressed: _saveTactics,
-                      child: const Text('Taktikleri Kaydet'),
+                      onPressed: _isSaving ? null : _saveTactics,
+                      child: _isSaving
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Text('Taktikleri Kaydet'),
                     ),
                   ],
                 ),

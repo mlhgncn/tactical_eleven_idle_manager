@@ -57,6 +57,7 @@ void main() {
         awayXg: 1.1,
         homePossession: 60,
         commentary: ['Match won'],
+        events: [],
       );
 
       // === EKONOMI HESAPLAMASI ===
@@ -110,6 +111,7 @@ void main() {
         awayXg: 2.1,
         homePossession: 35,
         commentary: ['Match lost'],
+        events: [],
       );
 
       final stadiumRevenue = (testClub.stadiumCapacity * testClub.ticketPrice) ~/ 3;

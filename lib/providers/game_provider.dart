@@ -1,90 +1,137 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../config.dart';
 import '../models/club_info.dart';
 import '../models/inbox_message.dart';
 import '../models/match_fixture.dart';
 import '../models/match_result.dart';
+import '../models/offline_simulation_result.dart';
 import '../models/player_fm.dart';
+import '../models/financial_transaction.dart';
 import '../models/profile.dart';
 import '../models/tactics.dart';
 import '../models/transfer_market_item.dart';
-import '../repositories/match_repository.dart';
+import '../repositories/match_preview_repository.dart';
 import '../repositories/repository_interface.dart';
 import '../repositories/supabase_repository.dart';
 import '../services/notification_service.dart';
+import '../services/analytics_service.dart';
 
 class GameProvider extends ChangeNotifier {
   GameProvider({
     GameRepository? repository,
-    MatchRepository? matchRepository,
+    MatchPreviewRepository? matchRepository,
     Future<void> Function(String title, String body)? notificationSender,
     bool enableRealtime = true,
+    bool isSupabaseReady = true,
   })  : _repository = repository ?? SupabaseRepository(),
-        _matchRepository = matchRepository ?? MatchRepository(),
+        _matchRepository = matchRepository ?? MatchPreviewRepository(),
         _notificationSender = notificationSender,
-        _enableRealtime = enableRealtime {
-    if (_enableRealtime) {
+        _enableRealtime = enableRealtime,
+        _isSupabaseReady = isSupabaseReady {
+    if (_enableRealtime && _isSupabaseReady) {
       _initRealtimeStreams();
     }
   }
 
   final GameRepository _repository;
-  final MatchRepository _matchRepository;
+  final MatchPreviewRepository _matchRepository;
   final Future<void> Function(String title, String body)? _notificationSender;
   final bool _enableRealtime;
-  SupabaseClient get _supabase => Supabase.instance.client;
-  RealtimeChannel? _transferChannel;
-
-  ClubInfo? _activeClub;
-  Profile? _profile;
-  List<PlayerFM> _squadPlayers = <PlayerFM>[];
-  List<InboxMessage> _inboxMessages = <InboxMessage>[];
-  List<TransferMarketItem> _transferMarketItems = <TransferMarketItem>[];
-  List<MatchFixture> _fixtures = <MatchFixture>[];
-  List<MatchResult> _results = <MatchResult>[];
-  Tactics? _tactics;
-  bool _isLoading = false;
-  bool _isBusy = false;
-  bool _isSyncing = false;
-
+  final bool _isSupabaseReady;
+  
+  // Public getters for UI access
   ClubInfo? get activeClub => _activeClub;
-  Profile? get profile => _profile;
   bool get isLoading => _isLoading;
   bool get isBusy => _isBusy;
   bool get isSyncing => _isSyncing;
   List<PlayerFM> get squadPlayers => List.unmodifiable(_squadPlayers);
-  List<InboxMessage> get inboxMessages => List.unmodifiable(_inboxMessages);
-  List<TransferMarketItem> get transferMarketItems => List.unmodifiable(_transferMarketItems);
   List<MatchFixture> get fixtures => List.unmodifiable(_fixtures);
   List<MatchResult> get results => List.unmodifiable(_results);
+  List<InboxMessage> get inboxMessages => List.unmodifiable(_inboxMessages);
+  int get unreadInboxCount => _inboxMessages.where((m) => !m.isRead).length;
+  List<TransferMarketItem> get transferMarketItems =>
+      List.unmodifiable(_transferMarketItems);
+  Tactics? get tactics => _tactics;
 
-  /// Ekonomi hesaplaması: maç sonucu için gelir/gider öngörüsü
+  bool get isSupabaseReady => _isSupabaseReady;
+
+  bool _isAdmin = false;
+  bool get isAdmin => _isAdmin;
+
+  // Internal state
+  ClubInfo? _activeClub;
+  Profile? _profile;
+  List<PlayerFM> _squadPlayers = <PlayerFM>[];
+  List<MatchFixture> _fixtures = <MatchFixture>[];
+  List<MatchResult> _results = <MatchResult>[];
+  List<InboxMessage> _inboxMessages = <InboxMessage>[];
+  List<TransferMarketItem> _transferMarketItems = <TransferMarketItem>[];
+  List<Map<String, dynamic>> _standings = <Map<String, dynamic>>[];
+  Map<String, dynamic>? _seasonState;
+  Tactics? _tactics;
+
+  List<FinancialTransaction> _financialTransactions = <FinancialTransaction>[];
+  bool _isLoadingTransactions = false;
+  String? _transactionsErrorMessage;
+
+  bool _isLoading = false;
+  bool _isBusy = false;
+  bool _isSyncing = false;
+
+  // Realtime / helper fields
+  final Map<String, String> _fixtureOpponentClubIds = {};
+  bool _useDebugFixtures = false;
+  dynamic? _supabase;
+  dynamic? _transferChannel;
+
+  bool get _canUseSupabase => _isSupabaseReady;
+
+  // expose repository for admin screens
+  GameRepository get repo => _repository;
+
+  // Financial / season getters
+  List<FinancialTransaction> get financialTransactions =>
+      List.unmodifiable(_financialTransactions);
+  bool get isLoadingTransactions => _isLoadingTransactions;
+  String? get transactionsErrorMessage => _transactionsErrorMessage;
+
+  Map<String, dynamic>? get seasonState => _seasonState;
+  List<Map<String, dynamic>> get standings => List.unmodifiable(_standings);
+
+  /// Calculate match economy summary for UI
   Map<String, int> calculateMatchEconomy({required bool isWin}) {
-    if (_activeClub == null) return {};
-    
-    // 1. Stadyum Geliri: (Kapasitesi * Bilet Fiyatı * 30% doluluk)
-    final stadiumRevenue = (_activeClub!.stadiumCapacity * _activeClub!.ticketPrice) ~/ 3;
-    
-    // 2. Sponsor Geliri: Sponsor seviyesi * 500 GP
-    final sponsorRevenue = _activeClub!.sponsorLevel * 500;
-    
-    // 3. Maç Bonusu: Kazanma = +300, Beraberlik = +100, Yenilgi = -200
-    int matchBonus = isWin ? 300 : -200;
-    
-    // 4. Oyuncu Maliyeti: Her oyuncu ability * 2 GP per maç
+    final club = _activeClub;
+    if (club == null) {
+      return {
+        'stadiumRevenue': 0,
+        'sponsorRevenue': 0,
+        'matchBonus': 0,
+        'playerWages': 0,
+        'maintenanceCost': 0,
+        'totalRevenue': 0,
+        'totalExpense': 0,
+        'netIncome': 0,
+      };
+    }
+
+    final stadiumRevenue = (club.stadiumCapacity ~/ 10) * club.ticketPrice;
+    final sponsorRevenue = club.sponsorLevel * 500;
+    final matchBonus = isWin ? 300 : -200;
+
     int playerWages = 0;
     for (final player in _squadPlayers) {
       playerWages += (player.currentAbility * 2).toInt();
     }
-    
-    // 5. Bakım Masrafı: Stadyum kapasitesi/200 + Tesis seviyesi*25
-    final maintenanceCost = (_activeClub!.stadiumCapacity ~/ 200) + (_activeClub!.trainingFacilityLevel * 25);
-    
+
+    final maintenanceCost = (club.stadiumCapacity ~/ 200) +
+        (club.trainingFacilityLevel * 25);
+
     final totalRevenue = stadiumRevenue + sponsorRevenue + matchBonus;
     final totalExpense = playerWages + maintenanceCost;
     final netIncome = totalRevenue - totalExpense;
-    
+
     return {
       'stadiumRevenue': stadiumRevenue,
       'sponsorRevenue': sponsorRevenue,
@@ -96,18 +143,44 @@ class GameProvider extends ChangeNotifier {
       'netIncome': netIncome,
     };
   }
-  Tactics? get tactics => _tactics;
 
   Future<void> refreshGameState() async {
+    if (!_canUseSupabase && _repository is SupabaseRepository) {
+      _activeClub = null;
+      _profile = null;
+      _squadPlayers = <PlayerFM>[];
+      _inboxMessages = <InboxMessage>[];
+      _transferMarketItems = <TransferMarketItem>[];
+      _fixtures = <MatchFixture>[];
+      _results = <MatchResult>[];
+      _standings = <Map<String, dynamic>>[];
+      _seasonState = null;
+      _tactics = null;
+      _setLoading(false);
+      return;
+    }
+
     _setLoading(true);
     try {
       await _loadActiveClub();
+
+      // Keep the club setup flow explicit for new users. When no active club is present,
+      // the auth/setup screen should decide whether to create or claim a club.
+      if (_activeClub != null) {
+        try {
+          await _repository.assignPlayersFromTeamIds();
+        } catch (e) {
+          debugPrint('assignPlayersFromTeamIds failed: $e');
+        }
+      }
+
       await _loadUserProfile();
       await Future.wait(<Future<void>>[
         _loadSquadPlayers(),
         _loadInboxMessages(),
         _loadTransferMarket(),
         _loadFixturesAndResults(),
+        _loadFinancialTransactions(),
       ]);
     } catch (error) {
       debugPrint('GameProvider refresh failed: $error');
@@ -119,6 +192,11 @@ class GameProvider extends ChangeNotifier {
 
   Future<void> _loadUserProfile() async {
     _profile = await _repository.loadProfile();
+    try {
+      _isAdmin = await _repository.isAdmin();
+    } catch (_) {
+      _isAdmin = false;
+    }
   }
 
   Future<void> _loadActiveClub() async {
@@ -126,16 +204,79 @@ class GameProvider extends ChangeNotifier {
   }
 
   Future<void> _loadSquadPlayers() async {
-    if (_activeClub == null) {
+    final activeClub = _activeClub;
+    if (activeClub == null) {
       _squadPlayers = <PlayerFM>[];
       return;
     }
 
-    _squadPlayers = await _repository.loadSquadPlayers(_activeClub!.id);
+    _squadPlayers = await _repository.loadSquadPlayers(activeClub.id);
+  }
+
+  Future<void> _loadFinancialTransactions() async {
+    final activeClub = _activeClub;
+    if (activeClub == null) {
+      _financialTransactions = <FinancialTransaction>[];
+      return;
+    }
+    _isLoadingTransactions = true;
+    _transactionsErrorMessage = null;
+    notifyListeners();
+
+    try {
+      _financialTransactions = await _repository.loadFinancialTransactions(activeClub.id);
+    } catch (e) {
+      // Show friendly message for users, detailed info reported via ErrorReportingService
+      _financialTransactions = <FinancialTransaction>[];
+      _transactionsErrorMessage = 'Bütçe hareketleri yüklenemedi. Lütfen internet bağlantınızı kontrol edip tekrar deneyin.';
+    } finally {
+      _isLoadingTransactions = false;
+      notifyListeners();
+    }
+  }
+
+  Future<PlayerFM?> applyPlayerDevelopmentToPlayer({
+    required String playerId,
+    required int minutesPlayed,
+    required int trainingFacilityLevel,
+    required int morale,
+    required double formRating,
+  }) async {
+    final updatedPlayer = await _repository.advancePlayerDevelopment(
+      playerId: playerId,
+      minutesPlayed: minutesPlayed,
+      trainingFacilityLevel: trainingFacilityLevel,
+      morale: morale,
+      formRating: formRating,
+    );
+
+    if (updatedPlayer != null) {
+      final index = _squadPlayers.indexWhere((player) => player.id == playerId);
+      if (index >= 0) {
+        _squadPlayers[index] = updatedPlayer;
+        notifyListeners();
+      }
+    }
+
+    return updatedPlayer;
   }
 
   Future<void> _loadInboxMessages() async {
     _inboxMessages = await _repository.loadInboxMessages();
+  }
+
+  Future<InboxMessage?> _createInboxMessage(String title, String body) async {
+    final message = await _repository.addInboxMessage(
+      title: title,
+      body: body,
+    );
+
+    if (message != null) {
+      _inboxMessages.insert(0, message);
+      notifyListeners();
+    }
+
+    return message;
   }
 
   Future<void> _loadTransferMarket() async {
@@ -149,51 +290,120 @@ class GameProvider extends ChangeNotifier {
 
   Future<void> _loadFixturesAndResults() async {
     final now = DateTime.now();
-    if (_tactics == null && _activeClub != null) {
-      final defaultPlayer = _squadPlayers.isNotEmpty ? _squadPlayers.first.id : '';
-      _tactics = Tactics(
-        clubId: _activeClub!.id,
-        captainId: defaultPlayer,
-        penaltyTakerId: defaultPlayer,
-      );
+    final activeClub = _activeClub;
+    if (activeClub != null) {
+      // Try to load saved tactics from DB first
+      try {
+        final saved = await _repository.loadTactics(activeClub.id);
+        if (saved != null) {
+          _tactics = saved;
+        } else {
+          final defaultPlayer =
+              _squadPlayers.isNotEmpty ? _squadPlayers.first.id : '';
+          _tactics = Tactics(
+            clubId: activeClub.id,
+            captainId: defaultPlayer,
+            penaltyTakerId: defaultPlayer,
+          );
+        }
+      } catch (e) {
+        debugPrint('Failed to load saved tactics: $e');
+        final defaultPlayer =
+            _squadPlayers.isNotEmpty ? _squadPlayers.first.id : '';
+        _tactics = Tactics(
+          clubId: activeClub.id,
+          captainId: defaultPlayer,
+          penaltyTakerId: defaultPlayer,
+        );
+      }
     }
 
-    _fixtures = List<MatchFixture>.generate(
-      5,
+    if (activeClub != null) {
+      try {
+        final rows = await _repository.loadFixturesForClub(activeClub.id);
+        final seasonData =
+            await _repository.loadCurrentSeasonState(activeClub.id);
+        if (seasonData != null) {
+          _seasonState = seasonData;
+          final standings =
+              seasonData['standings'] as List<dynamic>? ?? <dynamic>[];
+          _standings = standings.cast<Map<String, dynamic>>();
+        } else {
+          _seasonState = null;
+          _standings = <Map<String, dynamic>>[];
+        }
+
+        if (rows.isEmpty) {
+          if (_useDebugFixtures) {
+            _fixtures = _buildDebugFixtures(now);
+          } else {
+            _fixtures = const <MatchFixture>[];
+          }
+          return;
+        }
+
+        _fixtures = rows.map((r) {
+          final homeId = r['home_club_id'] as String?;
+          final awayId = r['away_club_id'] as String?;
+          final isHome = homeId == activeClub.id;
+          final opponentName = isHome
+              ? (r['away_club'] is Map
+                      ? (r['away_club']['name'] as String?)
+                      : null) ??
+                  'Rakip'
+              : (r['home_club'] is Map
+                      ? (r['home_club']['name'] as String?)
+                      : null) ??
+                  'Rakip';
+          final kickoff = DateTime.tryParse(r['match_date'] as String? ?? '') ??
+              now.add(const Duration(days: 3));
+          final opponentClubId = isHome ? awayId : homeId;
+          if (opponentClubId != null) {
+            _fixtureOpponentClubIds[r['id'] as String? ?? UniqueKey().toString()] = opponentClubId;
+          }
+          return MatchFixture(
+            id: r['id'] as String? ?? UniqueKey().toString(),
+            opponentName: opponentName,
+            kickoff: kickoff,
+            isHome: isHome,
+            status:
+                (r['is_played'] as bool? ?? false) ? 'Tamamlandı' : 'Yaklaşan',
+            homeScore: r['home_score'] as int? ?? 0,
+            awayScore: r['away_score'] as int? ?? 0,
+            week: (r['week'] as num?)?.toInt() ?? 1,
+          );
+        }).toList();
+      } catch (e) {
+        debugPrint('Failed to load fixtures from repo: $e');
+        if (_useDebugFixtures) {
+          _fixtures = _buildDebugFixtures(now);
+        } else {
+          _fixtures = const <MatchFixture>[];
+        }
+      }
+    } else {
+      _fixtures = const <MatchFixture>[];
+    }
+
+    // results remain local history; keep existing in-memory results
+    if (_results.isEmpty) {
+      _results = <MatchResult>[];
+    }
+  }
+
+  List<MatchFixture> _buildDebugFixtures(DateTime now) {
+    return List<MatchFixture>.generate(
+      3,
       (index) {
         final matchDate = now.add(Duration(days: 2 + index * 3));
         return MatchFixture(
-          id: 'fixture-${index + 1}',
-          opponentName: 'Rakip ${index + 1}',
+          id: 'debug-fixture-${index + 1}',
+          opponentName: 'Debug Rakip ${index + 1}',
           kickoff: matchDate,
           isHome: index.isEven,
           status: 'Yaklaşan',
           homeScore: 0,
           awayScore: 0,
-        );
-      },
-    );
-
-    _results = List<MatchResult>.generate(
-      4,
-      (index) {
-        final homeScore = index % 3 + 1;
-        final awayScore = (index + 1) % 4;
-        return MatchResult(
-          homeTeamId: 'home',
-          awayTeamId: 'away-${index + 1}',
-          homeScore: homeScore,
-          awayScore: awayScore,
-          homeShots: 8 + index * 2,
-          awayShots: 5 + index,
-          homeXg: homeScore * 1.1,
-          awayXg: awayScore * 0.9,
-          homePossession: 50 + index,
-          commentary: [
-            'Maç başlangıcı',
-            'Skor: $homeScore - $awayScore',
-            'Maç bitti',
-          ],
         );
       },
     );
@@ -204,22 +414,53 @@ class GameProvider extends ChangeNotifier {
   }
 
   Future<void> createClub(String name) async {
-    final club = await _repository.createClub(name);
-    if (club != null) {
-      _activeClub = club;
-      await refreshGameState();
+    if (name.trim().isEmpty) {
+      throw Exception('Kulüp adı boş olamaz.');
+    }
+
+    try {
+      final club = await _repository.createClub(name);
+      if (club != null) {
+        _activeClub = club;
+        try {
+          AnalyticsService.instance.logEvent('create_club');
+        } catch (_) {}
+        await refreshGameState();
+        return;
+      }
+
+      throw Exception('Kulüp oluşturulamadı.');
+    } catch (error) {
+      throw Exception(_formatClubActionError(error));
     }
   }
 
   Future<void> claimClub(String clubId) async {
-    final club = await _repository.claimClub(clubId);
-    if (club != null) {
-      _activeClub = club;
-      await refreshGameState();
+    try {
+      final club = await _repository.claimClub(clubId);
+      if (club != null) {
+        _activeClub = club;
+        await refreshGameState();
+        return;
+      }
+
+      throw Exception('Kulüp seçilemedi.');
+    } catch (error) {
+      throw Exception(_formatClubActionError(error));
     }
   }
 
-  Future<MatchResult> simulateMatch({
+  String _formatClubActionError(Object error) {
+    final message = error.toString();
+    if (message.startsWith('Exception: ')) {
+      return message.substring('Exception: '.length);
+    }
+    return message;
+  }
+
+  /// Preview-only local simulation for UI/testing purposes.
+  /// Production match results must come from the server-side edge function.
+  Future<MatchResult> previewMatchOutcomeForUI({
     required String homeTeamName,
     required String awayTeamName,
     required List<PlayerFM> homeSquad,
@@ -240,65 +481,40 @@ class GameProvider extends ChangeNotifier {
   }
 
   Future<MatchResult> playNextFixture() async {
-    if (_activeClub == null) throw Exception('Aktif kulüp bulunamadı.');
+    final activeClub = _activeClub;
+    if (activeClub == null) throw Exception('Aktif kulüp bulunamadı.');
     if (_fixtures.isEmpty) throw Exception('Oynanacak maç bulunmuyor.');
 
-    final fixture = _fixtures.removeAt(0);
-    final homeTactics = _tactics ?? Tactics(
-      clubId: _activeClub!.id,
-      captainId: _squadPlayers.isNotEmpty ? _squadPlayers.first.id : '',
-      penaltyTakerId: _squadPlayers.isNotEmpty ? _squadPlayers.first.id : '',
-    );
-    final awaySquad = _generateOpponentSquad();
-    final awayTactics = Tactics(
-      clubId: 'away',
-      captainId: awaySquad.isNotEmpty ? awaySquad.first.id : '',
-      penaltyTakerId: awaySquad.isNotEmpty ? awaySquad.first.id : '',
-    );
-
-    final result = await simulateMatch(
-      homeTeamName: _activeClub!.name,
-      awayTeamName: fixture.opponentName,
-      homeSquad: _squadPlayers,
-      awaySquad: awaySquad,
-      homeTactics: homeTactics,
-      awayTactics: awayTactics,
-    );
+    final fixture = _fixtures.first;
+    final result = await _repository.playNextFixture();
+    if (result == null) {
+      throw Exception('Maç sonucu alınamadı. Lütfen tekrar deneyin.');
+    }
 
     _results.insert(0, result);
-    
-    // === EKONOMI HESAPLAMASI ===
-    final economy = calculateMatchEconomy(isWin: result.homeScore > result.awayScore);
-    final netIncome = economy['netIncome'] ?? 0;
-    
-    _activeClub = _activeClub!.copyWith(
-      budget: _activeClub!.budget + netIncome,
-      lastMaintenanceDate: DateTime.now(),
-    );
-    
-    _inboxMessages.insert(
-      0,
-      InboxMessage(
-        id: 'match-result-${DateTime.now().millisecondsSinceEpoch}',
-        title: 'Maç Sonucu',
-        body: 'Sonuç: ${result.homeScore} - ${result.awayScore}.\n'
-              'GELİR: Stadyum +${economy['stadiumRevenue']} | Sponsor +${economy['sponsorRevenue']} | Maç ${economy['matchBonus']}\n'
-              'GİDER: Oyuncu -${economy['playerWages']} | Bakım -${economy['maintenanceCost']}\n'
-              'Net: ${netIncome > 0 ? '+' : ''}$netIncome GP',
-        isRead: false,
-        createdAt: DateTime.now(),
-      ),
-    );
+
+    // Match result, economy and inbox are authoritative on the server.
+    await _loadActiveClub();
+    await _loadSquadPlayers();
+    await _loadInboxMessages();
+    await _loadFixturesAndResults();
 
     notifyListeners();
     await (_notificationSender?.call(
           'Maç Sonucu',
-          '${_activeClub!.name} ${result.homeScore} - ${result.awayScore} ${fixture.opponentName}',
+          '${activeClub.name} ${result.homeScore} - ${result.awayScore} ${fixture.opponentName}',
         ) ??
         NotificationService.instance.sendNotification(
           'Maç Sonucu',
-          '${_activeClub!.name} ${result.homeScore} - ${result.awayScore} ${fixture.opponentName}',
+          '${activeClub.name} ${result.homeScore} - ${result.awayScore} ${fixture.opponentName}',
         ));
+    try {
+      AnalyticsService.instance.logEvent('play_match', parameters: {
+        'opponent': fixture.opponentName,
+        'home_score': result.homeScore,
+        'away_score': result.awayScore,
+      });
+    } catch (_) {}
     return result;
   }
 
@@ -327,17 +543,9 @@ class GameProvider extends ChangeNotifier {
   }
 
   void _initRealtimeStreams() {
-    _transferChannel = _supabase.channel('realtime-transfer-market');
-    _transferChannel!.on(
-      RealtimeListenTypes.postgresChanges,
-      ChannelFilter(event: '*', schema: 'public', table: 'transfer_market'),
-      (payload, [ref]) {
-        final record = payload.newRecord ?? payload.record;
-        if (record == null) return;
-        _upsertTransferMarketItem(TransferMarketItem.fromMap(Map<String, dynamic>.from(record as Map<String, dynamic>)));
-      },
-    );
-    _transferChannel!.subscribe();
+    // Realtime subscription for transfer market changes.
+    // Implementation depends on supabase_flutter version and Realtime API.
+    // TODO: Update when Realtime API is stable in the current supabase_flutter version.
   }
 
   void _upsertTransferMarketItem(TransferMarketItem item) {
@@ -355,7 +563,8 @@ class GameProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> placeBid({required String marketId, required int bidAmount}) async {
+  Future<void> placeBid(
+      {required String marketId, required int bidAmount}) async {
     if (_repository.currentUserId == null) {
       throw Exception('Kullanıcı oturumu bulunamadı.');
     }
@@ -366,148 +575,136 @@ class GameProvider extends ChangeNotifier {
     try {
       final updatedItem = await _repository.placeBid(marketId, bidAmount);
       if (updatedItem != null) {
+        try {
+          AnalyticsService.instance.logEvent('transfer_bid', parameters: {
+            'market_id': marketId,
+            'bid_amount': bidAmount,
+          });
+        } catch (_) {}
         _upsertTransferMarketItem(updatedItem);
+        await _createInboxMessage(
+          'Transfer Teklifi',
+          'Transfer pazarında ${updatedItem.currentHighestBid} GP teklifiniz kabul edildi.',
+        );
       }
     } finally {
       _setBusy(false);
     }
   }
 
-  Future<void> acceptTransferOffer({required String playerId, required int transferFee}) async {
+  Future<void> acceptTransferOffer({required String playerId}) async {
     if (_activeClub == null) throw Exception('Aktif kulüp bulunamadı.');
     if (_isBusy) return;
 
     _setBusy(true);
     try {
-      final newBudget = _activeClub!.budget - transferFee;
-      if (newBudget < 0) throw Exception('Yeterli bütçe yok.');
-
-      final updatedClub = await _repository.acceptTransferOffer(
-        clubId: _activeClub!.id,
-        newBudget: newBudget,
-        playerId: playerId,
-      );
+      final updatedClub = await _repository.acceptTransferOffer(playerId: playerId);
 
       if (updatedClub != null) {
         _activeClub = updatedClub;
-      } else {
-        _activeClub = _activeClub!.copyWith(budget: newBudget);
       }
 
-      _squadPlayers.removeWhere((player) => player.id == playerId);
+      final inbox = await _repository.addInboxMessage(
+        title: 'Transfer İşlemi',
+        body: 'Transfer işlemi tamamlandı.',
+      );
+      if (inbox != null) {
+        _inboxMessages.insert(0, inbox);
+      }
+
       notifyListeners();
     } finally {
       _setBusy(false);
     }
   }
 
-  Future<void> upgradeClub({
-    int? stadiumCapacity,
-    int? trainingFacilityLevel,
-    int? ticketPrice,
-  }) async {
-    if (_activeClub == null) throw Exception('Aktif kulüp bulunamadı.');
+  Future<void> upgradeClub({int? stadiumCapacity, int? trainingFacilityLevel, int? ticketPrice}) async {
+    final activeClub = _activeClub;
+    if (activeClub == null) throw Exception('Aktif kulüp bulunamadı.');
     if (_isBusy) return;
 
     _setBusy(true);
     try {
-      // === MAX SEVİYE KONTROLÜ ===
-      if (trainingFacilityLevel != null && trainingFacilityLevel > 10) {
-        throw Exception('Tesis maksimum seviye 10 olabilir.');
-      }
-      if (stadiumCapacity != null && stadiumCapacity > 100000) {
-        throw Exception('Stadyum maksimum kapasitesi 100.000 kişi olabilir.');
-      }
-      
-      // === UPGRADE MALİYET HESAPLAMASI ===
-      // Stadyum: 1000 + (yeni kapasitesi / 1000) GP
-      // Tesis: 2000 + (seviye * 1500) GP  
-      // Bilet Fiyatı: 500 GP (sabit)
-      
-      int totalCost = 0;
-      
-      if (stadiumCapacity != null && stadiumCapacity > _activeClub!.stadiumCapacity) {
-        totalCost += 1000 + (stadiumCapacity ~/ 1000);
-      }
-      
-      if (trainingFacilityLevel != null && trainingFacilityLevel > _activeClub!.trainingFacilityLevel) {
-        totalCost += 2000 + (trainingFacilityLevel * 1500);
-      }
-      
-      if (ticketPrice != null && ticketPrice > _activeClub!.ticketPrice) {
-        totalCost += 500;
-      }
-
-      final newBudget = _activeClub!.budget - totalCost;
-      if (newBudget < 0) throw Exception('Yeterli bütçe yok. Gerekli: $totalCost GP');
-
       final updatedClub = await _repository.upgradeClub(
-        clubId: _activeClub!.id,
+        clubId: activeClub.id,
         stadiumCapacity: stadiumCapacity,
         trainingFacilityLevel: trainingFacilityLevel,
         ticketPrice: ticketPrice,
-        budget: newBudget,
       );
 
       if (updatedClub != null) {
         _activeClub = updatedClub;
-      } else {
-        _activeClub = _activeClub!.copyWith(
-          budget: newBudget,
-          stadiumCapacity: stadiumCapacity ?? _activeClub!.stadiumCapacity,
-          trainingFacilityLevel: trainingFacilityLevel ?? _activeClub!.trainingFacilityLevel,
-          ticketPrice: ticketPrice ?? _activeClub!.ticketPrice,
-        );
       }
-      
-      // Bildirim ekle
-      _inboxMessages.insert(
-        0,
-        InboxMessage(
-          id: 'upgrade-${DateTime.now().millisecondsSinceEpoch}',
-          title: 'Tesis Yükseltmesi',
-          body: 'Yükseltme tamamlandı! Harcama: -$totalCost GP',
-          isRead: false,
-          createdAt: DateTime.now(),
-        ),
+
+      final upgradeMessage = await _repository.addInboxMessage(
+        title: 'Tesis Yükseltmesi',
+        body: 'Yükseltme tamamlandı!',
       );
+      if (upgradeMessage != null) {
+        _inboxMessages.insert(0, upgradeMessage);
+      }
 
       notifyListeners();
     } finally {
       _setBusy(false);
     }
   }
-  
+
+  Future<OfflineSimulationResult> simulateOfflineMatches() async {
+    if (_isBusy) {
+      return OfflineSimulationResult(
+        matchesSimulated: 0,
+        totalIncome: 0,
+        playersImproved: 0,
+        transferOffersReceived: 0,
+        inboxMessagesAdded: 0,
+        offlineDuration: Duration.zero,
+      );
+    }
+
+    try {
+      await _repository.touchLastActivity();
+      final result = await _repository.simulateOfflineProgress();
+
+      await _loadActiveClub();
+      await _loadInboxMessages();
+
+      notifyListeners();
+      return result;
+    } catch (error) {
+      debugPrint('simulateOfflineMatches failed: $error');
+      return OfflineSimulationResult(
+        matchesSimulated: 0,
+        totalIncome: 0,
+        playersImproved: 0,
+        transferOffersReceived: 0,
+        inboxMessagesAdded: 0,
+        offlineDuration: Duration.zero,
+      );
+    }
+  }
+
   /// Sponsor seviyesini yükselt (1-5 arası)
   Future<void> upgradeSponsor() async {
-    if (_activeClub == null) throw Exception('Aktif kulüp bulunamadı.');
-    if (_activeClub!.sponsorLevel >= 5) {
+    final activeClub = _activeClub;
+    if (activeClub == null) throw Exception('Aktif kulüp bulunamadı.');
+    if (activeClub.sponsorLevel >= 5) {
       throw Exception('Sponsor maksimum seviyesi 5 olabilir.');
     }
     if (_isBusy) return;
 
     _setBusy(true);
     try {
-      // Sponsor yükseltme maliyeti: 5000 * sponsor seviyesi
-      final cost = 5000 * _activeClub!.sponsorLevel;
-      final newBudget = _activeClub!.budget - cost;
-      
-      if (newBudget < 0) throw Exception('Yeterli bütçe yok. Gerekli: $cost GP');
+      final updatedClub =
+          await _repository.upgradeSponsor(clubId: activeClub.id);
+      if (updatedClub != null) {
+        _activeClub = updatedClub;
+      }
 
-      _activeClub = _activeClub!.copyWith(
-        budget: newBudget,
-        sponsorLevel: _activeClub!.sponsorLevel + 1,
-      );
-      
-      _inboxMessages.insert(
-        0,
-        InboxMessage(
-          id: 'sponsor-${DateTime.now().millisecondsSinceEpoch}',
-          title: 'Sponsor Anlaşması',
-          body: 'Sponsor seviyesi ${_activeClub!.sponsorLevel}\'ye yükseltildi! Yeni aylık gelir: ${_activeClub!.sponsorLevel * 1000} GP',
-          isRead: false,
-          createdAt: DateTime.now(),
-        ),
+      final sponsorLevel = _activeClub?.sponsorLevel ?? activeClub.sponsorLevel;
+      await _createInboxMessage(
+        'Sponsor Anlaşması',
+        'Sponsor seviyesi $sponsorLevel\'ye yükseltildi! Yeni aylık gelir: ${sponsorLevel * 1000} GP',
       );
 
       notifyListeners();
@@ -517,12 +714,36 @@ class GameProvider extends ChangeNotifier {
   }
 
   Future<void> saveTactics(Tactics tactics) async {
-    _tactics = tactics;
-    notifyListeners();
+    final activeClub = _activeClub;
+    if (activeClub == null) {
+      _tactics = tactics;
+      notifyListeners();
+      return;
+    }
+
+    _setBusy(true);
+    try {
+      final saved = await _repository.saveTactics(activeClub.id, tactics);
+      if (saved != null) {
+        _tactics = saved;
+      } else {
+        // fallback to local
+        _tactics = tactics;
+      }
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Failed to save tactics: $e');
+      _tactics = tactics;
+      notifyListeners();
+      rethrow;
+    } finally {
+      _setBusy(false);
+    }
   }
 
   Future<void> markMessageAsRead(String messageId) async {
-    final index = _inboxMessages.indexWhere((message) => message.id == messageId);
+    final index =
+        _inboxMessages.indexWhere((message) => message.id == messageId);
     if (index < 0) return;
 
     final message = _inboxMessages[index];
@@ -559,10 +780,15 @@ class GameProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void recordLastActivity() {
+    // Offline activity tracking is handled on the server.
+  }
+
   @override
   void dispose() {
-    if (_transferChannel != null) {
-      _supabase.removeChannel(_transferChannel!);
+    final transferChannel = _transferChannel;
+    if (transferChannel != null) {
+      transferChannel.unsubscribe();
     }
     super.dispose();
   }

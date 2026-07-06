@@ -15,6 +15,10 @@
   int determination;
   int consistency;
   int injuryProneness;
+  double formRating;
+  String? injuryType;
+  int injuryDurationWeeks;
+  bool isSuspended;
 
   PlayerFM({
     required this.id,
@@ -33,6 +37,10 @@
     this.determination = 10,
     this.consistency = 10,
     this.injuryProneness = 5,
+    this.formRating = 0.0,
+    this.injuryType,
+    this.injuryDurationWeeks = 0,
+    this.isSuspended = false,
   });
 
   factory PlayerFM.fromMap(Map<String, dynamic> map) {
@@ -53,6 +61,56 @@
       determination: (map['determination'] as num).toInt(),
       consistency: (map['consistency'] as num).toInt(),
       injuryProneness: (map['injury_proneness'] as num).toInt(),
+      formRating: (map['form_rating'] as num?)?.toDouble() ?? 0.0,
+      injuryType: map['injury_type'] as String?,
+      injuryDurationWeeks: (map['injury_duration_weeks'] as num?)?.toInt() ?? 0,
+      isSuspended: (map['is_suspended'] as bool?) ?? false,
     );
+  }
+
+  bool get hasActiveInjury {
+    return injuryDurationWeeks > 0 || isSuspended || (injuryType?.trim().isNotEmpty ?? false);
+  }
+
+  String get injuryDisplayLabel {
+    final parts = <String>[];
+    if (injuryType != null && injuryType!.trim().isNotEmpty) {
+      parts.add(injuryType!.trim());
+    }
+    if (injuryDurationWeeks > 0) {
+      parts.add('$injuryDurationWeeks hafta');
+    }
+    if (isSuspended) {
+      parts.add('cezalı');
+    }
+    return parts.isEmpty ? 'Sakatlık yok' : parts.join(' • ');
+  }
+
+  int get salary {
+    return currentAbility * 250 + (potentialAbility - currentAbility) * 100 + age * 10;
+  }
+
+  int get marketValue {
+    return currentAbility * 15000 + potentialAbility * 5000 + age * 100;
+  }
+
+  double get starRating {
+    return (currentAbility / 20).clamp(0, 5).toDouble();
+  }
+
+  String get salaryLabel => '$salary GP';
+
+  String get marketValueLabel => '${(marketValue / 1000).round()}K GP';
+
+  String get positionGroup {
+    final upper = position.toUpperCase();
+    if (upper == 'GK') return 'GK';
+    const defPositions = ['CB', 'LB', 'RB', 'WB', 'LWB', 'RWB', 'FB'];
+    if (defPositions.any(upper.startsWith)) return 'DEF';
+    const midPositions = ['CM', 'CDM', 'CAM', 'LM', 'RM', 'DM', 'AM'];
+    if (midPositions.any(upper.startsWith)) return 'MID';
+    const fwPositions = ['ST', 'CF', 'LW', 'RW', 'LF', 'RF'];
+    if (fwPositions.any(upper.startsWith)) return 'FOR';
+    return 'All';
   }
 }

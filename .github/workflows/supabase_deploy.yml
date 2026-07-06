@@ -52,6 +52,36 @@ PY
           echo "Applying supabase/schema.sql to $NEW_DB_URL"
           psql "$NEW_DB_URL" -v ON_ERROR_STOP=1 -f supabase/schema.sql
 
+      - name: Apply migrations folder
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          echo "Resolving Supabase host to IPv4 and applying SQL files in supabase/migrations"
+          PYCODE=$(cat <<'PY'
+import os, urllib.parse, socket
+u = os.environ['SUPABASE_DB_URL']
+p = urllib.parse.urlparse(u)
+host = p.hostname
+port = str(p.port) if p.port else ''
+addrs = socket.getaddrinfo(host, None, socket.AF_INET)
+ipv4 = addrs[0][4][0]
+userinfo = ''
+if p.username:
+    userinfo = p.username
+    if p.password:
+        userinfo += ':' + p.password
+userinfo = (userinfo + '@') if userinfo else ''
+netloc = userinfo + ipv4 + ((':' + port) if port else '')
+new = urllib.parse.urlunparse((p.scheme, netloc, p.path, p.params, p.query, p.fragment))
+print(new)
+PY
+)
+          NEW_DB_URL=$(python3 -c "$PYCODE")
+          for f in $(ls supabase/migrations/*.sql | sort); do
+            echo "Applying $f to $NEW_DB_URL"
+            psql "$NEW_DB_URL" -v ON_ERROR_STOP=1 -f "$f"
+          done
+
       - name: Apply seed data
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
@@ -79,3 +109,48 @@ PY
           NEW_DB_URL=$(python3 -c "$PYCODE")
           echo "Applying supabase/seed_masked_data.sql to $NEW_DB_URL"
           psql "$NEW_DB_URL" -v ON_ERROR_STOP=1 -f supabase/seed_masked_data.sql
+
+      - name: Verify RLS & policies
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          echo "Resolving Supabase host to IPv4 and verifying RLS and policies"
+          PYCODE=$(cat <<'PY'
+import os, urllib.parse, socket
+u = os.environ['SUPABASE_DB_URL']
+p = urllib.parse.urlparse(u)
+host = p.hostname
+port = str(p.port) if p.port else ''
+addrs = socket.getaddrinfo(host, None, socket.AF_INET)
+ipv4 = addrs[0][4][0]
+userinfo = ''
+if p.username:
+    userinfo = p.username
+    if p.password:
+        userinfo += ':' + p.password
+userinfo = (userinfo + '@') if userinfo else ''
+netloc = userinfo + ipv4 + ((':' + port) if port else '')
+new = urllib.parse.urlunparse((p.scheme, netloc, p.path, p.params, p.query, p.fragment))
+print(new)
+PY
+)
+          NEW_DB_URL=$(python3 -c "$PYCODE")
+          psql "$NEW_DB_URL" -v ON_ERROR_STOP=1 <<'SQL'
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_class WHERE relname='financial_transactions' AND relrowsecurity) THEN
+    RAISE EXCEPTION 'financial_transactions row level security NOT enabled';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='financial_transactions') THEN
+    RAISE EXCEPTION 'No policies defined for financial_transactions';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_class WHERE relname='admin_users' AND relrowsecurity) THEN
+    RAISE EXCEPTION 'admin_users row level security NOT enabled';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='admin_users') THEN
+    RAISE EXCEPTION 'No policies defined for admin_users';
+  END IF;
+END;
+$$;
+SELECT 'RLS and policies verification completed';
+SQL

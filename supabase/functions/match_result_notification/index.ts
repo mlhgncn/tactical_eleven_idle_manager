@@ -39,28 +39,52 @@ function formatBody(teamType: 'Ev Sahibi' | 'Deplasman', homeScore: number, away
   return `Maç sonucu: ${teamType} ${scoreText}, ${result}!`;
 }
 
-async function getOwnerFcmToken(clubId: string) {
+async function getOwnerFcmToken(clubId: string): Promise<string | null> {
   const { data: club, error: clubError } = await supabase
     .from('clubs')
-    .select('owner_id')
+    .select('id, user_id')
     .eq('id', clubId)
-    .single();
+    .maybeSingle();
 
-  if (clubError || !club?.owner_id) {
-    throw new Error(`Kulüp sahibi bulunamadı: ${clubError?.message ?? 'owner_id yok'}`);
+  if (clubError) {
+    console.error('match_result_notification: clubs lookup failed', {
+      clubId,
+      error: clubError.message,
+    });
+    return null;
+  }
+
+  const ownerUserId = typeof club?.user_id === 'string' ? club.user_id : null;
+  if (!ownerUserId) {
+    console.warn('match_result_notification: club has no owner user_id', { clubId });
+    return null;
   }
 
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
     .select('fcm_token')
-    .eq('id', club.owner_id as string)
-    .single();
+    .eq('id', ownerUserId)
+    .maybeSingle();
 
-  if (profileError || !profile?.fcm_token) {
-    throw new Error(`FCM token bulunamadı: ${profileError?.message ?? 'token yok'}`);
+  if (profileError) {
+    console.error('match_result_notification: profile lookup failed', {
+      clubId,
+      ownerUserId,
+      error: profileError.message,
+    });
+    return null;
   }
 
-  return profile.fcm_token as string;
+  const token = typeof profile?.fcm_token === 'string' ? profile.fcm_token : null;
+  if (!token) {
+    console.warn('match_result_notification: no FCM token found for owner', {
+      clubId,
+      ownerUserId,
+    });
+    return null;
+  }
+
+  return token;
 }
 
 async function sendPushNotification(token: string, title: string, body: string, data: Record<string, string>) {
@@ -96,38 +120,71 @@ serve(async (req: Request) => {
       return createResponse({ error: 'Gerekli alanlar eksik veya hatalı.' }, 400);
     }
 
-    const messages = [];
+    const notifications: Promise<void>[] = [];
     const title = 'Maç Sonucu';
 
     const homeNotificationBody = formatBody('Ev Sahibi', homeScore, awayScore);
     const homeToken = await getOwnerFcmToken(homeClubId);
-    messages.push(
-      sendPushNotification(homeToken, title, homeNotificationBody, {
-        match_id: matchId ?? '',
-        team: 'home',
-        home_score: String(homeScore),
-        away_score: String(awayScore),
-      }),
-    );
-
-    if (awayClubId) {
-      const awayNotificationBody = formatBody('Deplasman', homeScore, awayScore);
-      const awayToken = await getOwnerFcmToken(awayClubId);
-      messages.push(
-        sendPushNotification(awayToken, title, awayNotificationBody, {
+    if (homeToken) {
+      notifications.push(
+        sendPushNotification(homeToken, title, homeNotificationBody, {
           match_id: matchId ?? '',
-          team: 'away',
+          team: 'home',
           home_score: String(homeScore),
           away_score: String(awayScore),
         }),
       );
+    } else {
+      console.warn('match_result_notification: skipped home club notification', { matchId, clubId: homeClubId });
     }
 
-    await Promise.all(messages);
+    if (awayClubId) {
+      const awayNotificationBody = formatBody('Deplasman', homeScore, awayScore);
+      const awayToken = await getOwnerFcmToken(awayClubId);
+      if (awayToken) {
+        notifications.push(
+          sendPushNotification(awayToken, title, awayNotificationBody, {
+            match_id: matchId ?? '',
+            team: 'away',
+            home_score: String(homeScore),
+            away_score: String(awayScore),
+          }),
+        );
+      } else {
+        console.warn('match_result_notification: skipped away club notification', { matchId, clubId: awayClubId });
+      }
+    }
 
-    return createResponse({ message: 'Bildirimler başarıyla gönderildi.' });
+    if (notifications.length === 0) {
+      return createResponse({
+        message: 'Bildirim gönderilecek kullanıcı bulunamadı.',
+        sentCount: 0,
+        failedCount: 0,
+      });
+    }
+
+    const results = await Promise.allSettled(notifications);
+    const failedCount = results.filter((result) => result.status === 'rejected').length;
+
+    if (failedCount > 0) {
+      console.error('match_result_notification: some notifications failed', {
+        matchId,
+        failedCount,
+        errors: results
+          .filter((result): result is PromiseRejectedResult => result.status === 'rejected')
+          .map((result) => String(result.reason)),
+      });
+    }
+
+    return createResponse({
+      message: failedCount > 0 ? 'Bazı bildirimler gönderilemedi.' : 'Bildirimler başarıyla gönderildi.',
+      sentCount: notifications.length - failedCount,
+      failedCount,
+    });
   } catch (error) {
-    console.error('Bildirim hatası:', error);
-    return createResponse({ error: `Bildirim gönderilemedi: ${String(error)}` }, 500);
+    console.error('match_result_notification: unexpected error', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return createResponse({ error: 'Bildirim gönderilemedi.' }, 500);
   }
 });

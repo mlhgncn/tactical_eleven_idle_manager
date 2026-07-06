@@ -26,14 +26,31 @@ class DevelopmentScreen extends StatelessWidget {
               child: ListTile(
                 title: const Text('Stadyum Kapasitesi'),
                 subtitle: Text('${club.stadiumCapacity}'),
-                trailing: ElevatedButton(
-                  onPressed: provider.isBusy
-                      ? null
-                      : () async {
-                          await context.read<GameProvider>().upgradeClub(stadiumCapacity: club.stadiumCapacity + 500);
-                        },
-                  child: const Text('Yükselt (500 GP)'),
-                ),
+                trailing: Builder(builder: (ctx) {
+                  final newCapacity = club.stadiumCapacity + 500;
+                  final cost = 1000 + (newCapacity ~/ 1000);
+                  return ElevatedButton(
+                    onPressed: provider.isBusy
+                        ? null
+                        : () async {
+                            try {
+                              await context.read<GameProvider>().upgradeClub(stadiumCapacity: newCapacity);
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Stadyum başarıyla yükseltildi.'), backgroundColor: Colors.green),
+                                );
+                              }
+                            } catch (e) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
+                                );
+                              }
+                            }
+                          },
+                    child: Text('Yükselt ($cost GP)'),
+                  );
+                }),
               ),
             ),
             const SizedBox(height: 12),
@@ -41,14 +58,31 @@ class DevelopmentScreen extends StatelessWidget {
               child: ListTile(
                 title: const Text('Tesis Seviyesi'),
                 subtitle: Text('${club.trainingFacilityLevel}'),
-                trailing: ElevatedButton(
-                  onPressed: provider.isBusy
-                      ? null
-                      : () async {
-                          await context.read<GameProvider>().upgradeClub(trainingFacilityLevel: club.trainingFacilityLevel + 1);
-                        },
-                  child: const Text('Yükselt (500 GP)'),
-                ),
+                trailing: Builder(builder: (ctx) {
+                  final newLevel = club.trainingFacilityLevel + 1;
+                  final cost = 2000 + (newLevel * 1500);
+                  return ElevatedButton(
+                    onPressed: provider.isBusy
+                          ? null
+                          : () async {
+                              try {
+                                await context.read<GameProvider>().upgradeClub(trainingFacilityLevel: newLevel);
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Tesis başarıyla yükseltildi.'), backgroundColor: Colors.green),
+                                  );
+                                }
+                              } catch (e) {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
+                                  );
+                                }
+                              }
+                            },
+                    child: Text('Yükselt ($cost GP)'),
+                  );
+                }),
               ),
             ),
             const SizedBox(height: 12),
@@ -56,14 +90,31 @@ class DevelopmentScreen extends StatelessWidget {
               child: ListTile(
                 title: const Text('Bilet Fiyatı'),
                 subtitle: Text('${club.ticketPrice} GP'),
-                trailing: ElevatedButton(
-                  onPressed: provider.isBusy
-                      ? null
-                      : () async {
-                          await context.read<GameProvider>().upgradeClub(ticketPrice: club.ticketPrice + 10);
-                        },
-                  child: const Text('Yükselt (500 GP)'),
-                ),
+                trailing: Builder(builder: (ctx) {
+                  final newPrice = club.ticketPrice + 10;
+                  final cost = 500; // fixed in upgradeClub
+                  return ElevatedButton(
+                    onPressed: provider.isBusy
+                          ? null
+                          : () async {
+                              try {
+                                await context.read<GameProvider>().upgradeClub(ticketPrice: newPrice);
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Bilet fiyatı başarıyla güncellendi.'), backgroundColor: Colors.green),
+                                  );
+                                }
+                              } catch (e) {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
+                                  );
+                                }
+                              }
+                            },
+                    child: Text('Yükselt ($cost GP)'),
+                  );
+                }),
               ),
             ),
             const SizedBox(height: 24),

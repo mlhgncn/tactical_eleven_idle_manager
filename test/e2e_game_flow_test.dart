@@ -2,12 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:provider/provider.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:tactical_eleven_idle_manager/models/club_info.dart';
 import 'package:tactical_eleven_idle_manager/models/inbox_message.dart';
 import 'package:tactical_eleven_idle_manager/models/player_fm.dart';
 import 'package:tactical_eleven_idle_manager/models/profile.dart';
 import 'package:tactical_eleven_idle_manager/models/transfer_market_item.dart';
+import 'package:tactical_eleven_idle_manager/models/tactics.dart';
+import 'package:tactical_eleven_idle_manager/models/match_result.dart';
+import 'package:tactical_eleven_idle_manager/models/offline_simulation_result.dart';
+import 'package:tactical_eleven_idle_manager/models/financial_transaction.dart';
 import 'package:tactical_eleven_idle_manager/providers/game_provider.dart';
 import 'package:tactical_eleven_idle_manager/repositories/repository_interface.dart';
 import 'package:tactical_eleven_idle_manager/screens/auth_screen.dart';
@@ -162,22 +165,42 @@ class _FakeGameRepository implements GameRepository {
   Future<List<InboxMessage>> loadInboxMessages() async => <InboxMessage>[];
 
   @override
+  Future<InboxMessage?> addInboxMessage({required String title, required String body}) async => null;
+
+  @override
+  Future<List<Map<String, dynamic>>> loadFixturesForClub(String clubId) async => <Map<String, dynamic>>[];
+
+  @override
+  Future<Map<String, dynamic>?> awardAdReward({required String rewardType, int? amount}) async => null;
+
+  @override
   Future<List<TransferMarketItem>> loadTransferMarket() async => <TransferMarketItem>[];
+
+  @override
+  Future<Tactics?> loadTacticsForClub(String clubId) async => null;
+
+  @override
+  Future<Tactics?> loadTactics(String clubId) async => null;
+
+  @override
+  Future<Tactics?> saveTacticsForClub(String clubId, Tactics tactics) async => null;
+
+  @override
+  Future<Tactics?> saveTactics(String clubId, Tactics tactics) async => null;
 
   @override
   Future<TransferMarketItem?> placeBid(String marketId, int bidAmount) async => null;
 
   @override
-  Future<ClubInfo?> acceptTransferOffer({required String clubId, required int newBudget, required String playerId}) async => null;
+  Future<ClubInfo?> acceptTransferOffer({required String playerId}) async => null;
 
   @override
   Future<bool> markMessageAsRead(String messageId) async => true;
 
   @override
-  Future<ClubInfo?> upgradeClub({required String clubId, int? stadiumCapacity, int? trainingFacilityLevel, int? ticketPrice, required int budget}) async {
+  Future<ClubInfo?> upgradeClub({required String clubId, int? stadiumCapacity, int? trainingFacilityLevel, int? ticketPrice}) async {
     if (_activeClub == null) return null;
     final updatedClub = _activeClub!.copyWith(
-      budget: budget,
       stadiumCapacity: stadiumCapacity ?? _activeClub!.stadiumCapacity,
       trainingFacilityLevel: trainingFacilityLevel ?? _activeClub!.trainingFacilityLevel,
       ticketPrice: ticketPrice ?? _activeClub!.ticketPrice,
@@ -187,32 +210,94 @@ class _FakeGameRepository implements GameRepository {
   }
 
   @override
+  Future<ClubInfo?> upgradeSponsor({required String clubId}) async {
+    if (_activeClub == null) return null;
+    final nextLevel = (_activeClub!.sponsorLevel + 1).clamp(1, 5);
+    final updatedClub = _activeClub!.copyWith(sponsorLevel: nextLevel);
+    _activeClub = updatedClub;
+    return updatedClub;
+  }
+
+  @override
   Future<void> updateFcmToken(String token) async {}
+
+  @override
+  Future<void> updateNotificationPreference(bool enabled) async {}
+
+  @override
+  Future<bool?> loadNotificationPreference() async => null;
+
+  @override
+  Future<void> assignPlayersFromTeamIds() async {}
+
+  @override
+  Future<PlayerFM?> advancePlayerDevelopment({
+    required String playerId,
+    required int minutesPlayed,
+    required int trainingFacilityLevel,
+    required int morale,
+    required double formRating,
+  }) async => null;
+
+  @override
+  Future<void> touchLastActivity() async {}
+
+  @override
+  Future<Map<String, dynamic>?> loadCurrentSeasonState(String clubId) async => null;
+
+  @override
+  Future<List<Map<String, dynamic>>> loadLeagueStandings(String seasonId) async => <Map<String, dynamic>>[];
+  @override
+  Future<List<FinancialTransaction>> loadFinancialTransactions(String clubId) async => <FinancialTransaction>[];
+
+  @override
+  Future<MatchResult?> playNextFixture() async => null;
+
+  @override
+  Future<OfflineSimulationResult> simulateOfflineProgress() async {
+    return OfflineSimulationResult(
+      matchesSimulated: 0,
+      totalIncome: 0,
+      playersImproved: 0,
+      transferOffersReceived: 0,
+      inboxMessagesAdded: 0,
+      offlineDuration: Duration.zero,
+    );
+  }
+
+  // Admin RPC stubs to satisfy GameRepository interface for widget tests
+  @override
+  Future<bool> isAdmin() async => true;
+
+  @override
+  Future<List<Map<String, dynamic>>> adminListUsers() async => <Map<String, dynamic>>[];
+
+  @override
+  Future<List<Map<String, dynamic>>> adminListClubs() async => <Map<String, dynamic>>[];
+
+  @override
+  Future<Map<String, dynamic>?> adminCreateGiftCode({required String code, required int amount, DateTime? expiresAt}) async => null;
+
+  @override
+  Future<Map<String, dynamic>?> adminCreateEvent({required String title, required String body, DateTime? startsAt, DateTime? endsAt}) async => null;
+
+  @override
+  Future<Map<String, dynamic>?> adminSendPush({required String title, required String body, String? targetUserId}) async => null;
+
+  @override
+  Future<Map<String, dynamic>?> adminUpdatePlayer({required String playerId, String? name, String? position, int? currentAbility, int? potentialAbility, int? age}) async => null;
 }
 
 void main() {
   testWidgets('Full game flow from zero account to match play', (WidgetTester tester) async {
-    print('[TEST 1] Starting test');
+    print('TEST: start');
     TestWidgetsFlutterBinding.ensureInitialized();
-    print('[TEST 2] Binding initialized');
     
-    // Initialize Supabase with dummy values for test
-    print('[TEST] Initializing Supabase for test');
-    try {
-      await Supabase.initialize(
-        url: 'https://test.supabase.co',
-        anonKey: 'test-anon-key',
-      );
-      print('[TEST] Supabase initialized');
-    } catch (e) {
-      print('[TEST] Supabase already initialized or error: $e');
-    }
+    // Skip Supabase initialization in widget tests to avoid network and plugin issues.
+    print('TEST: skipping Supabase.initialize in widget test');
     
     // Skip EasyLocalization.ensureInitialized() since it blocks in tests
     // We provide a fixed locale in the widget tree instead
-    print('[TEST 3] Skipping EasyLocalization init');
-
-    print('[TEST 4] Creating test data');
     final fakeAuth = _FakeAuthRepository();
     final fakeRepo = _FakeGameRepository();
     
@@ -229,7 +314,7 @@ void main() {
       enableRealtime: false,
     );
 
-    print('[TEST 5] About to pump widget');
+    print('TEST: pumpWidget start');
     await tester.pumpWidget(
       EasyLocalization(
         startLocale: const Locale('tr'),
@@ -250,80 +335,49 @@ void main() {
         ),
       ),
     );
+    print('TEST: pumpWidget completed');
 
-    print('[TEST 6] Widget pumped, about to settle');
-    await tester.pumpAndSettle(const Duration(seconds: 5));
-    print('[TEST 7] Settled, finding login button');
+    await tester.pumpAndSettle(const Duration(seconds: 2));
+    print('TEST: pumpAndSettle completed');
     expect(find.text('Giriş Yap'), findsWidgets);
 
     await tester.tap(find.text('Henüz hesabın yok mu? Kayıt ol'));
-    await tester.pumpAndSettle();
+    await tester.pumpAndSettle(const Duration(seconds: 1));
     expect(find.text('Kayıt Ol'), findsWidgets);
 
-    print('[TEST] Finding TextFormFields...');
     final textFields = find.byType(TextFormField);
     expect(textFields, findsWidgets);
-    print('[TEST] Found ${textFields.evaluate().length} TextFormFields');
     
-    // Find and fill the email field (first TextFormField)
-    print('[TEST] Entering email...');
     await tester.enterText(textFields.at(0), 'test@example.com');
-    await tester.pumpAndSettle(const Duration(milliseconds: 500));
-    
-    // Find and fill the password field (second TextFormField)
-    print('[TEST] Entering password...');
     await tester.enterText(textFields.at(1), 'password123');
-    await tester.pumpAndSettle(const Duration(milliseconds: 500));
+    await tester.pumpAndSettle(const Duration(milliseconds: 300));
 
-    print('[TEST] Tapping signup button...');
     await tester.tap(find.widgetWithText(ElevatedButton, 'Kayıt Ol'));
-    print('[TEST] Tapped signup button, settling...');
-    await tester.pumpAndSettle();
-    print('[TEST] Settled after signup');
-    
-    // Debug: print all text widgets to see what's on screen
-    final allText = find.byType(Text);
-    print('[TEST] Total Text widgets: ${allText.evaluate().length}');
-    for (final widget in allText.evaluate()) {
-      if (widget.widget is Text) {
-        print('[TEST] Found text: ${(widget.widget as Text).data}');
-      }
-    }
+    await tester.pumpAndSettle(const Duration(seconds: 1));
     
     expect(find.text('Kulüp Kurulumu'), findsOneWidget);
 
     await tester.enterText(find.byType(TextField), 'Zero Account FC');
     await tester.tap(find.widgetWithText(ElevatedButton, 'Kulüp Oluştur'));
-    print('[TEST] Tapped create club button, settling...');
-    await tester.pumpAndSettle();
-    print('[TEST] Settled after club creation');
-    
-    // Debug: print all text widgets to see what's on screen
-    final allText2 = find.byType(Text);
-    print('[TEST] After club creation, found ${allText2.evaluate().length} Text widgets');
-    for (final widget in allText2.evaluate().take(20)) {
-      if (widget.widget is Text) {
-        print('[TEST] Found text: ${(widget.widget as Text).data}');
-      }
-    }
+    await tester.pumpAndSettle(const Duration(seconds: 1));
 
     expect(find.text('Kulüp Finansları'), findsOneWidget);
     expect(gameProvider.activeClub, isNotNull);
     expect(gameProvider.activeClub!.name, 'Zero Account FC');
 
     await tester.tap(find.text('Kadro'));
-    await tester.pumpAndSettle();
+    await tester.pumpAndSettle(const Duration(milliseconds: 500));
     expect(find.text('Test Player 1'), findsOneWidget);
 
     await tester.tap(find.text('Taktik'));
-    await tester.pumpAndSettle();
+    await tester.pumpAndSettle(const Duration(milliseconds: 500));
     expect(find.text('Taktik Paneli'), findsOneWidget);
     await tester.tap(find.widgetWithText(ElevatedButton, 'Taktikleri Kaydet'));
-    await tester.pumpAndSettle();
+    await tester.pumpAndSettle(const Duration(milliseconds: 500));
 
     final initialBudget = gameProvider.activeClub!.budget;
     await gameProvider.playNextFixture();
-    await tester.pumpAndSettle();
+    await tester.pumpAndSettle(const Duration(milliseconds: 300));
 
     expect(gameProvider.results, isNotEmpty);
     expect(gameProvider.inboxMessages.first.title, 'Maç Sonucu');

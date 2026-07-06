@@ -36,7 +36,7 @@ BEGIN
 
     FOR player IN SELECT * FROM jsonb_array_elements(payload->'players') LOOP
         INSERT INTO public.players(
-            id, club_id, name, created_at,
+            id, club_id, name, position, created_at,
             current_ability, potential_ability, age,
             morale, fitness, finishing, passing, tackling,
             composure, determination, consistency, injury_proneness
@@ -45,6 +45,7 @@ BEGIN
             (player->>'id')::uuid,
             (player->>'team_id')::uuid,
             player->>'masked_name',
+            COALESCE(player->>'original_position', 'ST'),
             now(),
             (player->>'current_ability')::int,
             (player->>'potential_ability')::int,
@@ -58,6 +59,7 @@ BEGIN
         ON CONFLICT (id) DO UPDATE
         SET club_id = excluded.club_id,
             name = excluded.name,
+            position = excluded.position,
             current_ability = excluded.current_ability,
             potential_ability = excluded.potential_ability,
             age = excluded.age,

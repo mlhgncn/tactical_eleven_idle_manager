@@ -2,11 +2,85 @@
   "app": {
     "title": "Tactical Eleven: Idle Manager"
   },
+  "auth": {
+    "login": "Giriş Yap",
+    "signup": "Kayıt Ol",
+    "email": "E-posta",
+    "password": "Şifre",
+    "subtitle": "Menajerlik dünyasına giriş yapmak için e-posta ve şifrenizi kullanın.",
+    "no_account": "Henüz hesabın yok mu? Kayıt ol",
+    "have_account": "Zaten hesabın var mı? Giriş yap",
+    "email_required": "E-posta giriniz.",
+    "email_invalid": "Geçerli bir e-posta adresi giriniz.",
+    "password_required": "Şifre giriniz.",
+    "password_short": "Şifre en az 6 karakter olmalıdır.",
+    "verification_failed": "Kullanıcı doğrulaması tamamlanamadı.",
+    "generic_error": "Hata: {error}"
+  },
+  "settings": {
+    "title": "Ayarlar",
+    "language_notice": "Uygulama dili değiştiğinde tüm metinler güncellenecektir.",
+    "notifications": "Bildirimler",
+    "notifications_desc": "Uygulama bildirimlerini al"
+  },
+  "clubSetup": {
+    "title": "Kulüp Kurulumu",
+    "description": "Aktif bir kulübünüz bulunamadı. Aşağıdan bir kulüp seçin veya kendinize özel bir kulüp oluşturun.",
+    "existingClubs": "Mevcut Kulüpler",
+    "budget": "Bütçe: {budget}",
+    "select": "Seç",
+    "newClub": "Yeni Kulüp Oluştur",
+    "clubName": "Kulüp Adı",
+    "create": "Kulüp Oluştur",
+    "errors": {
+      "load": "Kulüp bilgileri yüklenirken hata oluştu: {error}",
+      "create": "Kulüp oluşturulurken hata oluştu: {error}",
+      "claim": "Kulüp seçilirken hata oluştu: {error}"
+    }
+  },
   "menu": {
     "play": "Oyna",
     "squad": "Kadro",
     "tactics": "Taktik",
     "settings": "Ayarlar"
+  },
+  "navigation": {
+    "finance": "Finans",
+    "squad": "Kadro",
+    "tactics": "Taktik",
+    "transfer": "Transfer",
+    "calendar": "Takvim",
+    "table": "Puan Durumu",
+    "inbox": "Gelen",
+    "manager_panel": "Menajerlik Paneli",
+    "club_prefix": "Kulüp: {name}",
+    "settings_tooltip": "Ayarlar",
+    "logout_tooltip": "Çıkış Yap",
+    "transfer_required": "Transfer pazarına erişmek için önce bir kulüp seçmelisiniz."
+  },
+  "squad": {
+    "title": "Kadro",
+    "transferMarketTooltip": "Transfer Pazarı",
+    "noSquad": "Kadro bulunamadı",
+    "position": "Pozisyon",
+    "noPlayersInPosition": "Bu pozisyonda oyuncu bulunamadı.",
+    "starter": "11",
+    "bench": "Yedek",
+    "age": "Yaş",
+    "ca": "CA",
+    "pa": "PA",
+    "morale": "Mor",
+    "fitness": "Fit",
+    "form": "Form",
+    "salary": "Maaş",
+    "marketValue": "Piyasa",
+    "status": "Durum",
+    "healthy": "Sağlam",
+    "suspended": "Cezalı",
+    "injured": "Sakat",
+    "starting11": "Başlangıç 11",
+    "benchLabel": "Yedek",
+    "transfer": "Transfer"
   },
   "match": {
     "goal": "Gol!",

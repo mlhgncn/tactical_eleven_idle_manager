@@ -1,34 +1,44 @@
-# Generate Masked Players (KaggleHub)
+# tactical_eleven_idle_manager
 
-This script downloads the EA FC 26 player ratings dataset via `kagglehub`, masks
-player and team names to avoid copyright issues, converts EA ratings to
-Football-Manager-style attributes, and writes two JSONs:
+A new Flutter project.
 
-- `sahte_oyuncular_ve_takimlar.json` — masked dataset for the game
-- `gercek_isimler_yamasi.json` — mapping of generated UUIDs to original names
+## Getting Started
 
-Prerequisites
--------------
+This project is a starting point for a Flutter application.
 
-- Python 3.10+ (3.12 recommended)
-- pip install -r requirements.txt
+A few resources to get you started if this is your first Flutter project:
 
-Usage
------
+- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
+- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
+- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
 
-```powershell
-python generate_masked_players_kagglehub.py
+For help getting started with Flutter development, view the
+[online documentation](https://docs.flutter.dev/), which offers tutorials,
+samples, guidance on mobile development, and a full API reference.
+
+## TestFlight (iOS) CI release
+
+Steps to prepare and upload a TestFlight build via CI:
+
+- Add repository secrets (Settings → Secrets → Actions):
+	- `APP_STORE_CONNECT_PRIVATE_KEY_BASE64`, `APP_STORE_CONNECT_KEY_ID`, `APP_STORE_CONNECT_ISSUER_ID`, `APPLE_ID`, `TEAM_ID`, `BUNDLE_ID`
+	- `SUPABASE_URL`, `SUPABASE_ANON_KEY`
+	- `FIREBASE_GOOGLE_SERVICE_INFO_PLIST_BASE64` (base64 of GoogleService-Info.plist)
+	- `REVENUECAT_API_KEY`, `ADMOB_APP_ID`, `ADMOB_INTERSTITIAL_AD_UNIT_ID`, `ADMOB_REWARDED_AD_UNIT_ID`
+	- (optional) `MATCH_GIT_URL` and `MATCH_PASSWORD` for code signing via fastlane match
+
+- Trigger the iOS workflow: Actions → iOS Build & TestFlight → Run workflow
+
+Local Fastlane command (developer machine):
+```bash
+export APP_STORE_CONNECT_PRIVATE_KEY_BASE64=$(base64 -w0 AuthKey_XXXXXX.p8)
+export SUPABASE_URL="https://xyz.supabase.co"
+export SUPABASE_ANON_KEY="your_anon_key"
+# optionally set REVENUECAT_API_KEY and ADMOB_*
+bundle exec fastlane ios beta
 ```
 
-Notes
------
-- The script includes this line as requested:
-
-```python
-import kagglehub
-path = kagglehub.dataset_download("justdhia/ea-sports-fc-26-player-ratings")
-print("Path to dataset files:", path)
-```
-
-- Ensure `kagglehub` is configured with your credentials if required.
-- The script deletes `sahte_oyuncular_ve_takimlar.json` and `gercek_isimler_yamasi.json` at start.
+Notes:
+- CI will decode `FIREBASE_GOOGLE_SERVICE_INFO_PLIST_BASE64` into `ios/Runner/GoogleService-Info.plist` for the build.
+- Keep `SUPABASE_SERVICE_ROLE_KEY` only in server/edge CI and never in mobile app secrets.
+- Ensure `key.properties` is provided on CI for Android signing (not required for TestFlight).
