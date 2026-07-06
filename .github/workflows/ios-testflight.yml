@@ -28,14 +28,25 @@ jobs:
           sudo gem install cocoapods -v 1.15.4 --no-document || true
           pod install --project-directory=ios || true
 
-      - name: Resolve Swift Package Manager dependencies (retry)
+      - name: Prefetch common binary hosts and Resolve SPM dependencies (aggressive retry)
         run: |
           set -e
-          echo "Resolving SPM dependencies (may retry on transient network errors)"
-          for i in 1 2 3; do
-            xcodebuild -resolvePackageDependencies -workspace ios/Runner.xcworkspace -scheme Runner && break || {
-              echo "SPM resolve attempt $i failed, retrying in 10s..."
-              sleep 10
+          echo "Checking network to dl.google.com and prefetching common hosts"
+          for url in "https://dl.google.com" "https://github.com"; do
+            for j in 1 2 3 4 5; do
+              curl -sSfI --max-time 30 "$url" && break || {
+                echo "Network check to $url failed (attempt $j), retrying in 5s..."
+                sleep 5
+              }
+            done
+          done
+
+          echo "Attempting SPM resolve and swift package resolve with retries"
+          for i in 1 2 3 4 5 6; do
+            ( xcodebuild -resolvePackageDependencies -workspace ios/Runner.xcworkspace -scheme Runner && echo SPM_RESOLVED=1 || echo SPM_RESOLVED=0 ) | grep SPM_RESOLVED=1 && break || {
+              echo "SPM resolve attempt $i failed, running swift package resolve and retrying in 20s..."
+              (cd ios && swift package resolve) || true
+              sleep 20
             }
           done
 
@@ -66,10 +77,10 @@ jobs:
         run: |
           set -e
           echo "Building iOS with dart-define values (no codesign)"
-          for i in 1 2 3; do
+          for i in 1 2 3 4 5; do
             flutter build ipa --release --no-skip-install && break || {
-              echo "flutter build attempt $i failed, waiting 20s before retry..."
-              sleep 20
+              echo "flutter build attempt $i failed, waiting $((20*i))s before retry..."
+              sleep $((20*i))
             }
           done
 
