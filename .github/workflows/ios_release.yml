@@ -24,13 +24,11 @@ jobs:
         with:
           xcode-version: latest-stable
 
-      - name: Install Flutter SDK
-        run: |
-          echo "Installing Flutter 3.12.2"
-          git clone --branch 3.12.2 https://github.com/flutter/flutter.git --depth 1 $HOME/flutter
-          echo "$HOME/flutter/bin" >> $GITHUB_PATH
-          export PATH="$HOME/flutter/bin:$PATH"
-          flutter --version
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
 
       - name: Set up Ruby (for fastlane)
         uses: ruby/setup-ruby@v1
@@ -47,19 +45,14 @@ jobs:
       - name: Write GoogleService-Info.plist (if configured)
         if: ${{ secrets.FIREBASE_GOOGLE_SERVICE_INFO_PLIST_BASE64 != '' }}
         run: |
-          echo "$FIREBASE_GOOGLE_SERVICE_INFO_PLIST_BASE64" | base64 --decode > ios/Runner/GoogleService-Info.plist
+          echo "$FIREBASE_PLIST_BASE64" | base64 --decode > ios/Runner/GoogleService-Info.plist
         env:
-          FIREBASE_GOOGLE_SERVICE_INFO_PLIST_BASE64: ${{ secrets.FIREBASE_GOOGLE_SERVICE_INFO_PLIST_BASE64 }}
+          FIREBASE_PLIST_BASE64: ${{ secrets.FIREBASE_GOOGLE_SERVICE_INFO_PLIST_BASE64 }}
 
       - name: Install CocoaPods dependencies
         run: |
           cd ios
           pod install --repo-update
-
-      - name: Install bundler & fastlane
-        run: |
-          gem install bundler || true
-          bundle install || gem install fastlane -NV || true
 
       - name: Build & upload via fastlane
         run: bundle exec fastlane ios beta
@@ -70,6 +63,7 @@ jobs:
           MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
           MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
           MATCH_KEYCHAIN_PASSWORD: ${{ secrets.MATCH_KEYCHAIN_PASSWORD }}
+          MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           TEAM_ID: ${{ secrets.TEAM_ID }}
           BUNDLE_ID: ${{ secrets.BUNDLE_ID }}
@@ -87,222 +81,3 @@ jobs:
           name: Runner-ipa
           path: build/ios/ipa/*.ipa
           retention-days: 14
-name: CI — Analyze, Test, Build (Android + iOS)
-
-on:
-  workflow_dispatch:
-  push:
-    branches: [ main ]
-
-jobs:
-  analyze-and-test:
-    name: Analyze & Test
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: stable
-
-      - name: Cache pub
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.pub-cache
-            .dart_tool/pub
-          key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.yaml') }}
-
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Dart analysis
-        run: flutter analyze --no-fatal-infos || true
-
-      - name: Run unit/widget tests
-        run: flutter test --coverage
-
-      - name: Upload test coverage
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage
-          path: coverage
-
-  android-build:
-    name: Android Build
-    runs-on: ubuntu-latest
-    needs: analyze-and-test
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: stable
-
-      - name: Install deps
-        run: flutter pub get
-
-      - name: Build APK (release)
-        run: flutter build apk --release
-
-      - name: Build App Bundle (AAB)
-        run: flutter build appbundle --release || true
-
-      - name: Upload Android artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: android-build
-          path: build/app/outputs/**/release/*.apk,build/app/outputs/bundle/release/*.aab
-
-  ios-release:
-    name: iOS Build & optional TestFlight
-    runs-on: macos-latest
-    needs: analyze-and-test
-    timeout-minutes: 90
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: stable
-
-      - name: Cache pub
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.pub-cache
-            .dart_tool/pub
-          key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.yaml') }}
-
-      - name: Install Flutter deps
-        run: flutter pub get
-
-      - name: Install CocoaPods
-        run: |
-          sudo gem install cocoapods -v 1.15.4 --no-document || true
-          pod install --project-directory=ios || true
-
-      - name: Prefetch and resolve SPM
-        run: |
-          hosts=("https://dl.google.com" "https://github.com")
-          for host in "${hosts[@]}"; do
-            for i in 1 2 3; do
-              curl -sSfI --max-time 20 "$host" && break || sleep 5
-            done
-          done
-          for i in 1 2 3 4; do
-            xcodebuild -resolvePackageDependencies -workspace ios/Runner.xcworkspace -scheme Runner && break || (cd ios && swift package resolve) || true
-          done
-
-      - name: Import cert & provisioning (optional)
-        env:
-          P12_BASE64: ${{ secrets.P12_BASE64 }}
-          P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
-          MOBILEPROVISION_BASE64: ${{ secrets.MOBILEPROVISION_BASE64 }}
-        run: |
-          set -e
-          if [ -n "$P12_BASE64" ]; then
-            echo "$P12_BASE64" | base64 --decode > /tmp/dist.p12
-            security create-keychain -p build build.keychain
-            security import /tmp/dist.p12 -k ~/Library/Keychains/build.keychain -P "$P12_PASSWORD" -T /usr/bin/codesign || true
-            security list-keychains -s ~/Library/Keychains/build.keychain
-            security default-keychain -s ~/Library/Keychains/build.keychain
-            security unlock-keychain -p build ~/Library/Keychains/build.keychain
-            security set-key-partition-list -S apple-tool:,apple: -s -k build ~/Library/Keychains/build.keychain || true
-          fi
-          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-          if [ -n "$MOBILEPROVISION_BASE64" ]; then
-            echo "$MOBILEPROVISION_BASE64" | base64 --decode > ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision
-          fi
-
-      - name: Build IPA
-        env:
-          FLUTTER_BUILD_NAME: ${{ secrets.FLUTTER_BUILD_NAME }}
-          FLUTTER_BUILD_NUMBER: ${{ secrets.FLUTTER_BUILD_NUMBER }}
-        run: |
-          for i in 1 2 3; do
-            flutter build ipa --release --no-skip-install && break || sleep $((30*i))
-          done
-
-      - name: Install fastlane
-        run: gem install fastlane -NV || true
-
-      - name: Prepare App Store Connect API key (optional)
-        env:
-          APP_STORE_CONNECT_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_KEY_BASE64 }}
-          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
-          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
-        run: |
-          mkdir -p /tmp/asc
-          if [ -n "$APP_STORE_CONNECT_KEY_BASE64" ]; then
-            echo "$APP_STORE_CONNECT_KEY_BASE64" | base64 --decode > /tmp/asc/AuthKey.p8
-            jq -n --arg kid "$APP_STORE_CONNECT_KEY_ID" --arg iss "$APP_STORE_CONNECT_ISSUER_ID" --arg key "$(sed ':a;N;$!ba;s/\n/\\n/g' /tmp/asc/AuthKey.p8)" '{key_id:$kid,issuer_id:$iss,key:$key}' > /tmp/asc/api_key.json
-          fi
-
-      - name: Install bundler and fastlane gems
-        run: |
-          gem install bundler || true
-          bundle install || gem install fastlane -NV || true
-
-      - name: Run fastlane beta (if credentials provided)
-        env:
-          APP_STORE_CONNECT_PRIVATE_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_KEY_BASE64 }}
-          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
-          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
-          MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
-          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
-          APP_IDENTIFIER: ${{ secrets.APP_IDENTIFIER }}
-          BUNDLE_ID: ${{ secrets.APP_IDENTIFIER }}
-          APP_SPECIFIC_PASSWORD: ${{ secrets.APP_SPECIFIC_PASSWORD }}
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-        run: |
-          # Only run fastlane if we have upload credentials
-          if [ -n "$APP_STORE_CONNECT_PRIVATE_KEY_BASE64" ] || [ -n "$APP_SPECIFIC_PASSWORD" ]; then
-            IPA=$(ls build/ios/ipa/*.ipa | head -n1 || true)
-            if [ -z "$IPA" ]; then echo "No IPA found, fastlane lane will build then upload."; fi
-            bundle exec fastlane beta
-          else
-            echo "No App Store Connect credentials provided; skipping fastlane upload."
-          fi
-
-
-      - name: Upload iOS artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: ios-ipa
-          path: build/ios/ipa/*.ipa
-
-  supabase-deploy:
-    name: Supabase Deploy (optional)
-    runs-on: ubuntu-latest
-    needs: analyze-and-test
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install supabase CLI
-        run: |
-          curl -sL https://deb.nodesource.com/setup_18.x | sudo -E bash - || true
-          sudo apt-get install -y build-essential curl || true
-          npm install -g supabase || true
-
-      - name: Run Supabase migrations (if credentials provided)
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
-        run: |
-          set -e
-          if [ -z "$SUPABASE_PROJECT_REF" ] || [ -z "$SUPABASE_ACCESS_TOKEN" ]; then
-            echo "Supabase credentials not provided; skipping migrations."
-            exit 0
-          fi
-          supabase db remote set "$SUPABASE_PROJECT_REF" || true
-          supabase db push --file supabase/schema.sql || true
-
