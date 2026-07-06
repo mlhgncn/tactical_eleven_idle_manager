@@ -1,39 +1,40 @@
 iOS Release (no local Xcode) — Guide
 
-Aşağıdaki adımlar `Tactical Eleven: Idle Manager` uygulaması için Xcode olmadan iOS build/upload işlemlerini CI (GitHub Actions) ile yapmanızı sağlar.
-Aşağıda gerekli adımlar ve GitHub Secrets listesi yer alıyor.
+`Tactical Eleven: Idle Manager` uygulamasının iOS build/imzalama/TestFlight yükleme işlerinin tamamı GitHub Actions'ın macOS runner'ı üzerinde çalışır. Xcode hiçbir zaman sizin bilgisayarınıza kurulmaz — Windows'tan bu depoya push attığınızda ya da workflow'u elle tetiklediğinizde, CI kendi macOS makinesinde Xcode'u kullanarak derler ve imzalar; siz sadece sonucu (TestFlight'taki build'i) görürsünüz.
 
-Gereken GitHub Secrets
-- APP_STORE_CONNECT_KEY_ID: App Store Connect API key id
-- APP_STORE_CONNECT_ISSUER_ID: App Store Connect issuer id
-- APP_STORE_CONNECT_PRIVATE_KEY_BASE64: Base64 ile encode edilmiş .p8 private key
-- MATCH_GIT_URL: (opsiyonel) match sertifika deposu git URL'si
-- MATCH_PASSWORD: (opsiyonel) match repo şifresi
-- BUNDLE_ID: uygulama bundle id (ör. com.yourcompany.tacticaleleven)
-- TEAM_ID: Apple team id
-- APPLE_ID: Apple developer account email
+İki workflow var, ikisi de macOS'ta yalnızca GitHub'ın bulut runner'ında çalışır — **hiçbir aşamada bir Mac'e ihtiyacınız yok**, kiralık Mac servisi de gerekmiyor:
 
-Adımlar (kısaca)
+1. `.github/workflows/ios_match_setup.yml` — **bir kerelik** kurulum. Apple Developer hesabınızda bir Distribution sertifikası + App Store provisioning profile oluşturur ve bunları şifreli biçimde `MATCH_GIT_URL` deposuna yazar. Yanlışlıkla tetiklenmesin diye `workflow_dispatch` girdisine "YES" yazmanızı zorunlu kılar.
+2. `.github/workflows/ios_release.yml` — asıl release workflow'u. `main`/`master`'a her push'ta ya da elle tetiklendiğinde çalışır:
+   - **Analyze & Test** (ubuntu, hızlı) — `flutter analyze` + `flutter test` başarısız olursa build hiç başlamaz.
+   - **Build IPA and upload to TestFlight** (macos-15) — Flutter + CocoaPods kurar, `match`'i **salt okunur** modda çalıştırıp (1)'de oluşturulan sertifika/profili çeker, `fastlane ios beta` lane'i ile derler ve TestFlight'a yükler.
+
+Gereken GitHub Secrets (tam liste: [GITHUB_SECRETS.md](GITHUB_SECRETS.md))
+- APP_STORE_CONNECT_KEY_ID / APP_STORE_CONNECT_ISSUER_ID / APP_STORE_CONNECT_PRIVATE_KEY_BASE64: App Store Connect API key. Hem TestFlight yüklemesi hem de match'in Apple Developer Portal'a girişi için kullanılır — Apple ID şifresi veya 2FA kodu **hiç gerekmez**.
+- MATCH_GIT_URL / MATCH_PASSWORD: sertifika/profil deposu (aşağıya bakın)
+- BUNDLE_ID, TEAM_ID, APPLE_ID (APPLE_ID sadece etiketleme amaçlı, kimlik doğrulaması API key ile yapılıyor)
+
+Adımlar (hepsi tarayıcıdan + GitHub Actions'tan yapılır)
 1) App Store Connect API Key oluşturun
-   - App Store Connect → Users and Access → Keys → + → Issuer ID ve Key ID not alın, .p8 dosyasını indirin.
-   - .p8 dosyasını base64'e çevirin:
+   - App Store Connect (web) → Users and Access → Integrations → App Store Connect API → + → **Admin** yetkisiyle bir key oluşturun (sertifika oluşturmak için Admin rolü gerekiyor; Developer/App Manager rolündeki key'ler match'in cert/profile oluşturma adımını reddeder). Issuer ID ve Key ID'yi not alın, `.p8` dosyasını indirin (yalnızca bir kez indirilebilir).
+   - `.p8` dosyasını base64'e çevirin (PowerShell, Mac gerekmez):
+     ```powershell
+     [Convert]::ToBase64String([IO.File]::ReadAllBytes("AuthKey_XXXXXX.p8"))
+     ```
 
-```bash
-base64 -i AuthKey_XXX.p8 | pbcopy
-# veya
-base64 AuthKey_XXX.p8 > authkey.base64
-```
+2) match için boş bir private repo oluşturun (GitHub web arayüzünden, ör. `tactical-eleven-signing`). Bu repoyu bu proje reposundan farklı, ayrı bir private repo olarak açın.
+   - Eğer bu repo aynı GitHub hesabında ama bu projenin reposundan farklıysa, CI'nin ona push/pull edebilmesi için bir **Personal Access Token** (Settings → Developer settings → Fine-grained tokens; sadece o signing reposuna `Contents: Read and write` izni yeterli) oluşturup `MATCH_GIT_BASIC_AUTHORIZATION` secret'ına `base64("kullaniciadi:TOKEN")` olarak koyun.
+   - `MATCH_GIT_URL` = o reponun HTTPS URL'si (ör. `https://github.com/<user>/tactical-eleven-signing.git`).
+   - `MATCH_PASSWORD` = match'in dosyaları şifrelemek için kullanacağı, sizin belirleyeceğiniz güçlü bir parola (bir yere not edin, kaybederseniz mevcut sertifikaları tekrar okuyamazsınız).
 
-2) GitHub Secrets ekleyin
-   - Repo → Settings → Secrets → New repository secret; yukarıdaki değişkenleri ekleyin.
+3) Yukarıdaki tüm secret'ları GitHub Secrets'a ekleyin: Repo → Settings → Secrets and variables → Actions → New repository secret ([GITHUB_SECRETS.md](GITHUB_SECRETS.md) listesine göre).
 
-3) (Opsiyonel) match kullanmak isterseniz sertifikalar için bir özel git reposu kurun ve `MATCH_GIT_URL` ve `MATCH_PASSWORD` ekleyin.
+4) **Bir kerelik sertifika kurulumu**: GitHub → Actions → "iOS Signing Setup (one-time)" → Run workflow → `confirm` alanına `YES` yazın → çalıştırın. Bu, GitHub'ın macOS runner'ında sertifika/profili oluşturup signing reponuza yazar. Başarılı biterse bir daha çalıştırmanıza gerek yok (sertifika süresi dolana ya da elle rotate etmek isteyene kadar).
 
-4) Workflow tetikleme
-   - GitHub → Actions → iOS Build & TestFlight → Run workflow (veya push to main/master tetiklemesi)
+5) Release workflow'unu tetikleyin: GitHub → Actions → "iOS Build & TestFlight" → Run workflow (veya main/master'a push).
 
 Notlar
-- CI sunucusu Xcode ve macOS üzerinde paketleri indirip `fastlane beta` çalıştıracak. Fastlane `match` ile sertifikaları çekip `build_ios_app` ile ipa oluşturur.
-- TestFlight'a yüklemek için App Store Connect API key yeterlidir.
-
-Eğer isterseniz ben GitHub Actions secrets listesini ve fastlane yapılandırmasını repoda sizin adınıza daha fazla özelleştiririm (ör. team id, bundle id, match repo).
+- CI, `update_code_signing_settings` ile projeyi otomatik imzalamadan (Xcode hesabı gerektirir, CI'da yok) match'in getirdiği manuel profile geçirir; bu adım olmadan CI'da imzalama başarısız olurdu.
+- Build number çakışmasını (App Store Connect "this build number has already been used" hatası) önlemek için her çalıştırmada `github.run_number` otomatik build number olarak kullanılır; `workflow_dispatch` ile manuel tetiklerken isterseniz `build_number` girdisiyle override edebilirsiniz.
+- TestFlight'a yüklemek için App Store Connect API key yeterlidir, Apple ID şifresi gerekmez.
+- Adım 4'teki workflow gerçek Apple Developer hesabınızda kalıcı bir sertifika/profil oluşturur — Apple, hesap başına en fazla 3 aktif Distribution sertifikasına izin verir, bu yüzden bu workflow'u gereksiz yere tekrar tekrar çalıştırmayın.

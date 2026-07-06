@@ -3,16 +3,44 @@ name: iOS Build & TestFlight
 on:
   push:
     branches: [main, master]
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      build_number:
+        description: "Override CFBundleVersion (defaults to the GitHub run number)"
+        required: false
+        type: string
 
 concurrency:
   group: ios-release-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  analyze-and-test:
+    name: Analyze & Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Flutter pub get
+        run: flutter pub get
+
+      - name: Flutter analyze
+        run: flutter analyze
+
+      - name: Flutter test
+        run: flutter test
+
   build-and-upload:
     name: Build IPA and upload to TestFlight
     runs-on: macos-15
+    needs: analyze-and-test
     timeout-minutes: 90
 
     steps:
@@ -49,6 +77,16 @@ jobs:
         env:
           FIREBASE_PLIST_BASE64: ${{ secrets.FIREBASE_GOOGLE_SERVICE_INFO_PLIST_BASE64 }}
 
+      - name: Cache CocoaPods
+        uses: actions/cache@v4
+        with:
+          path: |
+            ios/Pods
+            ~/Library/Caches/CocoaPods
+          key: ${{ runner.os }}-pods-${{ hashFiles('ios/Podfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pods-
+
       - name: Install CocoaPods dependencies
         run: |
           cd ios
@@ -67,6 +105,7 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           TEAM_ID: ${{ secrets.TEAM_ID }}
           BUNDLE_ID: ${{ secrets.BUNDLE_ID }}
+          FLUTTER_BUILD_NUMBER: ${{ inputs.build_number || github.run_number }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           REVENUECAT_API_KEY: ${{ secrets.REVENUECAT_API_KEY }}

@@ -19,19 +19,68 @@ platform :ios do
       key_content: key_contents
     )
 
-    # Use match to install certificates/profiles (requires MATCH_GIT_URL and MATCH_PASSWORD secrets)
+    bundle_id = ENV['BUNDLE_ID'] || "com.melih.tacticaleleven"
+    team_id = ENV['TEAM_ID']
+    export_options_path = File.expand_path("../ios/ExportOptions.plist", __dir__)
+
+    # Use match to install certificates/profiles (requires MATCH_GIT_URL and MATCH_PASSWORD secrets).
+    # readonly: true — CI must never mint new certs/profiles, only fetch ones already
+    # registered by running `fastlane match appstore` locally once.
     if ENV['MATCH_GIT_URL']
       match(
         type: "appstore",
-        readonly: false,
+        readonly: true,
+        app_identifier: bundle_id,
         git_url: ENV['MATCH_GIT_URL'],
-        username: ENV['APPLE_ID']
+        username: ENV['APPLE_ID'],
+        api_key: api_key
       )
+
+      # Xcode's "Automatic" signing style needs a logged-in Apple ID, which CI
+      # doesn't have. Switch the project to manual signing using the profile
+      # match just installed, then hand flutter an ExportOptions.plist that
+      # matches, so `flutter build ipa` archives and exports with the same
+      # distribution profile/certificate instead of silently falling back to
+      # an unsigned or mis-signed archive.
+      profile_name = ENV["sigh_#{bundle_id}_appstore_profile-name"]
+
+      update_code_signing_settings(
+        path: "ios/Runner.xcodeproj",
+        use_automatic_signing: false,
+        team_id: team_id,
+        code_sign_identity: "Apple Distribution",
+        bundle_identifier: bundle_id,
+        profile_name: profile_name,
+        targets: ["Runner"]
+      )
+
+      File.write(export_options_path, <<~PLIST)
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+        <dict>
+          <key>method</key>
+          <string>app-store</string>
+          <key>teamID</key>
+          <string>#{team_id}</string>
+          <key>signingStyle</key>
+          <string>manual</string>
+          <key>provisioningProfiles</key>
+          <dict>
+            <key>#{bundle_id}</key>
+            <string>#{profile_name}</string>
+          </dict>
+        </dict>
+        </plist>
+      PLIST
     end
 
     sh("flutter pub get")
 
     flutter_build_args = []
+    flutter_build_args << "--build-name=#{Shellwords.escape(ENV['FLUTTER_BUILD_NAME'])}" if ENV['FLUTTER_BUILD_NAME']
+    flutter_build_args << "--build-number=#{Shellwords.escape(ENV['FLUTTER_BUILD_NUMBER'])}" if ENV['FLUTTER_BUILD_NUMBER']
+    flutter_build_args << "--export-options-plist=#{Shellwords.escape(export_options_path)}" if File.exist?(export_options_path)
     flutter_build_args << "--dart-define=SUPABASE_URL=#{Shellwords.escape(ENV['SUPABASE_URL'] || '')}" if ENV['SUPABASE_URL']
     flutter_build_args << "--dart-define=SUPABASE_ANON_KEY=#{Shellwords.escape(ENV['SUPABASE_ANON_KEY'] || '')}" if ENV['SUPABASE_ANON_KEY']
     flutter_build_args << "--dart-define=REVENUECAT_API_KEY=#{Shellwords.escape(ENV['REVENUECAT_API_KEY'] || '')}" if ENV['REVENUECAT_API_KEY']
@@ -46,5 +95,33 @@ platform :ios do
       api_key: api_key,
       skip_waiting_for_build_processing: true
     )
+  end
+
+  desc "One-time: create (or rotate) the appstore distribution cert/profile and push them to the match git repo. Run only from the dedicated ios_match_setup.yml workflow, never from `beta`."
+  lane :setup_signing do
+    key_contents = if ENV['APP_STORE_CONNECT_PRIVATE_KEY_BASE64'] && !ENV['APP_STORE_CONNECT_PRIVATE_KEY_BASE64'].empty?
+      Base64.decode64(ENV['APP_STORE_CONNECT_PRIVATE_KEY_BASE64'])
+    else
+      UI.user_error!("Missing App Store Connect private key. Set APP_STORE_CONNECT_PRIVATE_KEY_BASE64.")
+    end
+
+    api_key = app_store_connect_api_key(
+      key_id: ENV['APP_STORE_CONNECT_KEY_ID'],
+      issuer_id: ENV['APP_STORE_CONNECT_ISSUER_ID'],
+      key_content: key_contents
+    )
+
+    UI.user_error!("Missing MATCH_GIT_URL — create a private git repo for match first.") unless ENV['MATCH_GIT_URL']
+
+    match(
+      type: "appstore",
+      readonly: false,
+      app_identifier: ENV['BUNDLE_ID'] || "com.melih.tacticaleleven",
+      git_url: ENV['MATCH_GIT_URL'],
+      username: ENV['APPLE_ID'],
+      api_key: api_key
+    )
+
+    UI.success("Distribution cert + App Store profile are now stored in #{ENV['MATCH_GIT_URL']}. Regular `beta` builds will fetch them read-only from now on.")
   end
 end

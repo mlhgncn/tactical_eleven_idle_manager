@@ -9,14 +9,21 @@ iOS Build (Fastlane / App Store Connect)
 - APPLE_ID: your Apple developer account email
 - TEAM_ID: your Apple Developer Team ID
 - BUNDLE_ID: com.melih.tacticaleleven
-- MATCH_GIT_URL: optional, only if you use fastlane match
-- MATCH_PASSWORD: optional, only if you use fastlane match
+- MATCH_GIT_URL: required to build — a separate private git repo where `fastlane match` stores your appstore cert/profile (see notes below)
+- MATCH_PASSWORD: required alongside MATCH_GIT_URL — passphrase used to encrypt the match repo
+- MATCH_KEYCHAIN_PASSWORD: optional, password for the CI keychain match creates (any value; only needs to be consistent within a run)
+- MATCH_GIT_BASIC_AUTHORIZATION: base64 `user:PAT` — required if MATCH_GIT_URL is an HTTPS repo the default GITHUB_TOKEN can't reach (i.e. any repo other than this one); generate a fine-grained PAT scoped to just that signing repo with Contents: Read and write
+- FLUTTER_BUILD_NAME: optional, overrides CFBundleShortVersionString (defaults to the version in pubspec.yaml)
+
+Note on MATCH_GIT_URL: the regular build workflow (`ios_release.yml`) always runs `match` with `readonly: true`, so it only *fetches* an existing cert/profile — it never creates or revokes one. No Mac required to seed it: run the separate `.github/workflows/ios_match_setup.yml` workflow once (GitHub → Actions → "iOS Signing Setup (one-time)" → Run workflow, type `YES` to confirm) — it creates the Distribution cert + App Store profile on GitHub's macOS runner and pushes them into that repo. Requires the App Store Connect API key to have the **Admin** role (Developer/App Manager roles can't create certificates).
 
 Supabase deploy
-- SUPABASE_DB_URL: your Supabase Postgres connection string
+- SUPABASE_DB_URL: your Supabase Postgres connection string (used to apply schema/migrations/seed via psql)
 - SUPABASE_URL: your Supabase project URL (e.g. https://xyz.supabase.co)
 - SUPABASE_ANON_KEY: your Supabase anon/public API key
  - SUPABASE_SERVICE_ROLE_KEY: (ONLY for server/Edge Function CI) service_role key — do NOT expose to mobile clients
+- SUPABASE_ACCESS_TOKEN: personal access token (Supabase dashboard → Account → Access Tokens) used by the Supabase CLI to deploy Edge Functions
+- SUPABASE_PROJECT_REF: your project ref (the subdomain in your project URL, e.g. `xyzcompany` from `https://xyzcompany.supabase.co`)
 
 Other useful secrets
 - SENTRY_DSN: optional
