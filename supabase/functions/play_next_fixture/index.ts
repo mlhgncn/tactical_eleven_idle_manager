@@ -20,50 +20,146 @@ interface MatchRow {
 interface ClubTactic {
   club_id: string;
   mentality: string | null;
+  formation: string | null;
 }
 
 interface PlayerRow {
   id: string;
   club_id: string | null;
+  position: string;
   current_ability: number;
   age: number;
   injury_proneness: number;
   fitness: number;
   morale: number;
+  finishing: number;
+  passing: number;
+  tackling: number;
+  composure: number;
+  determination: number;
   injury_duration_weeks: number;
   is_suspended: boolean;
   injury_type: string | null;
 }
 
-function mentalityModifier(mentality: string | null): number {
+type PositionGroup = 'GK' | 'DEF' | 'MID' | 'FOR';
+
+function positionGroup(position: string | null): PositionGroup {
+  const upper = (position ?? '').toUpperCase();
+  if (upper === 'GK') return 'GK';
+  if (['CB', 'LB', 'RB', 'WB', 'LWB', 'RWB', 'FB'].some((p) => upper.startsWith(p))) return 'DEF';
+  if (['CM', 'CDM', 'CAM', 'LM', 'RM', 'DM', 'AM'].some((p) => upper.startsWith(p))) return 'MID';
+  return 'FOR';
+}
+
+// Classic rock-paper-scissors formation matchups: each entry is the attack
+// modifier a formation gets when facing the given opponent formation (e.g.
+// 3-5-2's extra midfielder overloads 4-4-2's midfield, but a front two like
+// 4-4-2's can exploit a back three's wide areas).
+const FORMATION_MATCHUPS: Record<string, Record<string, number>> = {
+  f442: { f442: 0, f433: 0.04, f352: -0.03, f532: 0.02 },
+  f433: { f442: -0.02, f433: 0, f352: 0.02, f532: 0.05 },
+  f352: { f442: 0.05, f433: -0.03, f352: 0, f532: 0.01 },
+  f532: { f442: -0.01, f433: -0.04, f352: 0.04, f532: 0 },
+};
+
+function formationMatchupModifier(own: string | null, opponent: string | null): number {
+  const ownKey = (own ?? 'f442').toLowerCase();
+  const oppKey = (opponent ?? 'f442').toLowerCase();
+  return FORMATION_MATCHUPS[ownKey]?.[oppKey] ?? 0;
+}
+
+function mentalityModifier(mentality: string | null): { attack: number; defense: number } {
   switch (mentality?.toLowerCase()) {
     case 'attacking':
-      return 0.12;
+      return { attack: 0.12, defense: -0.08 };
     case 'defensive':
-      return -0.08;
+      return { attack: -0.08, defense: 0.12 };
     case 'balanced':
     default:
-      return 0;
+      return { attack: 0, defense: 0 };
   }
 }
 
-function makeExpectedGoals(
-  homeStrength: number,
-  awayStrength: number,
-  homeMentality: string | null,
-  awayMentality: string | null,
-) {
-  const homeEnergy = 0.95 + mentalityModifier(homeMentality);
-  const awayEnergy = 0.90 + mentalityModifier(awayMentality);
-  const strengthDiff = (homeStrength - awayStrength) / 20;
+function averageMorale(players: PlayerRow[]): number {
+  if (players.length === 0) return 75;
+  return players.reduce((sum, p) => sum + (p.morale ?? 75), 0) / players.length;
+}
 
-  const homeXG = Math.max(0.3, 1.0 + homeStrength * 0.02 + strengthDiff + homeEnergy * 0.15);
-  const awayXG = Math.max(0.3, 0.9 + awayStrength * 0.02 - strengthDiff + awayEnergy * 0.12);
+// Player-ability-weighted rating for one phase of play, pulling in the
+// specific stats that matter for that phase instead of just averaging
+// current_ability across the whole squad - a CB's tackling/composure
+// matters for defense, a striker's finishing matters for attack, etc.
+function phaseRating(players: PlayerRow[], group: PositionGroup): number {
+  const groupPlayers = players.filter((p) => positionGroup(p.position) === group);
+  const pool = groupPlayers.length > 0 ? groupPlayers : players;
+  if (pool.length === 0) return 50;
 
-  return {
-    homeXG,
-    awayXG,
+  const statFor = (p: PlayerRow): number => {
+    switch (group) {
+      case 'DEF':
+        return p.current_ability * 0.5 + p.tackling * 3 + p.composure * 1.5;
+      case 'MID':
+        return p.current_ability * 0.5 + p.passing * 2.5 + p.determination * 1.5;
+      case 'FOR':
+        return p.current_ability * 0.5 + p.finishing * 3 + p.composure * 1.5;
+      default:
+        return p.current_ability;
+    }
   };
+
+  return pool.reduce((sum, p) => sum + statFor(p), 0) / pool.length;
+}
+
+// Blends the raw ability-based phase rating (70% weight) with a tactics/
+// morale component (30% weight) normalized onto the same ~0-100 scale, so
+// formation matchups, mentality, and team morale genuinely move the result
+// rather than being a token nudge on top of a pure-ability number.
+function blendedRating(abilityRating: number, tacticalModifier: number, moraleAvg: number): number {
+  const tacticalScore = 50 + tacticalModifier * 200 + (moraleAvg - 75) * 0.6;
+  return abilityRating * 0.7 + tacticalScore * 0.3;
+}
+
+function makeExpectedGoals(
+  homePlayers: PlayerRow[],
+  awayPlayers: PlayerRow[],
+  homeTactic: { mentality: string | null; formation: string | null },
+  awayTactic: { mentality: string | null; formation: string | null },
+) {
+  const homeAttackAbility = phaseRating(homePlayers, 'FOR');
+  const homeDefenseAbility = phaseRating(homePlayers, 'DEF');
+  const homeMidAbility = phaseRating(homePlayers, 'MID');
+  const awayAttackAbility = phaseRating(awayPlayers, 'FOR');
+  const awayDefenseAbility = phaseRating(awayPlayers, 'DEF');
+  const awayMidAbility = phaseRating(awayPlayers, 'MID');
+
+  const homeMentalityMod = mentalityModifier(homeTactic.mentality);
+  const awayMentalityMod = mentalityModifier(awayTactic.mentality);
+  const homeFormationMod = formationMatchupModifier(homeTactic.formation, awayTactic.formation);
+  const awayFormationMod = formationMatchupModifier(awayTactic.formation, homeTactic.formation);
+
+  const homeMorale = averageMorale(homePlayers);
+  const awayMorale = averageMorale(awayPlayers);
+
+  const homeAttack = blendedRating(homeAttackAbility, homeFormationMod + homeMentalityMod.attack, homeMorale);
+  const homeDefense = blendedRating(homeDefenseAbility, homeMentalityMod.defense, homeMorale);
+  const awayAttack = blendedRating(awayAttackAbility, awayFormationMod + awayMentalityMod.attack, awayMorale);
+  const awayDefense = blendedRating(awayDefenseAbility, awayMentalityMod.defense, awayMorale);
+
+  // Midfield battle acts as a shared tempo modifier affecting both sides'
+  // chance creation, rather than a separate scoring channel of its own.
+  const midfieldDiff = (homeMidAbility - awayMidAbility) / 40;
+
+  // A small constant home-advantage term, matching real-world football.
+  const homeXG = Math.max(0.3, 0.9 + (homeAttack - awayDefense) * 0.045 + midfieldDiff * 0.25 + 0.25);
+  const awayXG = Math.max(0.3, 0.75 + (awayAttack - homeDefense) * 0.045 - midfieldDiff * 0.25);
+
+  // Possession is driven by the midfield battle, not overall squad ability.
+  const homePossession = Math.round(
+    (homeMidAbility / Math.max(1, homeMidAbility + awayMidAbility)) * 100,
+  );
+
+  return { homeXG, awayXG, homePossession };
 }
 
 function rollGoals(xg: number): number {
@@ -76,10 +172,6 @@ function rollGoals(xg: number): number {
   }
 
   return goals;
-}
-
-function getAvailablePlayers(players: PlayerRow[]): PlayerRow[] {
-  return players.filter((player) => player.injury_duration_weeks <= 0 && !player.is_suspended);
 }
 
 function applyInjury(player: PlayerRow, matchIntensity: number): { injuryType: string; duration: number } | null {
@@ -195,7 +287,7 @@ serve(async (req: Request) => {
     const clubIds = [matchRow.home_club_id, matchRow.away_club_id];
     const { data: playerRows, error: playerError } = await supabase
       .from<PlayerRow>('players')
-      .select('id,club_id,current_ability,age,injury_proneness,fitness,morale,injury_duration_weeks,is_suspended,injury_type')
+      .select('id,club_id,position,current_ability,age,injury_proneness,fitness,morale,finishing,passing,tackling,composure,determination,injury_duration_weeks,is_suspended,injury_type')
       .in('club_id', clubIds);
 
     if (playerError) {
@@ -204,39 +296,27 @@ serve(async (req: Request) => {
 
     const { data: tactics, error: tacticsError } = await supabase
       .from<ClubTactic>('tactics')
-      .select('club_id,mentality')
+      .select('club_id,mentality,formation')
       .in('club_id', clubIds);
 
     if (tacticsError) {
       return createResponse({ error: `Taktikler okunamadı: ${tacticsError.message}` }, 500);
     }
 
-    const strengthMap = new Map<string, { total: number; count: number }>();
-    const availablePlayers = getAvailablePlayers(playerRows ?? []);
-    availablePlayers.forEach((player) => {
-      if (!player.club_id) return;
-      const current = strengthMap.get(player.club_id) ?? { total: 0, count: 0 };
-      current.total += player.current_ability;
-      current.count += 1;
-      strengthMap.set(player.club_id, current);
-    });
+    const tacticMap = new Map<string, { mentality: string | null; formation: string | null }>();
+    tactics?.forEach((row) => tacticMap.set(row.club_id, { mentality: row.mentality ?? 'balanced', formation: row.formation ?? 'f442' }));
+    const homeTactic = tacticMap.get(matchRow.home_club_id) ?? { mentality: 'balanced', formation: 'f442' };
+    const awayTactic = tacticMap.get(matchRow.away_club_id) ?? { mentality: 'balanced', formation: 'f442' };
 
-    const clubStrength = new Map<string, number>();
-    clubIds.forEach((id) => {
-      const entry = strengthMap.get(id);
-      const avg = entry?.count ? entry.total / entry.count : 50;
-      clubStrength.set(id, avg);
-    });
+    const clubPlayers = (playerRows ?? []).filter((player) => player.club_id === clubId);
+    const homePlayers = (playerRows ?? []).filter(
+      (player) => player.club_id === matchRow.home_club_id && player.injury_duration_weeks <= 0 && !player.is_suspended,
+    );
+    const awayPlayers = (playerRows ?? []).filter(
+      (player) => player.club_id === matchRow.away_club_id && player.injury_duration_weeks <= 0 && !player.is_suspended,
+    );
 
-    const tacticMap = new Map<string, string | null>();
-    tactics?.forEach((row) => tacticMap.set(row.club_id, row.mentality ?? 'balanced'));
-
-    const homeStrength = clubStrength.get(matchRow.home_club_id) ?? 50;
-    const awayStrength = clubStrength.get(matchRow.away_club_id) ?? 50;
-    const homeMentality = tacticMap.get(matchRow.home_club_id) ?? 'balanced';
-    const awayMentality = tacticMap.get(matchRow.away_club_id) ?? 'balanced';
-
-    const { homeXG, awayXG } = makeExpectedGoals(homeStrength, awayStrength, homeMentality, awayMentality);
+    const { homeXG, awayXG, homePossession } = makeExpectedGoals(homePlayers, awayPlayers, homeTactic, awayTactic);
     const homeScore = rollGoals(homeXG);
     const awayScore = rollGoals(awayXG);
     const matchIntensity = Math.min(1.4, 0.35 + (homeScore + awayScore) * 0.12 + Math.abs(homeScore - awayScore) * 0.08);
@@ -251,13 +331,6 @@ serve(async (req: Request) => {
       return createResponse({ error: `Maç güncellenirken hata oluştu: ${updateError.message}` }, 500);
     }
 
-    const clubPlayers = (playerRows ?? []).filter((player) => player.club_id === clubId);
-    const homePlayers = (playerRows ?? []).filter(
-      (player) => player.club_id === matchRow.home_club_id && player.injury_duration_weeks <= 0 && !player.is_suspended,
-    );
-    const awayPlayers = (playerRows ?? []).filter(
-      (player) => player.club_id === matchRow.away_club_id && player.injury_duration_weeks <= 0 && !player.is_suspended,
-    );
     const timelineEvents: Array<Record<string, unknown>> = [];
 
     for (let idx = 0; idx < homeScore; idx += 1) {
@@ -457,7 +530,7 @@ serve(async (req: Request) => {
         away_shots: Math.max(1, Math.round(awayXG * 3)),
         home_xg: Number(homeXG.toFixed(2)),
         away_xg: Number(awayXG.toFixed(2)),
-        home_possession: Math.round((homeStrength / (homeStrength + awayStrength)) * 100),
+        home_possession: homePossession,
         commentary,
         events: sortedEvents,
       },
