@@ -1,0 +1,152 @@
+name: iOS Release (build + TestFlight)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+env:
+  FLUTTER_CHANNEL: stable
+
+jobs:
+  build-and-upload:
+    name: Build iOS and upload to TestFlight
+    runs-on: macos-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cache Flutter pub
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.pub-cache
+            .dart_tool/pub
+          key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.yaml') }}
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 'stable'
+
+      - name: Install Flutter deps
+        run: flutter pub get
+
+      - name: Setup Ruby and CocoaPods cache
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: 3.1
+
+      - name: Cache CocoaPods
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/CocoaPods
+            ios/Pods
+            Pods
+          key: ${{ runner.os }}-cocoapods-${{ hashFiles('ios/Podfile.lock') }}
+
+      - name: Install CocoaPods
+        run: |
+          gem install cocoapods -v 1.15.4 --no-document || true
+          pod repo update || true
+          pod install --project-directory=ios || true
+
+      - name: Prefetch binary hosts and resolve SPM (retries)
+        run: |
+          set -e
+          hosts=("https://dl.google.com" "https://github.com")
+          for host in "${hosts[@]}"; do
+            for i in 1 2 3 4; do
+              curl -sSfI --max-time 20 "$host" && break || sleep 5
+            done
+          done
+          for i in 1 2 3 4 5; do
+            xcodebuild -resolvePackageDependencies -workspace ios/Runner.xcworkspace -scheme Runner && break || {
+              (cd ios && swift package resolve) || true
+              sleep 15
+            }
+          done
+
+      - name: Import cert & provisioning (if provided)
+        env:
+          P12_BASE64: ${{ secrets.P12_BASE64 }}
+          P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
+          MOBILEPROVISION_BASE64: ${{ secrets.MOBILEPROVISION_BASE64 }}
+        run: |
+          set -e
+          if [ -n "$P12_BASE64" ]; then
+            echo "$P12_BASE64" | base64 --decode > /tmp/dist.p12
+            security create-keychain -p build build.keychain
+            security import /tmp/dist.p12 -k ~/Library/Keychains/build.keychain -P "$P12_PASSWORD" -T /usr/bin/codesign || true
+            security list-keychains -s ~/Library/Keychains/build.keychain
+            security default-keychain -s ~/Library/Keychains/build.keychain
+            security unlock-keychain -p build ~/Library/Keychains/build.keychain
+            security set-key-partition-list -S apple-tool:,apple: -s -k build ~/Library/Keychains/build.keychain || true
+          fi
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          if [ -n "$MOBILEPROVISION_BASE64" ]; then
+            echo "$MOBILEPROVISION_BASE64" | base64 --decode > ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision
+          fi
+
+      - name: Build IPA (with retries)
+        env:
+          FLUTTER_BUILD_NAME: ${{ secrets.FLUTTER_BUILD_NAME }}
+          FLUTTER_BUILD_NUMBER: ${{ secrets.FLUTTER_BUILD_NUMBER }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          set -e
+          echo "Building ipa"
+          for i in 1 2 3 4; do
+            flutter build ipa --release --no-skip-install && break || {
+              echo "flutter build failed, attempt $i"
+              sleep $((30*i))
+            }
+          done
+
+      - name: Install fastlane
+        run: gem install fastlane -NV || true
+
+      - name: Prepare App Store Connect API key
+        env:
+          APP_STORE_CONNECT_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_KEY_BASE64 }}
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+        run: |
+          mkdir -p /tmp/asc
+          if [ -n "$APP_STORE_CONNECT_KEY_BASE64" ]; then
+            echo "$APP_STORE_CONNECT_KEY_BASE64" | base64 --decode > /tmp/asc/AuthKey.p8
+            jq -n --arg kid "$APP_STORE_CONNECT_KEY_ID" --arg iss "$APP_STORE_CONNECT_ISSUER_ID" --arg key "$(sed ':a;N;$!ba;s/\n/\\n/g' /tmp/asc/AuthKey.p8)" '{key_id:$kid,issuer_id:$iss,key:$key}' > /tmp/asc/api_key.json
+          else
+            echo "No APP_STORE_CONNECT_KEY_BASE64 provided; upload step will be skipped if not set."
+          fi
+
+      - name: Upload to TestFlight (if API key provided)
+        if: env.APP_STORE_CONNECT_KEY_BASE64 != '' || secrets.APP_SPECIFIC_PASSWORD != ''
+        env:
+          APP_IDENTIFIER: ${{ secrets.APP_IDENTIFIER }}
+        run: |
+          IPA=$(ls build/ios/ipa/*.ipa | head -n1 || true)
+          if [ -z "$IPA" ]; then
+            echo "No IPA found; aborting upload"; exit 1
+          fi
+          if [ -f /tmp/asc/api_key.json ]; then
+            bundle exec fastlane pilot upload -i "$IPA" --api_key_path /tmp/asc/api_key.json || fastlane pilot upload -i "$IPA" --api_key_path /tmp/asc/api_key.json
+          elif [ -n "${{ secrets.APP_SPECIFIC_PASSWORD }}" ]; then
+            fastlane pilot upload -i "$IPA" -u "$APP_IDENTIFIER" --apple_id "$APP_IDENTIFIER" --app_specific_password "${{ secrets.APP_SPECIFIC_PASSWORD }}" || true
+          else
+            echo "No upload credentials provided; skipping upload step."
+          fi
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-ipa
+          path: build/ios/ipa/*.ipa
+
+      - name: Diagnostics
+        run: |
+          xcodebuild -version || true
+          xcrun swift -version || true
