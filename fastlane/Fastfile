@@ -188,8 +188,11 @@ platform :ios do
 
     sh("flutter build ipa --release #{flutter_build_args.join(' ')}")
 
+    ipa_path = Dir.glob("build/ios/ipa/*.ipa").first
+    UI.user_error!("No .ipa found under build/ios/ipa/") unless ipa_path
+
     upload_to_app_store(
-      ipa: "build/ios/ipa/Runner.ipa",
+      ipa: ipa_path,
       api_key: api_key,
       skip_waiting_for_build_processing: true
     )
