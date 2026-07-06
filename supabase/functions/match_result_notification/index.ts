@@ -1,23 +1,16 @@
 import { serve } from 'https://deno.land/std@0.203.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.34.0';
-import { initializeApp, cert } from 'https://esm.sh/firebase-admin@11.15.0/app';
-import { getMessaging } from 'https://esm.sh/firebase-admin@11.15.0/messaging';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
-const FIREBASE_SERVICE_ACCOUNT_JSON = Deno.env.get('FIREBASE_SERVICE_ACCOUNT_JSON') ?? '';
+const FCM_API_KEY = Deno.env.get('FCM_API_KEY') ?? '';
 
-if (!SUPABASE_URL || !SERVICE_ROLE_KEY || !FIREBASE_SERVICE_ACCOUNT_JSON) {
-  throw new Error('SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY ve FIREBASE_SERVICE_ACCOUNT_JSON ortam değişkenleri tanımlı olmalıdır.');
+if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
+  throw new Error('SUPABASE_URL ve SUPABASE_SERVICE_ROLE_KEY ortam değişkenleri tanımlı olmalıdır.');
 }
 
 const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
-
-initializeApp({
-  credential: cert(JSON.parse(FIREBASE_SERVICE_ACCOUNT_JSON)),
-});
-
-const messaging = getMessaging();
+const FCM_URL = 'https://fcm.googleapis.com/fcm/send';
 
 function createResponse(body: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -88,13 +81,40 @@ async function getOwnerFcmToken(clubId: string): Promise<string | null> {
 }
 
 async function sendPushNotification(token: string, title: string, body: string, data: Record<string, string>) {
-  return await messaging.send({
-    token,
-    notification: { title, body },
-    android: { priority: 'high' },
-    apns: { headers: { 'apns-priority': '10' } },
+  if (!FCM_API_KEY) {
+    console.warn('match_result_notification: FCM_API_KEY not configured');
+    return;
+  }
+
+  const payload = {
+    to: token,
+    notification: {
+      title,
+      body,
+    },
     data,
+    android: {
+      priority: 'high',
+    },
+    apns: {
+      headers: {
+        'apns-priority': '10',
+      },
+    },
+  };
+
+  const response = await fetch(FCM_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `key=${FCM_API_KEY}`,
+    },
+    body: JSON.stringify(payload),
   });
+
+  if (!response.ok) {
+    throw new Error(`FCM request failed: ${response.statusText}`);
+  }
 }
 
 serve(async (req: Request) => {

@@ -1,7 +1,5 @@
-import 'package:flutter/foundation.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/material.dart';
 
-import '../config.dart';
 import '../models/club_info.dart';
 import '../models/inbox_message.dart';
 import '../models/match_fixture.dart';
