@@ -192,7 +192,7 @@ platform :ios do
     ipa_path = Dir.glob(File.join(ipa_dir, "*.ipa")).first
     UI.user_error!("No .ipa found under #{ipa_dir}") unless ipa_path
 
-    upload_to_app_store(
+    upload_to_testflight(
       ipa: ipa_path,
       api_key: api_key,
       skip_waiting_for_build_processing: true
