@@ -104,8 +104,16 @@ jobs:
       # across runs so we only ever mint one via `cert`/`sigh` (Apple caps an
       # account at 3 active distribution certs). Used only when MATCH_GIT_URL
       # isn't set — see fastlane/Fastfile's signing_via_cert_and_sigh.
-      - name: Cache iOS signing assets
-        uses: actions/cache@v4
+      #
+      # Split into restore/save (rather than the combined actions/cache@v4)
+      # so the save step below can run with `if: always()` — a combined
+      # cache step's automatic post-save does NOT reliably fire when a later
+      # step in the job fails, which is exactly the case where we need the
+      # freshly-minted cert saved the most (otherwise every retry mints
+      # another one and burns through Apple's 3-cert cap).
+      - name: Restore iOS signing assets cache
+        id: restore-signing-cache
+        uses: actions/cache/restore@v4
         with:
           path: ios_signing_cache
           key: ios-signing-v1
@@ -128,6 +136,13 @@ jobs:
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           REVENUECAT_API_KEY: ${{ secrets.REVENUECAT_API_KEY }}
           ADMOB_INTERSTITIAL_ID: ${{ secrets.ADMOB_INTERSTITIAL_ID }}
+
+      - name: Save iOS signing assets cache
+        if: ${{ always() && steps.restore-signing-cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@v4
+        with:
+          path: ios_signing_cache
+          key: ios-signing-v1
 
       - name: Upload IPA as build artifact
         if: always()
