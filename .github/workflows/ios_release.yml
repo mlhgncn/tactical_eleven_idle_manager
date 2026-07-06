@@ -124,7 +124,7 @@ jobs:
           fi
 
       - name: Upload to TestFlight (if API key provided)
-        if: secrets.APP_STORE_CONNECT_KEY_BASE64 != '' || secrets.APP_SPECIFIC_PASSWORD != ''
+        if: ${{ secrets.APP_STORE_CONNECT_KEY_BASE64 != '' || secrets.APP_SPECIFIC_PASSWORD != '' }}
         env:
           APP_IDENTIFIER: ${{ secrets.APP_IDENTIFIER }}
         run: |
