@@ -156,24 +156,57 @@ jobs:
             jq -n --arg kid "$APP_STORE_CONNECT_KEY_ID" --arg iss "$APP_STORE_CONNECT_ISSUER_ID" --arg key "$(sed ':a;N;$!ba;s/\n/\\n/g' /tmp/asc/AuthKey.p8)" '{key_id:$kid,issuer_id:$iss,key:$key}' > /tmp/asc/api_key.json
           fi
 
-      - name: Upload to TestFlight (optional)
+      - name: Install bundler and fastlane gems
+        run: |
+          gem install bundler || true
+          bundle install || gem install fastlane -NV || true
+
+      - name: Run fastlane beta (if credentials provided)
         if: ${{ secrets.APP_STORE_CONNECT_KEY_BASE64 != '' || secrets.APP_SPECIFIC_PASSWORD != '' }}
         env:
+          APP_STORE_CONNECT_PRIVATE_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_KEY_BASE64 }}
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
           APP_IDENTIFIER: ${{ secrets.APP_IDENTIFIER }}
+          BUNDLE_ID: ${{ secrets.APP_IDENTIFIER }}
+          APP_SPECIFIC_PASSWORD: ${{ secrets.APP_SPECIFIC_PASSWORD }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
           IPA=$(ls build/ios/ipa/*.ipa | head -n1 || true)
-          if [ -z "$IPA" ]; then echo "No IPA found"; exit 1; fi
-          if [ -f /tmp/asc/api_key.json ]; then
-            bundle exec fastlane pilot upload -i "$IPA" --api_key_path /tmp/asc/api_key.json || fastlane pilot upload -i "$IPA" --api_key_path /tmp/asc/api_key.json
-          elif [ -n "${{ secrets.APP_SPECIFIC_PASSWORD }}" ]; then
-            fastlane pilot upload -i "$IPA" -u "$APP_IDENTIFIER" --app_specific_password "${{ secrets.APP_SPECIFIC_PASSWORD }}" || true
-          else
-            echo "No upload credentials provided; skipping upload"
-          fi
+          if [ -z "$IPA" ]; then echo "No IPA found, but fastlane will run build/upload lane which also builds."; fi
+          bundle exec fastlane beta
+
 
       - name: Upload iOS artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ios-ipa
           path: build/ios/ipa/*.ipa
+
+  supabase-deploy:
+    name: Supabase Deploy (optional)
+    runs-on: ubuntu-latest
+    needs: analyze-and-test
+    if: ${{ secrets.SUPABASE_PROJECT_REF != '' && secrets.SUPABASE_ACCESS_TOKEN != '' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install supabase CLI
+        run: |
+          curl -sL https://deb.nodesource.com/setup_18.x | sudo -E bash - || true
+          sudo apt-get install -y build-essential curl || true
+          npm install -g supabase || true
+
+      - name: Run Supabase migrations
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+        run: |
+          set -e
+          supabase db remote set "$SUPABASE_PROJECT_REF" || true
+          supabase db push --file supabase/schema.sql || true
 
