@@ -5,7 +5,7 @@ CREATE OR REPLACE FUNCTION public.simulate_offline_progress()
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public, row_security = off
+SET search_path = public
 AS $$
 DECLARE
   current_user_id UUID := auth.uid();

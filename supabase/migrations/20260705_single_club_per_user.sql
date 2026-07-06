@@ -34,4 +34,4 @@ BEGIN
 
   RETURN updated_row;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, row_security = off;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;

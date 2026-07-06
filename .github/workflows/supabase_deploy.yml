@@ -60,21 +60,24 @@ jobs:
         run: |
           echo "Resolving Supabase host to IPv4 and applying supabase/schema.sql"
           PYCODE=$(cat <<'PY'
-          import os, urllib.parse, socket
+          # Avoid urllib.parse.urlparse here: some Python 3.12 patch versions
+          # have a regression where it raises ValueError on a plain hostname
+          # ("does not appear to be an IPv4 or IPv6 address") via an overly
+          # strict bracketed-host check. A small regex does the same job
+          # without going through that codepath.
+          import os, re, socket
           u = os.environ['SUPABASE_DB_URL']
-          p = urllib.parse.urlparse(u)
-          host = p.hostname
-          port = str(p.port) if p.port else ''
+          m = re.match(r'^(?P<scheme>[a-zA-Z][a-zA-Z0-9+.-]*)://(?:(?P<userinfo>[^@]*)@)?(?P<host>[^:/?#]+)(?::(?P<port>\d+))?(?P<rest>[/?#].*)?$', u)
+          if not m:
+              raise ValueError('Could not parse SUPABASE_DB_URL')
+          host = m.group('host')
+          port = m.group('port') or ''
+          userinfo = m.group('userinfo') or ''
+          rest = m.group('rest') or ''
           addrs = socket.getaddrinfo(host, None, socket.AF_INET)
           ipv4 = addrs[0][4][0]
-          userinfo = ''
-          if p.username:
-              userinfo = p.username
-              if p.password:
-                  userinfo += ':' + p.password
-          userinfo = (userinfo + '@') if userinfo else ''
-          netloc = userinfo + ipv4 + ((':' + port) if port else '')
-          new = urllib.parse.urlunparse((p.scheme, netloc, p.path, p.params, p.query, p.fragment))
+          netloc = (userinfo + '@' if userinfo else '') + ipv4 + ((':' + port) if port else '')
+          new = f"{m.group('scheme')}://{netloc}{rest}"
           print(new)
           PY
           )
@@ -88,21 +91,24 @@ jobs:
         run: |
           echo "Resolving Supabase host to IPv4 and applying SQL files in supabase/migrations"
           PYCODE=$(cat <<'PY'
-          import os, urllib.parse, socket
+          # Avoid urllib.parse.urlparse here: some Python 3.12 patch versions
+          # have a regression where it raises ValueError on a plain hostname
+          # ("does not appear to be an IPv4 or IPv6 address") via an overly
+          # strict bracketed-host check. A small regex does the same job
+          # without going through that codepath.
+          import os, re, socket
           u = os.environ['SUPABASE_DB_URL']
-          p = urllib.parse.urlparse(u)
-          host = p.hostname
-          port = str(p.port) if p.port else ''
+          m = re.match(r'^(?P<scheme>[a-zA-Z][a-zA-Z0-9+.-]*)://(?:(?P<userinfo>[^@]*)@)?(?P<host>[^:/?#]+)(?::(?P<port>\d+))?(?P<rest>[/?#].*)?$', u)
+          if not m:
+              raise ValueError('Could not parse SUPABASE_DB_URL')
+          host = m.group('host')
+          port = m.group('port') or ''
+          userinfo = m.group('userinfo') or ''
+          rest = m.group('rest') or ''
           addrs = socket.getaddrinfo(host, None, socket.AF_INET)
           ipv4 = addrs[0][4][0]
-          userinfo = ''
-          if p.username:
-              userinfo = p.username
-              if p.password:
-                  userinfo += ':' + p.password
-          userinfo = (userinfo + '@') if userinfo else ''
-          netloc = userinfo + ipv4 + ((':' + port) if port else '')
-          new = urllib.parse.urlunparse((p.scheme, netloc, p.path, p.params, p.query, p.fragment))
+          netloc = (userinfo + '@' if userinfo else '') + ipv4 + ((':' + port) if port else '')
+          new = f"{m.group('scheme')}://{netloc}{rest}"
           print(new)
           PY
           )
@@ -118,21 +124,24 @@ jobs:
         run: |
           echo "Resolving Supabase host to IPv4 and applying supabase/seed_masked_data.sql"
           PYCODE=$(cat <<'PY'
-          import os, urllib.parse, socket
+          # Avoid urllib.parse.urlparse here: some Python 3.12 patch versions
+          # have a regression where it raises ValueError on a plain hostname
+          # ("does not appear to be an IPv4 or IPv6 address") via an overly
+          # strict bracketed-host check. A small regex does the same job
+          # without going through that codepath.
+          import os, re, socket
           u = os.environ['SUPABASE_DB_URL']
-          p = urllib.parse.urlparse(u)
-          host = p.hostname
-          port = str(p.port) if p.port else ''
+          m = re.match(r'^(?P<scheme>[a-zA-Z][a-zA-Z0-9+.-]*)://(?:(?P<userinfo>[^@]*)@)?(?P<host>[^:/?#]+)(?::(?P<port>\d+))?(?P<rest>[/?#].*)?$', u)
+          if not m:
+              raise ValueError('Could not parse SUPABASE_DB_URL')
+          host = m.group('host')
+          port = m.group('port') or ''
+          userinfo = m.group('userinfo') or ''
+          rest = m.group('rest') or ''
           addrs = socket.getaddrinfo(host, None, socket.AF_INET)
           ipv4 = addrs[0][4][0]
-          userinfo = ''
-          if p.username:
-              userinfo = p.username
-              if p.password:
-                  userinfo += ':' + p.password
-          userinfo = (userinfo + '@') if userinfo else ''
-          netloc = userinfo + ipv4 + ((':' + port) if port else '')
-          new = urllib.parse.urlunparse((p.scheme, netloc, p.path, p.params, p.query, p.fragment))
+          netloc = (userinfo + '@' if userinfo else '') + ipv4 + ((':' + port) if port else '')
+          new = f"{m.group('scheme')}://{netloc}{rest}"
           print(new)
           PY
           )
@@ -146,21 +155,24 @@ jobs:
         run: |
           echo "Resolving Supabase host to IPv4 and verifying RLS and policies"
           PYCODE=$(cat <<'PY'
-          import os, urllib.parse, socket
+          # Avoid urllib.parse.urlparse here: some Python 3.12 patch versions
+          # have a regression where it raises ValueError on a plain hostname
+          # ("does not appear to be an IPv4 or IPv6 address") via an overly
+          # strict bracketed-host check. A small regex does the same job
+          # without going through that codepath.
+          import os, re, socket
           u = os.environ['SUPABASE_DB_URL']
-          p = urllib.parse.urlparse(u)
-          host = p.hostname
-          port = str(p.port) if p.port else ''
+          m = re.match(r'^(?P<scheme>[a-zA-Z][a-zA-Z0-9+.-]*)://(?:(?P<userinfo>[^@]*)@)?(?P<host>[^:/?#]+)(?::(?P<port>\d+))?(?P<rest>[/?#].*)?$', u)
+          if not m:
+              raise ValueError('Could not parse SUPABASE_DB_URL')
+          host = m.group('host')
+          port = m.group('port') or ''
+          userinfo = m.group('userinfo') or ''
+          rest = m.group('rest') or ''
           addrs = socket.getaddrinfo(host, None, socket.AF_INET)
           ipv4 = addrs[0][4][0]
-          userinfo = ''
-          if p.username:
-              userinfo = p.username
-              if p.password:
-                  userinfo += ':' + p.password
-          userinfo = (userinfo + '@') if userinfo else ''
-          netloc = userinfo + ipv4 + ((':' + port) if port else '')
-          new = urllib.parse.urlunparse((p.scheme, netloc, p.path, p.params, p.query, p.fragment))
+          netloc = (userinfo + '@' if userinfo else '') + ipv4 + ((':' + port) if port else '')
+          new = f"{m.group('scheme')}://{netloc}{rest}"
           print(new)
           PY
           )

@@ -74,7 +74,7 @@ BEGIN
   SELECT EXISTS(SELECT 1 FROM public.admin_users WHERE user_id = auth.uid()) INTO exists_admin;
   RETURN exists_admin;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, row_security = off;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- RPC: create gift code (admin-only)
 CREATE OR REPLACE FUNCTION public.admin_create_gift_code(p_code TEXT, p_amount BIGINT, p_expires_at TIMESTAMPTZ DEFAULT NULL)
@@ -92,7 +92,7 @@ BEGIN
 
   RETURN new_row;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, row_security = off;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- RPC: ban user (admin-only)
 CREATE OR REPLACE FUNCTION public.admin_ban_user(p_user_id UUID)
@@ -111,7 +111,7 @@ BEGIN
 
   RETURN 'OK';
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, row_security = off;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- RPC: admin_create_event
 CREATE OR REPLACE FUNCTION public.admin_create_event(p_title TEXT, p_body TEXT, p_starts_at TIMESTAMPTZ DEFAULT NULL, p_ends_at TIMESTAMPTZ DEFAULT NULL)
@@ -129,7 +129,7 @@ BEGIN
 
   RETURN new_row;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, row_security = off;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- RPC: admin_send_push
 CREATE OR REPLACE FUNCTION public.admin_send_push(p_title TEXT, p_body TEXT, p_target_user_id UUID DEFAULT NULL)
@@ -147,7 +147,7 @@ BEGIN
 
   RETURN new_row;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, row_security = off;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- Admin list users (admin-only)
 CREATE OR REPLACE FUNCTION public.admin_list_users()
@@ -159,7 +159,7 @@ BEGIN
 
   RETURN QUERY SELECT p.id, p.full_name, p.email, p.created_at FROM public.profiles p;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, row_security = off;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- Admin list clubs
 CREATE OR REPLACE FUNCTION public.admin_list_clubs()
@@ -171,7 +171,7 @@ BEGIN
 
   RETURN QUERY SELECT id, name, budget, user_id, created_at FROM public.clubs;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, row_security = off;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- Admin update player (limited fields)
 CREATE OR REPLACE FUNCTION public.admin_update_player(p_player_id UUID, p_name TEXT DEFAULT NULL, p_position TEXT DEFAULT NULL, p_age INT DEFAULT NULL, p_current_ability INT DEFAULT NULL, p_potential_ability INT DEFAULT NULL)
@@ -200,4 +200,4 @@ BEGIN
 
   RETURN updated_row;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, row_security = off;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;

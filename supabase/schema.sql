@@ -1,6 +1,18 @@
 ﻿-- CI trigger: update to force supabase_deploy.yml push
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
+-- leagues must be created before clubs, since clubs.league_id references it
+-- (this table order was previously reversed, which meant a fresh install of
+-- this file would fail with "relation public.leagues does not exist").
+CREATE TABLE IF NOT EXISTS public.leagues (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT NOT NULL,
+    country TEXT,
+    tier INT NOT NULL DEFAULT 1,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS public.clubs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
@@ -20,15 +32,6 @@ CREATE TABLE IF NOT EXISTS public.clubs (
 CREATE UNIQUE INDEX IF NOT EXISTS clubs_user_id_unique_partial
 ON public.clubs (user_id)
 WHERE user_id IS NOT NULL;
-
-CREATE TABLE IF NOT EXISTS public.leagues (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name TEXT NOT NULL,
-    country TEXT,
-    tier INT NOT NULL DEFAULT 1,
-    is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
 
 CREATE TABLE IF NOT EXISTS public.seasons (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -377,7 +380,7 @@ BEGIN
 
   RETURN new_season;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, row_security = off;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 CREATE OR REPLACE FUNCTION public.generate_weekly_fixtures(p_season_id UUID, p_week INT)
 RETURNS void AS $$
@@ -415,7 +418,7 @@ BEGIN
     END LOOP;
   END LOOP;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, row_security = off;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 CREATE OR REPLACE FUNCTION public.advance_player_development(
   p_player_id UUID,
@@ -476,7 +479,7 @@ BEGIN
 
   RETURN player_row;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, row_security = off;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- Table to record rewarded ad awards (server-side ledger)
 CREATE TABLE IF NOT EXISTS public.ad_rewards (
@@ -531,7 +534,7 @@ BEGIN
     VALUES (club_row.id, 'ad_reward', p_amount, format('Reklam ödülü: +%s GP', p_amount), 'award_ad_reward');
   RETURN result;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, row_security = off;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 CREATE OR REPLACE FUNCTION public.update_standings_after_match(p_match_id UUID)
 RETURNS void AS $$
@@ -588,7 +591,7 @@ BEGIN
       updated_at = now()
   WHERE season_id = match_row.season_id AND club_id = match_row.away_club_id;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, row_security = off;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 CREATE OR REPLACE FUNCTION public.place_transfer_bid(market_id UUID, bid_amount BIGINT)
 RETURNS public.transfer_market AS $$
@@ -676,7 +679,7 @@ BEGIN
 
   RETURN updated_row;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, row_security = off;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 CREATE OR REPLACE FUNCTION public.accept_transfer_offer(p_player_id UUID)
 RETURNS public.clubs AS $$
@@ -768,7 +771,7 @@ BEGIN
 
   RETURN updated_row;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, row_security = off;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 CREATE OR REPLACE FUNCTION public.release_expired_transfer_bids()
 RETURNS void AS $$
@@ -794,7 +797,7 @@ BEGIN
     WHERE id = expired_record.id;
   END LOOP;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, row_security = off;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 CREATE OR REPLACE FUNCTION public.upgrade_club(
   club_id UUID,
@@ -868,7 +871,7 @@ BEGIN
 
   RETURN updated_row;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, row_security = off;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 CREATE OR REPLACE FUNCTION public.upgrade_sponsor(club_id UUID)
 RETURNS public.clubs AS $$
@@ -919,7 +922,7 @@ BEGIN
 
   RETURN updated_row;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, row_security = off;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 CREATE OR REPLACE FUNCTION public.claim_club(club_id UUID)
 RETURNS public.clubs AS $$
@@ -953,7 +956,7 @@ BEGIN
 
   RETURN updated_row;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, row_security = off;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 CREATE OR REPLACE FUNCTION public.assign_club_to_new_user()
 RETURNS trigger AS $$
@@ -973,7 +976,7 @@ BEGIN
   );
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, row_security = off;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 DROP TRIGGER IF EXISTS assign_club_to_new_user_trigger ON auth.users;
 CREATE TRIGGER assign_club_to_new_user_trigger
