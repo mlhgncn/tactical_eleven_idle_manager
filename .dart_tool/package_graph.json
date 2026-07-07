@@ -14,7 +14,6 @@
         "google_mobile_ads",
         "intl",
         "provider",
-        "purchases_flutter",
         "supabase_flutter"
       ],
       "devDependencies": [
@@ -58,17 +57,6 @@
         "flutter_local_notifications_web",
         "flutter_local_notifications_windows",
         "timezone"
-      ]
-    },
-    {
-      "name": "purchases_flutter",
-      "version": "10.4.0",
-      "dependencies": [
-        "equatable",
-        "flutter",
-        "flutter_web_plugins",
-        "meta",
-        "web"
       ]
     },
     {
@@ -288,26 +276,6 @@
       ]
     },
     {
-      "name": "equatable",
-      "version": "2.1.0",
-      "dependencies": [
-        "collection",
-        "meta"
-      ]
-    },
-    {
-      "name": "web",
-      "version": "1.1.1",
-      "dependencies": []
-    },
-    {
-      "name": "flutter_web_plugins",
-      "version": "0.0.0",
-      "dependencies": [
-        "flutter"
-      ]
-    },
-    {
       "name": "webview_flutter",
       "version": "4.14.0",
       "dependencies": [
@@ -335,6 +303,11 @@
         "meta",
         "webview_flutter_platform_interface"
       ]
+    },
+    {
+      "name": "web",
+      "version": "1.1.1",
+      "dependencies": []
     },
     {
       "name": "logging",
@@ -832,6 +805,13 @@
       "dependencies": [
         "meta",
         "path"
+      ]
+    },
+    {
+      "name": "flutter_web_plugins",
+      "version": "0.0.0",
+      "dependencies": [
+        "flutter"
       ]
     },
     {

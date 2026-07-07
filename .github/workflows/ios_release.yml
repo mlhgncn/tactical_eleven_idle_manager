@@ -124,7 +124,6 @@ jobs:
           FLUTTER_BUILD_NUMBER: ${{ inputs.build_number || github.run_number }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-          REVENUECAT_API_KEY: ${{ secrets.REVENUECAT_API_KEY }}
           ADMOB_INTERSTITIAL_ID: ${{ secrets.ADMOB_INTERSTITIAL_ID }}
 
       # Guards against ever caching an incomplete ios_signing_cache/ (e.g. if
