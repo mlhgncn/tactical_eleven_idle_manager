@@ -11,7 +11,6 @@
         "easy_localization",
         "flutter",
         "flutter_local_notifications",
-        "google_mobile_ads",
         "intl",
         "provider",
         "supabase_flutter"
@@ -57,17 +56,6 @@
         "flutter_local_notifications_web",
         "flutter_local_notifications_windows",
         "timezone"
-      ]
-    },
-    {
-      "name": "google_mobile_ads",
-      "version": "9.0.0",
-      "dependencies": [
-        "flutter",
-        "meta",
-        "webview_flutter",
-        "webview_flutter_android",
-        "webview_flutter_wkwebview"
       ]
     },
     {
@@ -273,35 +261,6 @@
         "flutter_local_notifications_platform_interface",
         "path",
         "xdg_directories"
-      ]
-    },
-    {
-      "name": "webview_flutter",
-      "version": "4.14.0",
-      "dependencies": [
-        "flutter",
-        "webview_flutter_android",
-        "webview_flutter_platform_interface",
-        "webview_flutter_wkwebview"
-      ]
-    },
-    {
-      "name": "webview_flutter_wkwebview",
-      "version": "3.26.0",
-      "dependencies": [
-        "flutter",
-        "meta",
-        "path",
-        "webview_flutter_platform_interface"
-      ]
-    },
-    {
-      "name": "webview_flutter_android",
-      "version": "4.13.0",
-      "dependencies": [
-        "flutter",
-        "meta",
-        "webview_flutter_platform_interface"
       ]
     },
     {
@@ -524,15 +483,6 @@
         "ffi",
         "meta",
         "xml"
-      ]
-    },
-    {
-      "name": "webview_flutter_platform_interface",
-      "version": "2.15.1",
-      "dependencies": [
-        "flutter",
-        "meta",
-        "plugin_platform_interface"
       ]
     },
     {

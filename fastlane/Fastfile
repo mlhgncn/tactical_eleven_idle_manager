@@ -183,7 +183,6 @@ platform :ios do
     flutter_build_args << "--export-options-plist=#{Shellwords.escape(export_options_path)}"
     flutter_build_args << "--dart-define=SUPABASE_URL=#{Shellwords.escape(ENV['SUPABASE_URL'])}" if env_present?('SUPABASE_URL')
     flutter_build_args << "--dart-define=SUPABASE_ANON_KEY=#{Shellwords.escape(ENV['SUPABASE_ANON_KEY'])}" if env_present?('SUPABASE_ANON_KEY')
-    flutter_build_args << "--dart-define=ADMOB_INTERSTITIAL_ID=#{Shellwords.escape(ENV['ADMOB_INTERSTITIAL_ID'])}" if env_present?('ADMOB_INTERSTITIAL_ID')
 
     sh("flutter build ipa --release #{flutter_build_args.join(' ')}")
 
