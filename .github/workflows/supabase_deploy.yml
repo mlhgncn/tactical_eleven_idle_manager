@@ -54,60 +54,40 @@ jobs:
             echo "Missing SUPABASE_DB_URL secret" && exit 1
           fi
 
-      # db.<ref>.supabase.co (the direct connection host in SUPABASE_DB_URL)
-      # is IPv6-only for this project (confirmed via nslookup: AAAA record
-      # only, no A record) and GitHub-hosted runners have no IPv6 egress
-      # ("Network is unreachable" when psql tried it directly). Route
-      # through Supabase's session-mode connection pooler instead, which
-      # resolves to an IPv4 address and behaves like a normal Postgres
-      # connection for DDL/multi-statement scripts (unlike the transaction-
-      # mode pooler on port 6543, which doesn't support that).
-      - name: Compute pooler connection string
+      # SUPABASE_DB_URL now holds the session-pooler connection string
+      # directly (aws-0-<region>.pooler.supabase.com, user
+      # postgres.<project-ref>) - the direct db.<ref>.supabase.co host is
+      # IPv6-only for this project and GitHub-hosted runners have no IPv6
+      # egress, so the pooler (which resolves to an IPv4 address) is
+      # required. No URL rewriting needed here anymore; use the secret as-is.
+      - name: Apply schema
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
-          PYCODE=$(cat <<'PY'
-          import os, re
-          u = os.environ['SUPABASE_DB_URL']
-          m = re.match(r'^(?P<scheme>[a-zA-Z][a-zA-Z0-9+.-]*)://(?P<user>[^:@]*)(?::(?P<password>[^@]*))?@(?P<host>[^:/?#]+)(?::(?P<port>\d+))?(?P<rest>[/?#].*)?$', u)
-          if not m:
-              raise ValueError('Could not parse SUPABASE_DB_URL')
-          host_match = re.match(r'^db\.([^.]+)\.supabase\.co$', m.group('host'))
-          if not host_match:
-              raise ValueError('Unexpected SUPABASE_DB_URL host: ' + m.group('host'))
-          project_ref = host_match.group(1)
-          user = m.group('user') or 'postgres'
-          password = m.group('password') or ''
-          rest = m.group('rest') or '/postgres'
-          pooler_host = 'aws-0-eu-central-1.pooler.supabase.com'
-          new_user = user + '.' + project_ref
-          print(f'postgresql://{new_user}:{password}@{pooler_host}:5432{rest}')
-          PY
-          )
-          POOLER_URL=$(python3 -c "$PYCODE")
-          echo "::add-mask::$POOLER_URL"
-          echo "POOLER_DB_URL=$POOLER_URL" >> "$GITHUB_ENV"
-
-      - name: Apply schema
-        run: |
           echo "Applying supabase/schema.sql"
-          psql "$POOLER_DB_URL" -v ON_ERROR_STOP=1 -f supabase/schema.sql
+          psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f supabase/schema.sql
 
       - name: Apply migrations folder
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
           for f in $(ls supabase/migrations/*.sql | sort); do
             echo "Applying $f"
-            psql "$POOLER_DB_URL" -v ON_ERROR_STOP=1 -f "$f"
+            psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f "$f"
           done
 
       - name: Apply seed data
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
           echo "Applying supabase/seed_masked_data.sql"
-          psql "$POOLER_DB_URL" -v ON_ERROR_STOP=1 -f supabase/seed_masked_data.sql
+          psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f supabase/seed_masked_data.sql
 
       - name: Verify RLS & policies
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
-          psql "$POOLER_DB_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 <<'SQL'
           DO $$
           BEGIN
             IF NOT EXISTS (SELECT 1 FROM pg_class WHERE relname='financial_transactions' AND relrowsecurity) THEN
