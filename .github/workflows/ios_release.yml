@@ -154,3 +154,15 @@ jobs:
           name: Runner-ipa
           path: build/ios/ipa/*.ipa
           retention-days: 14
+
+      # Lets us symbolicate a device crash report after the fact (atos -o
+      # Runner -l <base> <addr>) instead of guessing which native SDK caused
+      # it - flutter build ipa always leaves this behind in the archive.
+      - name: Upload dSYMs as build artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Runner-dSYMs
+          path: build/ios/archive/Runner.xcarchive/dSYMs
+          retention-days: 14
+          if-no-files-found: ignore
