@@ -1,26 +1,25 @@
 import 'dart:convert';
 
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/material.dart';
 
 import '../repositories/supabase_repository.dart';
 
+// Local-only for now: push notifications need a real FCM/APNs backend
+// (firebase_messaging pulled in an unconfigured Firebase native pod that
+// caused an instant launch crash - see analytics_service.dart). Re-add
+// firebase_messaging once real Firebase credentials exist.
 class NotificationService {
-  NotificationService._({FirebaseMessaging? messaging, SupabaseRepository? repository})
-      : _messaging = messaging,
-        _repository = repository;
+  NotificationService._({SupabaseRepository? repository}) : _repository = repository;
 
   static final NotificationService instance = NotificationService._();
 
-  final FirebaseMessaging? _messaging;
   final SupabaseRepository? _repository;
 
   final FlutterLocalNotificationsPlugin _local = FlutterLocalNotificationsPlugin();
 
   bool _enabled = true;
 
-  FirebaseMessaging get _resolvedMessaging => _messaging ?? FirebaseMessaging.instance;
   SupabaseRepository get _resolvedRepository => _repository ?? SupabaseRepository();
 
   void Function(String title, String body)? onSendNotification;
@@ -38,38 +37,6 @@ class NotificationService {
           // Handle local notification tap
         },
       );
-
-      // Request permission for notifications
-      final settings = await _resolvedMessaging.requestPermission(
-        alert: true,
-        badge: true,
-        sound: true,
-      );
-
-      if (settings.authorizationStatus == AuthorizationStatus.authorized ||
-          settings.authorizationStatus == AuthorizationStatus.provisional) {
-        final token = await _resolvedMessaging.getToken();
-        if (token != null) {
-          await _resolvedRepository.updateFcmToken(token);
-        }
-
-        _resolvedMessaging.onTokenRefresh.listen((newToken) async {
-          await _resolvedRepository.updateFcmToken(newToken);
-        });
-
-        // Foreground message handling to show local notifications
-        FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
-          if (!_enabled) return;
-          final notification = message.notification;
-          final title = notification?.title ?? 'Bildirim';
-          final body = notification?.body ?? '';
-          await _showLocalNotification(title, body, message.data);
-        });
-
-        FirebaseMessaging.onMessageOpenedApp.listen((message) {
-          // Optionally handle notification taps
-        });
-      }
 
       // Load persisted preference from server if available
       final pref = await _resolvedRepository.loadNotificationPreference();

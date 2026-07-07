@@ -45,8 +45,6 @@ jobs:
     runs-on: macos-15
     needs: analyze-and-test
     timeout-minutes: 90
-    env:
-      FIREBASE_PLIST_BASE64: ${{ secrets.FIREBASE_GOOGLE_SERVICE_INFO_PLIST_BASE64 }}
 
     steps:
       - name: Checkout repository
@@ -71,14 +69,6 @@ jobs:
 
       - name: Flutter pub get
         run: flutter pub get
-
-      # Optional: only runs if you add this secret. Needed because
-      # firebase_messaging is in pubspec.yaml but no GoogleService-Info.plist
-      # is committed to ios/Runner.
-      - name: Write GoogleService-Info.plist (if configured)
-        if: ${{ env.FIREBASE_PLIST_BASE64 != '' }}
-        run: |
-          echo "$FIREBASE_PLIST_BASE64" | base64 --decode > ios/Runner/GoogleService-Info.plist
 
       - name: Cache CocoaPods
         uses: actions/cache@v4

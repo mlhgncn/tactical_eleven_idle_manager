@@ -1,7 +1,8 @@
 typedef ErrorReporter = Future<void> Function(Object error, StackTrace? stack, {String? reason});
 
 class ErrorReportingService {
-  // Default reporter logs to console. Replace at app startup with Crashlytics.
+  // Default reporter logs to console. Replace at app startup with a real
+  // crash-reporting backend once one is configured.
   static ErrorReporter reporter = (error, stack, {reason}) async {
     // Keep minimal: print so devs can see when not configured
     // Avoid throwing from reporter
@@ -15,11 +16,4 @@ class ErrorReportingService {
     await reporter(error, stack, reason: reason);
   }
 }
-
-// Usage example (in `main.dart`) to forward errors to Firebase Crashlytics:
-//
-// import 'package:firebase_crashlytics/firebase_crashlytics.dart';
-// ErrorReportingService.reporter = (error, stack, {reason}) async {
-//   await FirebaseCrashlytics.instance.recordError(error, stack, reason: reason);
-// };
 

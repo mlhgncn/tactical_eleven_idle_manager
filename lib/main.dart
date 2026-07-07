@@ -1,8 +1,6 @@
 import 'dart:async';
 
 import 'package:easy_localization/easy_localization.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -35,25 +33,12 @@ Future<void> main() async {
     );
   }
 
-  // Initialize Firebase & Crashlytics if configured, and wire error reporting.
-  if (Config.firebaseConfigured) {
-    await Firebase.initializeApp(options: Config.firebaseOptions);
-    // Enable Crashlytics collection and set reporter
-    ErrorReportingService.reporter = (error, stack, {reason}) async {
-      try {
-        await FirebaseCrashlytics.instance.recordError(error, stack, reason: reason, fatal: false);
-      } catch (_) {
-        // swallow to avoid infinite loops
-      }
-    };
-    // Initialize analytics/crashlytics handlers
-    await AnalyticsService.instance.initialize();
-  } else {
-    // Default: route Flutter errors to our reporter which currently logs
-    FlutterError.onError = (details) {
-      ErrorReportingService.report(details.exception, details.stack, reason: 'FlutterError');
-    };
-  }
+  // Route Flutter errors to our reporter (currently logs; swap in a real
+  // crash-reporting backend here once one is configured).
+  FlutterError.onError = (details) {
+    ErrorReportingService.report(details.exception, details.stack, reason: 'FlutterError');
+  };
+  await AnalyticsService.instance.initialize();
 
   runZonedGuarded(() {
     runApp(
