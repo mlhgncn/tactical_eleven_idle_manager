@@ -54,130 +54,41 @@ jobs:
             echo "Missing SUPABASE_DB_URL secret" && exit 1
           fi
 
+      # Supabase's direct DB hostname (db.<ref>.supabase.co) is IPv6-only for
+      # this project (confirmed: no A record, only AAAA) - an earlier version
+      # of this workflow tried to resolve it down to an IPv4 address before
+      # connecting, which can never work for a host with no IPv4 address at
+      # all and just failed with "No address associated with hostname".
+      # GitHub-hosted runners have IPv6 egress, so connecting directly is the
+      # actual fix.
       - name: Apply schema
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
-          echo "Resolving Supabase host to IPv4 and applying supabase/schema.sql"
-          PYCODE=$(cat <<'PY'
-          # Avoid urllib.parse.urlparse here: some Python 3.12 patch versions
-          # have a regression where it raises ValueError on a plain hostname
-          # ("does not appear to be an IPv4 or IPv6 address") via an overly
-          # strict bracketed-host check. A small regex does the same job
-          # without going through that codepath.
-          import os, re, socket
-          u = os.environ['SUPABASE_DB_URL']
-          m = re.match(r'^(?P<scheme>[a-zA-Z][a-zA-Z0-9+.-]*)://(?:(?P<userinfo>[^@]*)@)?(?P<host>[^:/?#]+)(?::(?P<port>\d+))?(?P<rest>[/?#].*)?$', u)
-          if not m:
-              raise ValueError('Could not parse SUPABASE_DB_URL')
-          host = m.group('host')
-          port = m.group('port') or ''
-          userinfo = m.group('userinfo') or ''
-          rest = m.group('rest') or ''
-          addrs = socket.getaddrinfo(host, None, socket.AF_INET)
-          ipv4 = addrs[0][4][0]
-          netloc = (userinfo + '@' if userinfo else '') + ipv4 + ((':' + port) if port else '')
-          new = f"{m.group('scheme')}://{netloc}{rest}"
-          print(new)
-          PY
-          )
-          NEW_DB_URL=$(python3 -c "$PYCODE")
-          echo "Applying supabase/schema.sql to $NEW_DB_URL"
-          psql "$NEW_DB_URL" -v ON_ERROR_STOP=1 -f supabase/schema.sql
+          echo "Applying supabase/schema.sql"
+          psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f supabase/schema.sql
 
       - name: Apply migrations folder
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
-          echo "Resolving Supabase host to IPv4 and applying SQL files in supabase/migrations"
-          PYCODE=$(cat <<'PY'
-          # Avoid urllib.parse.urlparse here: some Python 3.12 patch versions
-          # have a regression where it raises ValueError on a plain hostname
-          # ("does not appear to be an IPv4 or IPv6 address") via an overly
-          # strict bracketed-host check. A small regex does the same job
-          # without going through that codepath.
-          import os, re, socket
-          u = os.environ['SUPABASE_DB_URL']
-          m = re.match(r'^(?P<scheme>[a-zA-Z][a-zA-Z0-9+.-]*)://(?:(?P<userinfo>[^@]*)@)?(?P<host>[^:/?#]+)(?::(?P<port>\d+))?(?P<rest>[/?#].*)?$', u)
-          if not m:
-              raise ValueError('Could not parse SUPABASE_DB_URL')
-          host = m.group('host')
-          port = m.group('port') or ''
-          userinfo = m.group('userinfo') or ''
-          rest = m.group('rest') or ''
-          addrs = socket.getaddrinfo(host, None, socket.AF_INET)
-          ipv4 = addrs[0][4][0]
-          netloc = (userinfo + '@' if userinfo else '') + ipv4 + ((':' + port) if port else '')
-          new = f"{m.group('scheme')}://{netloc}{rest}"
-          print(new)
-          PY
-          )
-          NEW_DB_URL=$(python3 -c "$PYCODE")
           for f in $(ls supabase/migrations/*.sql | sort); do
-            echo "Applying $f to $NEW_DB_URL"
-            psql "$NEW_DB_URL" -v ON_ERROR_STOP=1 -f "$f"
+            echo "Applying $f"
+            psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f "$f"
           done
 
       - name: Apply seed data
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
-          echo "Resolving Supabase host to IPv4 and applying supabase/seed_masked_data.sql"
-          PYCODE=$(cat <<'PY'
-          # Avoid urllib.parse.urlparse here: some Python 3.12 patch versions
-          # have a regression where it raises ValueError on a plain hostname
-          # ("does not appear to be an IPv4 or IPv6 address") via an overly
-          # strict bracketed-host check. A small regex does the same job
-          # without going through that codepath.
-          import os, re, socket
-          u = os.environ['SUPABASE_DB_URL']
-          m = re.match(r'^(?P<scheme>[a-zA-Z][a-zA-Z0-9+.-]*)://(?:(?P<userinfo>[^@]*)@)?(?P<host>[^:/?#]+)(?::(?P<port>\d+))?(?P<rest>[/?#].*)?$', u)
-          if not m:
-              raise ValueError('Could not parse SUPABASE_DB_URL')
-          host = m.group('host')
-          port = m.group('port') or ''
-          userinfo = m.group('userinfo') or ''
-          rest = m.group('rest') or ''
-          addrs = socket.getaddrinfo(host, None, socket.AF_INET)
-          ipv4 = addrs[0][4][0]
-          netloc = (userinfo + '@' if userinfo else '') + ipv4 + ((':' + port) if port else '')
-          new = f"{m.group('scheme')}://{netloc}{rest}"
-          print(new)
-          PY
-          )
-          NEW_DB_URL=$(python3 -c "$PYCODE")
-          echo "Applying supabase/seed_masked_data.sql to $NEW_DB_URL"
-          psql "$NEW_DB_URL" -v ON_ERROR_STOP=1 -f supabase/seed_masked_data.sql
+          echo "Applying supabase/seed_masked_data.sql"
+          psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f supabase/seed_masked_data.sql
 
       - name: Verify RLS & policies
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
-          echo "Resolving Supabase host to IPv4 and verifying RLS and policies"
-          PYCODE=$(cat <<'PY'
-          # Avoid urllib.parse.urlparse here: some Python 3.12 patch versions
-          # have a regression where it raises ValueError on a plain hostname
-          # ("does not appear to be an IPv4 or IPv6 address") via an overly
-          # strict bracketed-host check. A small regex does the same job
-          # without going through that codepath.
-          import os, re, socket
-          u = os.environ['SUPABASE_DB_URL']
-          m = re.match(r'^(?P<scheme>[a-zA-Z][a-zA-Z0-9+.-]*)://(?:(?P<userinfo>[^@]*)@)?(?P<host>[^:/?#]+)(?::(?P<port>\d+))?(?P<rest>[/?#].*)?$', u)
-          if not m:
-              raise ValueError('Could not parse SUPABASE_DB_URL')
-          host = m.group('host')
-          port = m.group('port') or ''
-          userinfo = m.group('userinfo') or ''
-          rest = m.group('rest') or ''
-          addrs = socket.getaddrinfo(host, None, socket.AF_INET)
-          ipv4 = addrs[0][4][0]
-          netloc = (userinfo + '@' if userinfo else '') + ipv4 + ((':' + port) if port else '')
-          new = f"{m.group('scheme')}://{netloc}{rest}"
-          print(new)
-          PY
-          )
-          NEW_DB_URL=$(python3 -c "$PYCODE")
-          psql "$NEW_DB_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 <<'SQL'
           DO $$
           BEGIN
             IF NOT EXISTS (SELECT 1 FROM pg_class WHERE relname='financial_transactions' AND relrowsecurity) THEN
