@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS public.webhook_configurations (
 
 -- RLS for webhook_configurations
 ALTER TABLE public.webhook_configurations ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all to read webhook configurations" ON public.webhook_configurations;
 CREATE POLICY "Allow all to read webhook configurations" ON public.webhook_configurations
   FOR SELECT USING (true);
 
@@ -80,6 +81,7 @@ CREATE TABLE IF NOT EXISTS public.environment_secrets (
 
 -- RLS for environment_secrets
 ALTER TABLE public.environment_secrets ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow service role only" ON public.environment_secrets;
 CREATE POLICY "Allow service role only" ON public.environment_secrets
   FOR ALL USING (auth.role() = 'service_role');
 
@@ -121,12 +123,14 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Triggers for tracking last activity
+DROP TRIGGER IF EXISTS update_last_activity_on_match ON public.matches;
 CREATE TRIGGER update_last_activity_on_match
 AFTER UPDATE ON public.matches
 FOR EACH ROW
 WHEN (NEW.is_played = TRUE AND OLD.is_played = FALSE)
 EXECUTE FUNCTION public.update_last_activity();
 
+DROP TRIGGER IF EXISTS update_last_activity_on_financial ON public.financial_transactions;
 CREATE TRIGGER update_last_activity_on_financial
 AFTER INSERT ON public.financial_transactions
 FOR EACH ROW

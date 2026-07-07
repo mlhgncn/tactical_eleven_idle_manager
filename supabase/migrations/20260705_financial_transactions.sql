@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS public.financial_transactions (
 
 ALTER TABLE public.financial_transactions ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS financial_transactions_select_policy ON public.financial_transactions;
 CREATE POLICY financial_transactions_select_policy ON public.financial_transactions FOR SELECT TO authenticated
   USING (
     club_id IN (
@@ -19,11 +20,14 @@ CREATE POLICY financial_transactions_select_policy ON public.financial_transacti
   );
 
 -- Inserts should only be performed server-side (service role or DB functions)
+DROP POLICY IF EXISTS financial_transactions_insert_policy ON public.financial_transactions;
 CREATE POLICY financial_transactions_insert_policy ON public.financial_transactions FOR INSERT TO authenticated
   WITH CHECK (false);
 
+DROP POLICY IF EXISTS financial_transactions_update_policy ON public.financial_transactions;
 CREATE POLICY financial_transactions_update_policy ON public.financial_transactions FOR UPDATE TO authenticated
   USING (false);
 
+DROP POLICY IF EXISTS financial_transactions_delete_policy ON public.financial_transactions;
 CREATE POLICY financial_transactions_delete_policy ON public.financial_transactions FOR DELETE TO authenticated
   USING (false);
