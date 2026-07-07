@@ -532,6 +532,9 @@ BEGIN
     UPDATE public.clubs SET budget = budget + p_amount WHERE user_id = u_id RETURNING id, budget INTO club_row;
     INSERT INTO public.financial_transactions(club_id, type, amount, description, source)
     VALUES (club_row.id, 'ad_reward', p_amount, format('Reklam ödülü: +%s GP', p_amount), 'award_ad_reward');
+  END IF;
+
+  result := jsonb_build_object('awarded', true);
   RETURN result;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
