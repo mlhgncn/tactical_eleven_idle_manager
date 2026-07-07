@@ -186,7 +186,7 @@ CREATE POLICY match_events_select_policy ON public.match_events FOR SELECT TO au
   USING (auth.uid() IS NOT NULL);
 DROP POLICY IF EXISTS match_events_insert_policy ON public.match_events;
 CREATE POLICY match_events_insert_policy ON public.match_events FOR INSERT TO authenticated
-  USING (false);
+  WITH CHECK (false);
 DROP POLICY IF EXISTS match_events_update_policy ON public.match_events;
 CREATE POLICY match_events_update_policy ON public.match_events FOR UPDATE TO authenticated
   USING (false);
