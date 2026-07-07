@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 
 import '../models/player_fm.dart';
 import '../providers/game_provider.dart';
+import '../widgets/player_card.dart';
+import '../widgets/themed_button.dart';
 
 class PlayerDetailScreen extends StatefulWidget {
   const PlayerDetailScreen({super.key, required this.player});
@@ -42,6 +44,8 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          Center(child: PlayerCard(player: player)),
+          const SizedBox(height: 16),
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -98,10 +102,9 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                     onChanged: (value) => setState(() => minutesPlayed = value.toInt()),
                   ),
                   const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: isUpdating ? null : () async {
+                  GoldButton(
+                    isLoading: isUpdating,
+                    onPressed: isUpdating ? null : () async {
                         setState(() => isUpdating = true);
                         try {
                           await provider.applyPlayerDevelopmentToPlayer(
@@ -121,14 +124,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                           }
                         }
                       },
-                      child: isUpdating
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Text('Gelişimi uygula'),
-                    ),
+                    label: 'Gelişimi uygula',
                   ),
                 ],
               ),
@@ -149,46 +145,38 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                     decoration: const InputDecoration(labelText: 'İstenen fiyat (GP)'),
                   ),
                   const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton(
-                      onPressed: isListing
-                          ? null
-                          : () async {
-                              final askingPrice = int.tryParse(_askingPriceController.text.trim());
-                              if (askingPrice == null || askingPrice <= 0) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Geçerli bir fiyat girin')),
-                                );
-                                return;
-                              }
-                              setState(() => isListing = true);
-                              try {
-                                await provider.listPlayerForTransfer(
-                                  playerId: player.id,
-                                  askingPrice: askingPrice,
-                                );
-                                if (!mounted) return;
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Oyuncu transfer pazarına çıkarıldı')),
-                                );
-                              } catch (error) {
-                                if (!mounted) return;
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text(error.toString())),
-                                );
-                              } finally {
-                                if (mounted) setState(() => isListing = false);
-                              }
-                            },
-                      child: isListing
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Text('Transfere Çıkar'),
-                    ),
+                  GlassButton(
+                    isLoading: isListing,
+                    onPressed: isListing
+                        ? null
+                        : () async {
+                            final askingPrice = int.tryParse(_askingPriceController.text.trim());
+                            if (askingPrice == null || askingPrice <= 0) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Geçerli bir fiyat girin')),
+                              );
+                              return;
+                            }
+                            setState(() => isListing = true);
+                            try {
+                              await provider.listPlayerForTransfer(
+                                playerId: player.id,
+                                askingPrice: askingPrice,
+                              );
+                              if (!mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Oyuncu transfer pazarına çıkarıldı')),
+                              );
+                            } catch (error) {
+                              if (!mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(error.toString())),
+                              );
+                            } finally {
+                              if (mounted) setState(() => isListing = false);
+                            }
+                          },
+                    label: 'Transfere Çıkar',
                   ),
                 ],
               ),

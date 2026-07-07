@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../models/tactics.dart';
 import '../providers/game_provider.dart';
+import '../widgets/themed_button.dart';
 
 class TacticsScreen extends StatefulWidget {
   const TacticsScreen({super.key});
@@ -184,15 +185,10 @@ class _TacticsScreenState extends State<TacticsScreen> {
                       },
                     ),
                     const SizedBox(height: 24),
-                    ElevatedButton(
+                    GoldButton(
+                      isLoading: _isSaving,
                       onPressed: _isSaving ? null : _saveTactics,
-                      child: _isSaving
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Text('Taktikleri Kaydet'),
+                      label: 'Taktikleri Kaydet',
                     ),
                   ],
                 ),

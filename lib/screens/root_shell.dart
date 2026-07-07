@@ -4,6 +4,7 @@ import 'package:easy_localization/easy_localization.dart';
 
 import '../services/auth_service.dart';
 import '../services/notification_service.dart';
+import '../theme/app_assets.dart';
 
 import '../providers/game_provider.dart';
 import 'club_finance_screen.dart';
@@ -24,7 +25,7 @@ class RootShell extends StatefulWidget {
 
 class _ShellPage {
   final Widget page;
-  final Icon icon;
+  final Widget icon;
   final String label;
 
   const _ShellPage({
@@ -33,6 +34,8 @@ class _ShellPage {
     required this.label,
   });
 }
+
+Widget _navIcon(String asset) => Image.asset(asset, width: 26, height: 26);
 
 class _RootShellState extends State<RootShell> {
   int _selectedIndex = 0;
@@ -64,17 +67,17 @@ class _RootShellState extends State<RootShell> {
     ),
     _ShellPage(
       page: SquadScreen(),
-      icon: const Icon(Icons.group),
+      icon: _navIcon(AppAssets.navSquad),
       label: 'navigation.squad'.tr(),
     ),
     _ShellPage(
       page: TacticsScreen(),
-      icon: const Icon(Icons.sports_soccer),
+      icon: _navIcon(AppAssets.navTactics),
       label: 'navigation.tactics'.tr(),
     ),
     _ShellPage(
       page: TransferMarketScreen(),
-      icon: const Icon(Icons.transfer_within_a_station),
+      icon: _navIcon(AppAssets.navTransfer),
       label: 'navigation.transfer'.tr(),
     ),
     _ShellPage(
@@ -84,7 +87,7 @@ class _RootShellState extends State<RootShell> {
     ),
     _ShellPage(
       page: LeagueTableScreen(),
-      icon: const Icon(Icons.table_chart),
+      icon: _navIcon(AppAssets.navLeague),
       label: 'navigation.table'.tr(),
     ),
     _ShellPage(

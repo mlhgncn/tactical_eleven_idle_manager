@@ -9,6 +9,8 @@ import '../providers/game_provider.dart';
 import '../services/auth_repository.dart';
 import '../services/auth_service.dart';
 import '../services/analytics_service.dart';
+import '../theme/app_assets.dart';
+import '../widgets/themed_button.dart';
 import 'offline_return_screen.dart';
 
 class AuthScreen extends StatefulWidget {
@@ -187,85 +189,106 @@ class _AuthScreenState extends State<AuthScreen> {
   @override
   Widget build(BuildContext context) {
     if (_checkingExistingSession) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+      return Scaffold(
+        body: Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.asset(AppAssets.bgStadiumNight, fit: BoxFit.cover),
+            Container(color: Colors.black.withValues(alpha: 0.25)),
+            const Center(child: CircularProgressIndicator(color: Colors.white)),
+          ],
+        ),
       );
     }
 
     final theme = Theme.of(context);
 
     return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _isLoginMode ? 'auth.login'.tr() : 'auth.signup'.tr(),
-                  style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.asset(AppAssets.bgStadiumNight, fit: BoxFit.cover),
+          Container(color: Colors.black.withValues(alpha: 0.25)),
+          SafeArea(
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _isLoginMode ? 'auth.login'.tr() : 'auth.signup'.tr(),
+                      style: theme.textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'auth.subtitle'.tr(),
+                      style: theme.textTheme.bodyMedium?.copyWith(color: Colors.white70),
+                    ),
+                    const SizedBox(height: 28),
+                    Form(
+                      key: _formKey,
+                      child: Column(
+                        children: [
+                          TextFormField(
+                            controller: _emailController,
+                            keyboardType: TextInputType.emailAddress,
+                            autocorrect: false,
+                            style: const TextStyle(color: Colors.white),
+                            decoration: InputDecoration(
+                              labelText: 'auth.email'.tr(),
+                              labelStyle: const TextStyle(color: Colors.white70),
+                              prefixIcon: const Icon(Icons.email_outlined, color: Colors.white70),
+                              filled: true,
+                              fillColor: Colors.black.withValues(alpha: 0.35),
+                            ),
+                            validator: _validateEmail,
+                          ),
+                          const SizedBox(height: 16),
+                          TextFormField(
+                            controller: _passwordController,
+                            obscureText: true,
+                            style: const TextStyle(color: Colors.white),
+                            decoration: InputDecoration(
+                              labelText: 'auth.password'.tr(),
+                              labelStyle: const TextStyle(color: Colors.white70),
+                              prefixIcon: const Icon(Icons.lock_outline, color: Colors.white70),
+                              filled: true,
+                              fillColor: Colors.black.withValues(alpha: 0.35),
+                            ),
+                            validator: _validatePassword,
+                          ),
+                          const SizedBox(height: 24),
+                          GoldButton(
+                            onPressed: _isLoading ? null : _submit,
+                            isLoading: _isLoading,
+                            label: _isLoginMode ? 'auth.login'.tr() : 'auth.signup'.tr(),
+                          ),
+                          const SizedBox(height: 16),
+                          TextButton(
+                            onPressed: _isLoading
+                                ? null
+                                : () {
+                                    setState(() => _isLoginMode = !_isLoginMode);
+                                  },
+                            child: Text(
+                              _isLoginMode ? 'auth.no_account'.tr() : 'auth.have_account'.tr(),
+                              style: const TextStyle(color: Colors.white),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  'auth.subtitle'.tr(),
-                  style: theme.textTheme.bodyMedium,
-                ),
-                const SizedBox(height: 28),
-                Form(
-                  key: _formKey,
-                  child: Column(
-                    children: [
-                      TextFormField(
-                        controller: _emailController,
-                        keyboardType: TextInputType.emailAddress,
-                        autocorrect: false,
-                        decoration: InputDecoration(
-                          labelText: 'auth.email'.tr(),
-                          prefixIcon: const Icon(Icons.email_outlined),
-                        ),
-                        validator: _validateEmail,
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _passwordController,
-                        obscureText: true,
-                        decoration: InputDecoration(
-                          labelText: 'auth.password'.tr(),
-                          prefixIcon: const Icon(Icons.lock_outline),
-                        ),
-                        validator: _validatePassword,
-                      ),
-                      const SizedBox(height: 24),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 52,
-                        child: ElevatedButton(
-                          onPressed: _isLoading ? null : _submit,
-                          child: _isLoading
-                              ? const CircularProgressIndicator(color: Colors.white)
-                              : Text(_isLoginMode ? 'auth.login'.tr() : 'auth.signup'.tr()),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      TextButton(
-                        onPressed: _isLoading
-                            ? null
-                            : () {
-                                setState(() => _isLoginMode = !_isLoginMode);
-                              },
-                        child: Text(
-                          _isLoginMode ? 'auth.no_account'.tr() : 'auth.have_account'.tr(),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }

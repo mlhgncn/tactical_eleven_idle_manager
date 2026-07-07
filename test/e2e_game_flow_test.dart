@@ -19,6 +19,7 @@ import 'package:tactical_eleven_idle_manager/screens/email_verification_screen.d
 import 'package:tactical_eleven_idle_manager/screens/root_shell.dart';
 import 'package:tactical_eleven_idle_manager/screens/setup_club_screen.dart';
 import 'package:tactical_eleven_idle_manager/services/auth_repository.dart';
+import 'package:tactical_eleven_idle_manager/widgets/themed_button.dart';
 
 class _FakeAuthRepository implements AuthRepository {
   // Starts signed-out like a real fresh Supabase session, so AuthScreen's
@@ -421,7 +422,7 @@ void main() {
     await tester.enterText(textFields.at(1), 'password123');
     await tester.pumpAndSettle(const Duration(milliseconds: 300));
 
-    await tester.tap(find.widgetWithText(ElevatedButton, 'Kayıt Ol'));
+    await tester.tap(find.widgetWithText(GoldButton, 'Kayıt Ol'));
     await tester.pumpAndSettle(const Duration(seconds: 1));
     
     expect(find.text('Kulüp Kurulumu'), findsOneWidget);
@@ -441,7 +442,7 @@ void main() {
     await tester.tap(find.text('Taktik'));
     await tester.pumpAndSettle(const Duration(milliseconds: 500));
     expect(find.text('Taktik Paneli'), findsOneWidget);
-    await tester.tap(find.widgetWithText(ElevatedButton, 'Taktikleri Kaydet'));
+    await tester.tap(find.widgetWithText(GoldButton, 'Taktikleri Kaydet'));
     await tester.pumpAndSettle(const Duration(milliseconds: 500));
 
     final initialBudget = gameProvider.activeClub!.budget;

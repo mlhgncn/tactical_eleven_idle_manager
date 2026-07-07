@@ -3,6 +3,8 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/game_provider.dart';
+import '../widgets/club_badge.dart';
+import '../widgets/themed_button.dart';
 import 'match_summary_screen.dart';
 
 class MatchScheduleScreen extends StatelessWidget {
@@ -60,6 +62,11 @@ class MatchScheduleScreen extends StatelessWidget {
                                   children: [
                                     ListTile(
                                       contentPadding: EdgeInsets.zero,
+                                      leading: ClubBadge(
+                                        clubName: fixture.opponentName,
+                                        kind: fixture.isHome ? ClubBadgeKind.away : ClubBadgeKind.home,
+                                        size: 36,
+                                      ),
                                       title: Text(fixture.opponentName,
                                           style: const TextStyle(fontWeight: FontWeight.w600)),
                                       subtitle: Column(
@@ -112,41 +119,32 @@ class MatchScheduleScreen extends StatelessWidget {
                                     ),
                                     if (isNextUpcoming) ...[
                                       const SizedBox(height: 12),
-                                      SizedBox(
-                                        height: 40,
-                                        child: ElevatedButton(
-                                          onPressed: provider.isBusy
-                                              ? null
-                                              : () async {
-                                                  final scaffoldMessenger = ScaffoldMessenger.of(context);
-                                                  final navigator = Navigator.of(context);
-                                                  try {
-                                                    final result = await provider.playNextFixture();
-                                                    navigator.push(
-                                                      MaterialPageRoute(
-                                                        builder: (_) => MatchSummaryScreen(result: result),
+                                      GoldButton(
+                                        height: 44,
+                                        isLoading: provider.isBusy,
+                                        onPressed: provider.isBusy
+                                            ? null
+                                            : () async {
+                                                final scaffoldMessenger = ScaffoldMessenger.of(context);
+                                                final navigator = Navigator.of(context);
+                                                try {
+                                                  final result = await provider.playNextFixture();
+                                                  navigator.push(
+                                                    MaterialPageRoute(
+                                                      builder: (_) => MatchSummaryScreen(result: result),
+                                                    ),
+                                                  );
+                                                } catch (error) {
+                                                  scaffoldMessenger.showSnackBar(
+                                                    SnackBar(
+                                                      content: Text(
+                                                        'Maç oynatılırken hata oluştu: ${error.toString()}',
                                                       ),
-                                                    );
-                                                  } catch (error) {
-                                                    scaffoldMessenger.showSnackBar(
-                                                      SnackBar(
-                                                        content: Text(
-                                                          'Maç oynatılırken hata oluştu: ${error.toString()}',
-                                                        ),
-                                                      ),
-                                                    );
-                                                  }
-                                                },
-                                          child: provider.isBusy
-                                              ? const SizedBox(
-                                                  height: 16,
-                                                  width: 16,
-                                                  child: CircularProgressIndicator(
-                                                    strokeWidth: 2,
-                                                  ),
-                                                )
-                                              : const Text('Maçı Oyna'),
-                                        ),
+                                                    ),
+                                                  );
+                                                }
+                                              },
+                                        label: 'Maçı Oyna',
                                       ),
                                     ],
                                   ],

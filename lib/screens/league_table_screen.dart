@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/game_provider.dart';
+import '../widgets/club_badge.dart';
 
 class LeagueTableScreen extends StatelessWidget {
   const LeagueTableScreen({super.key});
@@ -106,7 +107,20 @@ class LeagueTableScreen extends StatelessWidget {
                     ),
                     cells: [
                       DataCell(Text('$position')),
-                      DataCell(Text(club['name']?.toString() ?? 'Takım')),
+                      DataCell(
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            ClubBadge(
+                              clubName: club['name']?.toString() ?? 'Takım',
+                              kind: isActiveClub ? ClubBadgeKind.home : ClubBadgeKind.neutral,
+                              size: 24,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(club['name']?.toString() ?? 'Takım'),
+                          ],
+                        ),
+                      ),
                       DataCell(Text('$wins')),
                       DataCell(Text('$draws')),
                       DataCell(Text('$losses')),

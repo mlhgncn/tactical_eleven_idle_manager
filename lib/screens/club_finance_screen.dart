@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/game_provider.dart';
+import '../widgets/currency_label.dart';
+import '../widgets/form_strip.dart';
+import '../widgets/themed_button.dart';
 import 'development_screen.dart';
 import 'sponsor_upgrade_screen.dart';
 import 'transfer_history_screen.dart';
@@ -61,8 +64,9 @@ class ClubFinanceScreen extends StatelessWidget {
                       style: TextStyle(fontSize: 12, color: Colors.grey),
                     ),
                     const SizedBox(height: 8),
-                    Text(
-                      '${club.budget} GP',
+                    CurrencyLabel(
+                      amount: club.budget,
+                      iconSize: 26,
                       style: Theme.of(context).textTheme.headlineSmall,
                     ),
                     const SizedBox(height: 12),
@@ -74,6 +78,22 @@ class ClubFinanceScreen extends StatelessWidget {
                       'Kullanılabilir Bütçe: ${club.budget - club.blockedBudget} GP',
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Son Form
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Son Form', style: Theme.of(context).textTheme.titleMedium),
+                    const SizedBox(height: 12),
+                    FormStrip(results: _recentForm(provider)),
                   ],
                 ),
               ),
@@ -210,55 +230,53 @@ class ClubFinanceScreen extends StatelessWidget {
             const SizedBox(height: 20),
 
             // Aksiyonlar
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const SponsorUpgradeScreen()),
-                ),
-                icon: const Icon(Icons.trending_up),
-                label: const Text('Sponsorluğu Yükselt'),
+            GoldButton(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const SponsorUpgradeScreen()),
               ),
+              label: 'Sponsorluğu Yükselt',
             ),
             const SizedBox(height: 10),
 
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const DevelopmentScreen()),
-                ),
-                icon: const Icon(Icons.upgrade),
-                label: const Text('Kulüp Geliştirme'),
+            GoldButton(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const DevelopmentScreen()),
               ),
+              label: 'Kulüp Geliştirme',
             ),
             const SizedBox(height: 10),
 
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const TransferHistoryScreen()),
-                ),
-                icon: const Icon(Icons.history),
-                label: const Text('Transfer Geçmişi'),
+            GlassButton(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const TransferHistoryScreen()),
               ),
+              label: 'Transfer Geçmişi',
             ),
             const SizedBox(height: 10),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const FinancialTransactionsScreen()),
-                ),
-                icon: const Icon(Icons.list_alt),
-                label: const Text('Bütçe Hareketleri'),
+            GlassButton(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const FinancialTransactionsScreen()),
               ),
+              label: 'Bütçe Hareketleri',
             ),
           ],
         ),
       ),
     );
+  }
+
+  List<FormResult> _recentForm(GameProvider provider) {
+    final clubId = provider.activeClub?.id;
+    if (clubId == null) return const [];
+    final recent = provider.results.take(5).toList().reversed;
+    return recent.map((result) {
+      final isHome = result.homeTeamId == clubId;
+      final myScore = isHome ? result.homeScore : result.awayScore;
+      final oppScore = isHome ? result.awayScore : result.homeScore;
+      if (myScore > oppScore) return FormResult.win;
+      if (myScore < oppScore) return FormResult.loss;
+      return FormResult.draw;
+    }).toList();
   }
 
   Widget _buildEconomyRow(String label, int value, {bool isBold = false, Color? color}) {
