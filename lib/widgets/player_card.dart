@@ -70,28 +70,40 @@ class PlayerCard extends StatelessWidget {
               ),
             ),
           ),
+          // The frame artwork has "OYUNCU FOTO"/"OYUNCU ADI"/"HIZ ŞUT PAS"
+          // baked in as placeholder labels, not a transparent slot - an
+          // opaque cover behind each dynamic value hides the baked text
+          // instead of layering on top of it.
           at(
-            left: 0.21,
-            top: 0.255,
-            w: 0.58,
-            h: 0.335,
+            left: 0.24,
+            top: 0.285,
+            w: 0.52,
+            h: 0.27,
             child: Center(
-              child: Text(
-                player.name.isNotEmpty ? player.name.substring(0, 1).toUpperCase() : '?',
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontWeight: FontWeight.bold,
-                  fontSize: width * 0.32,
+              child: Container(
+                width: width * 0.5,
+                height: width * 0.5,
+                decoration: const BoxDecoration(color: Color(0xFF0F1728), shape: BoxShape.circle),
+                alignment: Alignment.center,
+                child: Text(
+                  player.name.isNotEmpty ? player.name.substring(0, 1).toUpperCase() : '?',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontWeight: FontWeight.bold,
+                    fontSize: width * 0.28,
+                  ),
                 ),
               ),
             ),
           ),
           at(
-            left: 0.05,
-            top: 0.655,
-            w: 0.9,
-            h: 0.07,
-            child: Center(
+            left: 0.08,
+            top: 0.645,
+            w: 0.84,
+            h: 0.08,
+            child: Container(
+              color: const Color(0xFF0F1728),
+              alignment: Alignment.center,
               child: Text(
                 player.name.toUpperCase(),
                 maxLines: 1,
@@ -105,24 +117,24 @@ class PlayerCard extends StatelessWidget {
             ),
           ),
           at(
-            left: 0.09,
-            top: 0.755,
-            w: 0.24,
-            h: 0.14,
+            left: 0.07,
+            top: 0.745,
+            w: 0.28,
+            h: 0.16,
             child: _statBox('HIZ', player.determination, width),
           ),
           at(
-            left: 0.38,
-            top: 0.755,
-            w: 0.24,
-            h: 0.14,
+            left: 0.36,
+            top: 0.745,
+            w: 0.28,
+            h: 0.16,
             child: _statBox('ŞUT', player.finishing, width),
           ),
           at(
-            left: 0.67,
-            top: 0.755,
-            w: 0.24,
-            h: 0.14,
+            left: 0.65,
+            top: 0.745,
+            w: 0.28,
+            h: 0.16,
             child: _statBox('PAS', player.passing, width),
           ),
         ],
@@ -131,7 +143,9 @@ class PlayerCard extends StatelessWidget {
   }
 
   Widget _statBox(String label, int value, double width) {
-    return Center(
+    return Container(
+      color: const Color(0xFF0F1728),
+      alignment: Alignment.center,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
