@@ -15,6 +15,7 @@ import 'screens/setup_club_screen.dart';
 import 'services/error_reporting_service.dart';
 import 'services/analytics_service.dart';
 import 'config.dart';
+import 'theme/app_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -68,6 +69,7 @@ class MyApp extends StatelessWidget {
         localizationsDelegates: context.localizationDelegates,
         supportedLocales: context.supportedLocales,
         locale: context.locale,
+        theme: AppTheme.dark,
         home: const _ConfigErrorScreen(),
       );
     }
@@ -84,9 +86,9 @@ class MyApp extends StatelessWidget {
         localizationsDelegates: context.localizationDelegates,
         supportedLocales: context.supportedLocales,
         locale: context.locale,
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        ),
+        theme: AppTheme.dark,
+        darkTheme: AppTheme.dark,
+        themeMode: ThemeMode.dark,
         initialRoute: '/auth',
         routes: {
           '/auth': (_) => AuthScreen(),
