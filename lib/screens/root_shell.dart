@@ -8,6 +8,7 @@ import '../theme/app_assets.dart';
 
 import '../providers/game_provider.dart';
 import 'club_finance_screen.dart';
+import 'dashboard_screen.dart';
 import 'inbox_screen.dart';
 import 'league_table_screen.dart';
 import 'match_schedule_screen.dart';
@@ -61,6 +62,11 @@ class _RootShellState extends State<RootShell> {
 
   static List<_ShellPage> get _navigationPages => <_ShellPage>[
     _ShellPage(
+      page: const DashboardScreen(),
+      icon: const Icon(Icons.shield),
+      label: 'navigation.club'.tr(),
+    ),
+    _ShellPage(
       page: ClubFinanceScreen(),
       icon: const Icon(Icons.account_balance_wallet),
       label: 'navigation.finance'.tr(),
@@ -98,7 +104,7 @@ class _RootShellState extends State<RootShell> {
   ];
 
   void _onItemTapped(int index, {required bool hasActiveClub}) {
-    if (index == 3 && !hasActiveClub) {
+    if (index == 4 && !hasActiveClub) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('navigation.transfer_required'.tr()),
@@ -160,7 +166,7 @@ class _RootShellState extends State<RootShell> {
           pages.length,
           (index) {
             final page = pages[index];
-            if (index == 6) {
+            if (index == 7) {
               return BottomNavigationBarItem(
                 icon: Stack(
                   clipBehavior: Clip.none,

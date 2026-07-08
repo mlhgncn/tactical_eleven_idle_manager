@@ -431,9 +431,13 @@ void main() {
     await tester.tap(find.widgetWithText(ElevatedButton, 'Kulüp Oluştur'));
     await tester.pumpAndSettle(const Duration(seconds: 1));
 
-    expect(find.text('Kulüp Finansları'), findsOneWidget);
     expect(gameProvider.activeClub, isNotNull);
     expect(gameProvider.activeClub!.name, 'Zero Account FC');
+
+    // Dashboard ("Kulüp") is now the landing tab - Finans moved to its own tab.
+    await tester.tap(find.text('Finans'));
+    await tester.pumpAndSettle(const Duration(milliseconds: 500));
+    expect(find.text('Kulüp Finansları'), findsOneWidget);
 
     await tester.tap(find.text('Kadro'));
     await tester.pumpAndSettle(const Duration(milliseconds: 500));

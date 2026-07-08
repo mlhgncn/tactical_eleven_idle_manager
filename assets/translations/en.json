@@ -45,6 +45,7 @@
     "settings": "Settings"
   },
   "navigation": {
+    "club": "Club",
     "finance": "Finance",
     "squad": "Squad",
     "tactics": "Tactics",
