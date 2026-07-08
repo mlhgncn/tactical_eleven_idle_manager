@@ -54,6 +54,7 @@ class TransferMarketScreen extends StatelessWidget {
                                           bidAmount: item.currentHighestBid + 100,
                                         );
                                   } catch (error) {
+                                    if (!context.mounted) return;
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(content: Text(error.toString())),
                                     );

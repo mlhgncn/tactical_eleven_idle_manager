@@ -6,7 +6,7 @@ import '../models/transfer_market_item.dart';
 class TransferMarketCard extends StatefulWidget {
   final TransferMarketItem item;
   final String? activeClubId;
-  final VoidCallback? onBidPressed;
+  final Future<void> Function()? onBidPressed;
 
   const TransferMarketCard({
     super.key,
@@ -21,6 +21,7 @@ class TransferMarketCard extends StatefulWidget {
 
 class _TransferMarketCardState extends State<TransferMarketCard> {
   bool _isSold = false;
+  bool _isBidding = false;
   Timer? _saleTimer;
 
   @override
@@ -118,8 +119,23 @@ class _TransferMarketCardState extends State<TransferMarketCard> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     ElevatedButton(
-                      onPressed: widget.onBidPressed,
-                      child: const Text('Teklif Ver'),
+                      onPressed: (widget.onBidPressed == null || _isBidding)
+                          ? null
+                          : () async {
+                              setState(() => _isBidding = true);
+                              try {
+                                await widget.onBidPressed!();
+                              } finally {
+                                if (mounted) setState(() => _isBidding = false);
+                              }
+                            },
+                      child: _isBidding
+                          ? const SizedBox(
+                              height: 16,
+                              width: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Text('Teklif Ver'),
                     ),
                     Icon(
                       _isSold ? Icons.check_circle : Icons.access_time,
