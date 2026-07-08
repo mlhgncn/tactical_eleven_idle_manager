@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -11,7 +9,6 @@ import '../services/auth_service.dart';
 import '../services/analytics_service.dart';
 import '../theme/app_assets.dart';
 import '../widgets/themed_button.dart';
-import 'offline_return_screen.dart';
 
 class AuthScreen extends StatefulWidget {
   AuthScreen({super.key, AuthRepository? authRepository}) : _authRepository = authRepository ?? AuthService();
@@ -69,22 +66,11 @@ class _AuthScreenState extends State<AuthScreen> {
     final gameProvider = context.read<GameProvider>();
     final hasClub = gameProvider.activeClub != null;
     final navigator = Navigator.of(context);
+    // OSM-style: no offline rewards. Matches and income only happen on the
+    // server-side schedule (auto_resolve_matches cron), whether or not
+    // anyone was online to see them - reopening the app just shows whatever
+    // already happened.
     navigator.pushReplacementNamed(hasClub ? '/root' : '/setup-club');
-
-    // Fire this after navigating rather than blocking on it: the idle
-    // economy (offline training/facility income/injury recovery) is
-    // calculated server-side and previously had no caller anywhere in the
-    // app, so it never actually ran - the "welcome back" summary should
-    // pop in a moment after landing on the club, not delay getting there.
-    if (hasClub) {
-      unawaited(gameProvider.simulateOfflineMatches().then((result) {
-        if (result.matchesSimulated > 0) {
-          navigator.push(
-            MaterialPageRoute(builder: (_) => OfflineReturnScreen(result: result)),
-          );
-        }
-      }));
-    }
   }
 
   String? _validateEmail(String? value) {
