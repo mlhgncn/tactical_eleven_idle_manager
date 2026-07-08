@@ -67,13 +67,29 @@ jobs:
           echo "Applying supabase/schema.sql"
           psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f supabase/schema.sql
 
+      # This used to unconditionally re-run every file in migrations/ on
+      # every single push that touched supabase/** (this workflow's trigger
+      # path) - fine for the CREATE-OR-REPLACE/IF-NOT-EXISTS migrations, but
+      # any migration doing a plain INSERT (e.g. generating league fixtures)
+      # got replayed and duplicated its data on every subsequent push. Track
+      # applied filenames so each migration only ever runs once.
       - name: Apply migrations folder
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
+          psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -c \
+            "CREATE TABLE IF NOT EXISTS public._migrations_applied (filename TEXT PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT now());"
           for f in $(ls supabase/migrations/*.sql | sort); do
+            name=$(basename "$f")
+            already=$(psql "$SUPABASE_DB_URL" -tAc "SELECT 1 FROM public._migrations_applied WHERE filename = '$name'")
+            if [ "$already" = "1" ]; then
+              echo "Skipping $f (already applied)"
+              continue
+            fi
             echo "Applying $f"
             psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f "$f"
+            psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -c \
+              "INSERT INTO public._migrations_applied (filename) VALUES ('$name') ON CONFLICT DO NOTHING;"
           done
 
       - name: Apply seed data
