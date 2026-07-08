@@ -196,59 +196,20 @@ class SupabaseRepository implements GameRepository {
   }
 
   Future<List<PlayerFM>> loadSquadPlayers(String clubId) async {
-    // Try to return starting XI: top 11 by `current_ability`
-    final topData = await _client
+    // Whole roster (30-34 players), not just a starting XI - callers that
+    // need the starting XI derive it client-side (squad_screen takes the
+    // top 11 by ability). A hardcoded .limit(11) here used to mean the app
+    // could never show more than 11 players even after rosters were
+    // expanded to a full squad.
+    final data = await _client
         .from('players')
         .select(
             'id,club_id,name,position,age,current_ability,potential_ability,morale,fitness,finishing,passing,tackling,composure,determination,consistency,injury_proneness,injury_type,injury_duration_weeks,is_suspended')
         .eq('club_id', clubId)
-        .order('current_ability', ascending: false)
-        .limit(11);
+        .order('current_ability', ascending: false);
 
-    if (topData is List && topData.isNotEmpty) {
-      return topData
-          .cast<Map<String, dynamic>>()
-          .map(PlayerFM.fromMap)
-          .toList();
-    }
-
-    // Fallback: if no players currently assigned to this club, but seed data
-    // or import put a `team_id` value on players, assign those players to the
-    // club (set `club_id = team_id`) and re-query.
-    final teamPlayers = await _client
-        .from('players')
-        .select('id,team_id')
-        .eq('team_id', clubId)
-        .filter('club_id', 'is', null);
-
-    if (teamPlayers is List && teamPlayers.isNotEmpty) {
-      for (final row in teamPlayers.cast<Map<String, dynamic>>()) {
-        final playerId = row['id'] as String?;
-        if (playerId == null) continue;
-        await _client
-            .from('players')
-            .update({'club_id': clubId}).eq('id', playerId);
-      }
-
-      // Re-query after assigning
-      final reassigned = await _client
-          .from('players')
-          .select(
-              'id,club_id,name,position,age,current_ability,potential_ability,morale,fitness,finishing,passing,tackling,composure,determination,consistency,injury_proneness,form_rating,injury_type,injury_duration_weeks,is_suspended')
-          .eq('club_id', clubId)
-          .order('current_ability', ascending: false)
-          .limit(11);
-
-      if (reassigned is List && reassigned.isNotEmpty) {
-        return reassigned
-            .cast<Map<String, dynamic>>()
-            .map(PlayerFM.fromMap)
-            .toList();
-      }
-    }
-
-    // Final fallback: return empty list (caller will handle generation)
-    return <PlayerFM>[];
+    if (data is! List) return <PlayerFM>[];
+    return data.cast<Map<String, dynamic>>().map(PlayerFM.fromMap).toList();
   }
 
   Future<List<InboxMessage>> loadInboxMessages() async {
