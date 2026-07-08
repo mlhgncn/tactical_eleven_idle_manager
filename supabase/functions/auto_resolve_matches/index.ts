@@ -11,10 +11,13 @@ if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
 
 const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
-// Caps how many matches one invocation resolves, so a large backlog (e.g.
-// after downtime) can't run past the edge function timeout - pg_cron calls
-// this every few minutes, so a backlog drains over a few runs instead.
-const BATCH_LIMIT = 100;
+// Caps how many matches one invocation resolves. Each match takes several
+// sequential DB round-trips, and pg_cron's net.http_post has its own
+// timeout (30s) - a large backlog (e.g. after downtime, or the initial
+// fixture bootstrap) drains over several 5-minute ticks instead of one
+// invocation trying to do it all and timing out before pg_net ever sees a
+// response.
+const BATCH_LIMIT = 15;
 
 function createResponse(body: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(body), {
