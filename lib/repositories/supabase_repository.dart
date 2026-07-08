@@ -331,10 +331,20 @@ class SupabaseRepository implements GameRepository {
   }
 
   Future<Map<String, dynamic>?> loadCurrentSeasonState(String clubId) async {
+    final club = await _client
+        .from('clubs')
+        .select('league_id')
+        .eq('id', clubId)
+        .maybeSingle();
+
+    final leagueId = club?['league_id'] as String?;
+    if (leagueId == null) return null;
+
     final response = await _client
         .from('seasons')
         .select(
             'id,name,current_week,is_active,is_completed,league:leagues(id,name),champion_club:clubs(id,name)')
+        .eq('league_id', leagueId)
         .eq('is_active', true)
         .limit(1)
         .maybeSingle();

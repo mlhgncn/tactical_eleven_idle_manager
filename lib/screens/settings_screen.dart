@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 
+import '../services/auth_service.dart';
 import '../services/notification_service.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -82,6 +83,17 @@ class _SettingsBodyState extends State<_SettingsBody> {
                   value: _notificationsEnabled,
                   onChanged: (v) => _toggle(v),
                 ),
+        ),
+        const SizedBox(height: 24),
+        OutlinedButton.icon(
+          style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
+          onPressed: () async {
+            await AuthService().signOut();
+            if (!context.mounted) return;
+            Navigator.of(context).pushNamedAndRemoveUntil('/auth', (route) => false);
+          },
+          icon: const Icon(Icons.logout),
+          label: Text('navigation.logout_tooltip'.tr()),
         ),
       ],
     );
