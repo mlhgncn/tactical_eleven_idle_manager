@@ -23,6 +23,9 @@ class Tactics {
   int defensiveLine;
   bool offsideTrap;
   bool timeWasting;
+  // One player id per formation slot, in slot order - null means "no manual
+  // lineup set, auto-pick the best XI for the current formation".
+  List<String>? startingElevenIds;
 
   Tactics({
     required this.clubId,
@@ -37,11 +40,13 @@ class Tactics {
     this.defensiveLine = 50,
     this.offsideTrap = false,
     this.timeWasting = false,
+    this.startingElevenIds,
   })  : freeKickTakerId = freeKickTakerId ?? penaltyTakerId,
         cornerTakerId = cornerTakerId ?? penaltyTakerId;
 
   factory Tactics.fromMap(Map<String, dynamic> map) {
     final penaltyTaker = map['penalty_taker_id'] as String? ?? '';
+    final rawStartingEleven = map['starting_eleven_ids'] as List<dynamic>?;
     return Tactics(
       clubId: map['club_id'] as String,
       formation: Formation.values.firstWhere((value) => value.name == map['formation'] as String, orElse: () => Formation.f442),
@@ -55,6 +60,7 @@ class Tactics {
       defensiveLine: (map['defensive_line'] as num?)?.toInt() ?? 50,
       offsideTrap: (map['offside_trap'] as bool?) ?? false,
       timeWasting: (map['time_wasting'] as bool?) ?? false,
+      startingElevenIds: rawStartingEleven?.map((e) => e as String).toList(),
     );
   }
 
@@ -72,6 +78,7 @@ class Tactics {
       'defensive_line': defensiveLine,
       'offside_trap': offsideTrap,
       'time_wasting': timeWasting,
+      'starting_eleven_ids': startingElevenIds,
     };
   }
 }

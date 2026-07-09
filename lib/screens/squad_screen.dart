@@ -102,6 +102,25 @@ List<PlayerFM?> _pickStartingXI(List<PlayerFM> squad, List<_FormationSlot> slots
   return result;
 }
 
+/// Uses the saved manual lineup (one player id per slot, in slot order) if
+/// it's still valid for the current squad/formation - resolves to real,
+/// currently-fit players with no duplicates and the right slot count.
+/// Falls back to the auto-picked best XI otherwise (new squad, formation
+/// just changed, a manually-placed player got transferred/injured, etc.).
+List<PlayerFM?> _resolveStartingXI(List<PlayerFM> squad, List<_FormationSlot> slots, Tactics? tactics) {
+  final manual = tactics?.startingElevenIds;
+  if (manual != null && manual.length == slots.length) {
+    final byId = {for (final p in squad) p.id: p};
+    final resolved = manual.map((id) => byId[id]).toList();
+    final allValid = resolved.every((p) => p != null && !p.hasActiveInjury);
+    final uniqueCount = resolved.whereType<PlayerFM>().map((p) => p.id).toSet().length;
+    if (allValid && uniqueCount == resolved.length) {
+      return resolved;
+    }
+  }
+  return _pickStartingXI(squad, slots);
+}
+
 String _initialsOf(String name) {
   final words = name.trim().split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
   if (words.isEmpty) return '?';
@@ -129,7 +148,7 @@ class SquadScreen extends StatelessWidget {
 
     final formation = tactics?.formation ?? Formation.f442;
     final slots = _formationSlots[formation]!;
-    final starters = _pickStartingXI(squad, slots);
+    final starters = _resolveStartingXI(squad, slots, tactics);
     final startingIds = starters.whereType<PlayerFM>().map((p) => p.id).toSet();
     final bench = squad.where((p) => !startingIds.contains(p.id)).toList()
       ..sort((a, b) => b.currentAbility.compareTo(a.currentAbility));
@@ -187,7 +206,7 @@ class SquadScreen extends StatelessWidget {
                 const Text('YEDEK KULÜBESİ',
                     style: TextStyle(color: AppColors.textMuted, fontWeight: FontWeight.bold, fontSize: 12, letterSpacing: 1)),
                 GestureDetector(
-                  onTap: () => _showFullBench(context, bench),
+                  onTap: () => _showFullBench(context, provider, starters, bench),
                   child: const Text('Tümü ›', style: TextStyle(color: AppColors.goldLight, fontWeight: FontWeight.bold)),
                 ),
               ],
@@ -203,10 +222,7 @@ class SquadScreen extends StatelessWidget {
                       separatorBuilder: (_, __) => const SizedBox(width: 12),
                       itemBuilder: (context, index) => _BenchToken(
                         player: bench[index],
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => PlayerDetailScreen(player: bench[index])),
-                        ),
+                        onTap: () => _swapIntoLineup(context, provider, starters, bench[index]),
                       ),
                     ),
             ),
@@ -242,7 +258,7 @@ class SquadScreen extends StatelessWidget {
     });
   }
 
-  void _showFullBench(BuildContext context, List<PlayerFM> bench) {
+  void _showFullBench(BuildContext context, GameProvider provider, List<PlayerFM?> starters, List<PlayerFM> bench) {
     showModalBottomSheet(
       context: context,
       backgroundColor: AppColors.cardTop,
@@ -279,6 +295,16 @@ class SquadScreen extends StatelessWidget {
                                 player.hasActiveInjury ? player.injuryDisplayLabel : '${player.position} · ${player.currentAbility}',
                                 style: TextStyle(color: player.hasActiveInjury ? AppColors.red : AppColors.textMuted),
                               ),
+                              trailing: player.hasActiveInjury
+                                  ? null
+                                  : IconButton(
+                                      tooltip: 'İlk 11\'e al',
+                                      icon: const Icon(Icons.swap_horiz, color: AppColors.goldLight),
+                                      onPressed: () {
+                                        Navigator.pop(context);
+                                        _swapIntoLineup(context, provider, starters, player);
+                                      },
+                                    ),
                               onTap: () {
                                 Navigator.pop(context);
                                 Navigator.push(context, MaterialPageRoute(builder: (_) => PlayerDetailScreen(player: player)));
@@ -293,6 +319,84 @@ class SquadScreen extends StatelessWidget {
         );
       },
     );
+  }
+
+  void _swapIntoLineup(BuildContext context, GameProvider provider, List<PlayerFM?> starters, PlayerFM benchPlayer) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.cardTop,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(18))),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text('${_firstNameOf(benchPlayer.name)} kimin yerine oynasın?',
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                const SizedBox(height: 12),
+                Flexible(
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: starters.length,
+                    separatorBuilder: (_, __) => const Divider(color: AppColors.cardBorder, height: 1),
+                    itemBuilder: (context, index) {
+                      final starter = starters[index];
+                      if (starter == null) return const SizedBox.shrink();
+                      return ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: AppColors.cardBottom,
+                          child: Text(_initialsOf(starter.name), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                        ),
+                        title: Text(starter.name),
+                        subtitle: Text('${starter.position} · ${starter.currentAbility}', style: const TextStyle(color: AppColors.textMuted)),
+                        onTap: () {
+                          Navigator.pop(context);
+                          final newLineup = List<PlayerFM?>.from(starters);
+                          newLineup[index] = benchPlayer;
+                          _saveLineup(context, provider, newLineup);
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _saveLineup(BuildContext context, GameProvider provider, List<PlayerFM?> newLineup) {
+    final current = provider.tactics;
+    if (current == null) return;
+    final ids = newLineup.map((p) => p?.id).toList();
+    if (ids.any((id) => id == null)) return;
+    final updated = Tactics(
+      clubId: current.clubId,
+      formation: current.formation,
+      mentality: current.mentality,
+      captainId: current.captainId,
+      penaltyTakerId: current.penaltyTakerId,
+      freeKickTakerId: current.freeKickTakerId,
+      cornerTakerId: current.cornerTakerId,
+      pressIntensity: current.pressIntensity,
+      tempo: current.tempo,
+      defensiveLine: current.defensiveLine,
+      offsideTrap: current.offsideTrap,
+      timeWasting: current.timeWasting,
+      startingElevenIds: ids.cast<String>(),
+    );
+    provider.saveTactics(updated).catchError((error) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Kadro değişikliği kaydedilemedi: $error')),
+        );
+      }
+    });
   }
 }
 
