@@ -16,7 +16,6 @@ class PlayerDetailScreen extends StatefulWidget {
 }
 
 class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
-  int minutesPlayed = 90;
   bool isUpdating = false;
   bool isListing = false;
   bool isWithdrawing = false;
@@ -103,14 +102,12 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                       'Uygulamadan çıksan bile süre sunucuda ilerlemeye devam eder.',
                       style: TextStyle(fontSize: 12, color: Colors.grey),
                     ),
+                  ] else if (player.currentAbility >= player.potentialAbility) ...[
+                    const Text('Bu oyuncu potansiyeline ulaştı, artık gelişim uygulanamaz.'),
                   ] else ...[
-                    Text('Dakika: $minutesPlayed'),
-                    Slider(
-                      min: 0,
-                      max: 180,
-                      divisions: 6,
-                      value: minutesPlayed.toDouble(),
-                      onChanged: (value) => setState(() => minutesPlayed = value.toInt()),
+                    const Text(
+                      'Bir gelişim seansı 2 saat sürer ve gücü %1-%3 arasında rastgele artırır.',
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
                     ),
                     const SizedBox(height: 12),
                     GoldButton(
@@ -118,16 +115,10 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                       onPressed: isUpdating ? null : () async {
                           setState(() => isUpdating = true);
                           try {
-                            await provider.startPlayerDevelopment(
-                              playerId: player.id,
-                              minutesPlayed: minutesPlayed,
-                              trainingFacilityLevel: provider.activeClub?.trainingFacilityLevel ?? 1,
-                              morale: player.morale,
-                              formRating: player.formRating,
-                            );
+                            await provider.startPlayerDevelopment(playerId: player.id);
                             if (!mounted) return;
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Gelişim başlatıldı')),
+                              const SnackBar(content: Text('Gelişim başlatıldı (2 saat)')),
                             );
                           } catch (error) {
                             if (!mounted) return;
@@ -164,13 +155,77 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
   }
 
   Widget _buildTransferCard(BuildContext context, GameProvider provider, PlayerFM player) {
-    final matchingListings =
-        provider.transferMarketItems.where((item) => item.playerId == player.id && !item.isSold).toList();
+    final matchingListings = provider.transferMarketItems.where((item) => item.playerId == player.id).toList();
     final activeListing = matchingListings.isEmpty ? null : matchingListings.first;
+    final pendingOffers = provider.incomingTransferOffers
+        .where((offer) => offer.playerId == player.id && offer.isPending)
+        .toList();
+
+    final offersCard = pendingOffers.isEmpty
+        ? null
+        : Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Gelen Teklifler', style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(height: 12),
+                  for (final offer in pendingOffers) ...[
+                    Text('${offer.fromClubName}: ${offer.offerAmount} GP'),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: GlassButton(
+                            onPressed: () async {
+                              try {
+                                await provider.respondToTransferOffer(offerId: offer.id, accept: true);
+                                if (!mounted) return;
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Teklif kabul edildi')),
+                                );
+                              } catch (error) {
+                                if (!mounted) return;
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text(error.toString().replaceAll('Exception: ', ''))),
+                                );
+                              }
+                            },
+                            label: 'Kabul Et',
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: GlassButton(
+                            onPressed: () async {
+                              try {
+                                await provider.respondToTransferOffer(offerId: offer.id, accept: false);
+                                if (!mounted) return;
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Teklif reddedildi')),
+                                );
+                              } catch (error) {
+                                if (!mounted) return;
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text(error.toString().replaceAll('Exception: ', ''))),
+                                );
+                              }
+                            },
+                            label: 'Reddet',
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                ],
+              ),
+            ),
+          );
 
     if (activeListing != null) {
-      final hasBid = activeListing.highestBidderId != null;
-      return Card(
+      final listingCard = Card(
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -178,15 +233,13 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
             children: [
               Text('Transfer Pazarı', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 12),
-              Text('İstenen/en yüksek teklif: ${activeListing.currentHighestBid} GP'),
+              Text('İstenen fiyat: ${activeListing.askingPrice} GP'),
               const SizedBox(height: 4),
-              Text(hasBid
-                  ? 'Bu oyuncuya zaten bir teklif verildi, listeden kaldırılamaz.'
-                  : 'Henüz teklif yok, istersen listeden geri çekebilirsin.'),
+              const Text('Başka kulüpler bu oyuncu için teklif verebilir.'),
               const SizedBox(height: 12),
               GlassButton(
                 isLoading: isWithdrawing,
-                onPressed: hasBid || isWithdrawing
+                onPressed: isWithdrawing
                     ? null
                     : () async {
                         setState(() => isWithdrawing = true);
@@ -211,9 +264,11 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
           ),
         ),
       );
+      if (offersCard == null) return listingCard;
+      return Column(children: [offersCard, const SizedBox(height: 16), listingCard]);
     }
 
-    return Card(
+    final listingForm = Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -264,5 +319,8 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
         ),
       ),
     );
+
+    if (offersCard == null) return listingForm;
+    return Column(children: [offersCard, const SizedBox(height: 16), listingForm]);
   }
 }

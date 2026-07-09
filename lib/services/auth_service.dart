@@ -19,5 +19,14 @@ class AuthService implements AuthRepository {
     return _supabase.auth.signOut();
   }
 
+  Future<void> updateEmail(String newEmail) async {
+    await _supabase.auth.updateUser(UserAttributes(email: newEmail));
+  }
+
+  Future<void> updatePassword(String newPassword) async {
+    await _supabase.auth.updateUser(UserAttributes(password: newPassword));
+  }
+
   String? get currentUserId => _supabase.auth.currentUser?.id;
+  String? get currentUserEmail => _supabase.auth.currentUser?.email;
 }

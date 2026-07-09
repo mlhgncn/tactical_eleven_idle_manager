@@ -322,6 +322,14 @@ class SquadScreen extends StatelessWidget {
   }
 
   void _swapIntoLineup(BuildContext context, GameProvider provider, List<PlayerFM?> starters, PlayerFM benchPlayer) {
+    if (benchPlayer.hasActiveInjury) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${benchPlayer.name} kadroya alınamaz: ${benchPlayer.injuryDisplayLabel}'),
+        ),
+      );
+      return;
+    }
     showModalBottomSheet(
       context: context,
       backgroundColor: AppColors.cardTop,

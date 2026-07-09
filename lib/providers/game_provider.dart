@@ -9,6 +9,7 @@ import '../models/financial_transaction.dart';
 import '../models/profile.dart';
 import '../models/tactics.dart';
 import '../models/transfer_market_item.dart';
+import '../models/transfer_offer.dart';
 import '../models/transfer_history_entry.dart';
 import '../repositories/match_preview_repository.dart';
 import '../repositories/repository_interface.dart';
@@ -41,6 +42,7 @@ class GameProvider extends ChangeNotifier {
   
   // Public getters for UI access
   ClubInfo? get activeClub => _activeClub;
+  Profile? get profile => _profile;
   bool get isLoading => _isLoading;
   bool get isBusy => _isBusy;
   bool get isSyncing => _isSyncing;
@@ -51,6 +53,10 @@ class GameProvider extends ChangeNotifier {
   int get unreadInboxCount => _inboxMessages.where((m) => !m.isRead).length;
   List<TransferMarketItem> get transferMarketItems =>
       List.unmodifiable(_transferMarketItems);
+  List<PlayerFM> get freeAgents => List.unmodifiable(_freeAgents);
+  List<TransferOffer> get incomingTransferOffers => List.unmodifiable(_incomingTransferOffers);
+  List<TransferOffer> get outgoingTransferOffers => List.unmodifiable(_outgoingTransferOffers);
+  int get pendingIncomingOfferCount => _incomingTransferOffers.where((o) => o.isPending).length;
   Tactics? get tactics => _tactics;
 
   bool get isSupabaseReady => _isSupabaseReady;
@@ -66,6 +72,9 @@ class GameProvider extends ChangeNotifier {
   List<MatchResult> _results = <MatchResult>[];
   List<InboxMessage> _inboxMessages = <InboxMessage>[];
   List<TransferMarketItem> _transferMarketItems = <TransferMarketItem>[];
+  List<PlayerFM> _freeAgents = <PlayerFM>[];
+  List<TransferOffer> _incomingTransferOffers = <TransferOffer>[];
+  List<TransferOffer> _outgoingTransferOffers = <TransferOffer>[];
   List<Map<String, dynamic>> _standings = <Map<String, dynamic>>[];
   Map<String, dynamic>? _seasonState;
   Tactics? _tactics;
@@ -178,6 +187,9 @@ class GameProvider extends ChangeNotifier {
       _squadPlayers = <PlayerFM>[];
       _inboxMessages = <InboxMessage>[];
       _transferMarketItems = <TransferMarketItem>[];
+      _freeAgents = <PlayerFM>[];
+      _incomingTransferOffers = <TransferOffer>[];
+      _outgoingTransferOffers = <TransferOffer>[];
       _fixtures = <MatchFixture>[];
       _results = <MatchResult>[];
       _standings = <Map<String, dynamic>>[];
@@ -196,6 +208,8 @@ class GameProvider extends ChangeNotifier {
         _loadSquadPlayers(),
         _loadInboxMessages(),
         _loadTransferMarket(),
+        _loadFreeAgents(),
+        _loadTransferOffers(),
         _loadFixturesAndResults(),
         _loadFinancialTransactions(),
       ]);
@@ -252,20 +266,8 @@ class GameProvider extends ChangeNotifier {
     }
   }
 
-  Future<PlayerFM?> startPlayerDevelopment({
-    required String playerId,
-    required int minutesPlayed,
-    required int trainingFacilityLevel,
-    required int morale,
-    required double formRating,
-  }) async {
-    final updatedPlayer = await _repository.startPlayerDevelopment(
-      playerId: playerId,
-      minutesPlayed: minutesPlayed,
-      trainingFacilityLevel: trainingFacilityLevel,
-      morale: morale,
-      formRating: formRating,
-    );
+  Future<PlayerFM?> startPlayerDevelopment({required String playerId}) async {
+    final updatedPlayer = await _repository.startPlayerDevelopment(playerId: playerId);
 
     if (updatedPlayer != null) {
       final index = _squadPlayers.indexWhere((player) => player.id == playerId);
@@ -303,6 +305,25 @@ class GameProvider extends ChangeNotifier {
     } finally {
       _setSyncing(false);
     }
+  }
+
+  Future<void> _loadFreeAgents() async {
+    _freeAgents = await _repository.loadFreeAgents();
+  }
+
+  Future<void> _loadTransferOffers() async {
+    final clubId = _activeClub?.id;
+    if (clubId == null) {
+      _incomingTransferOffers = <TransferOffer>[];
+      _outgoingTransferOffers = <TransferOffer>[];
+      return;
+    }
+    final results = await Future.wait([
+      _repository.loadIncomingTransferOffers(clubId),
+      _repository.loadOutgoingTransferOffers(clubId),
+    ]);
+    _incomingTransferOffers = results[0];
+    _outgoingTransferOffers = results[1];
   }
 
   Future<void> _loadFixturesAndResults() async {
@@ -466,6 +487,33 @@ class GameProvider extends ChangeNotifier {
     }
   }
 
+  /// Mevcut kulübü bırakır. Kulüp silinmez, sahipsiz (bot) hale gelir ve
+  /// başka biri tarafından katılınabilir olur. Yerel durumu tamamen
+  /// temizler; çağıran taraf kullanıcıyı lig oluştur/katıl ekranına
+  /// yönlendirmelidir.
+  Future<void> leaveClub() async {
+    try {
+      await _repository.leaveCurrentClub();
+    } catch (error) {
+      throw Exception(_formatClubActionError(error));
+    }
+
+    _activeClub = null;
+    _squadPlayers = <PlayerFM>[];
+    _fixtures = <MatchFixture>[];
+    _results = <MatchResult>[];
+    _transferMarketItems = <TransferMarketItem>[];
+    _freeAgents = <PlayerFM>[];
+    _incomingTransferOffers = <TransferOffer>[];
+    _outgoingTransferOffers = <TransferOffer>[];
+    _standings = <Map<String, dynamic>>[];
+    _seasonState = null;
+    _tactics = null;
+    _financialTransactions = <FinancialTransaction>[];
+    _transferHistory = <TransferHistoryEntry>[];
+    notifyListeners();
+  }
+
   String _formatClubActionError(Object error) {
     final message = error.toString();
     if (message.startsWith('Exception: ')) {
@@ -574,38 +622,8 @@ class GameProvider extends ChangeNotifier {
       items.add(item);
     }
 
-    items.sort((a, b) => a.endTime.compareTo(b.endTime));
     _transferMarketItems = items;
     notifyListeners();
-  }
-
-  Future<void> placeBid(
-      {required String marketId, required int bidAmount}) async {
-    if (_repository.currentUserId == null) {
-      throw Exception('Kullanıcı oturumu bulunamadı.');
-    }
-
-    if (_isBusy) return;
-
-    _setBusy(true);
-    try {
-      final updatedItem = await _repository.placeBid(marketId, bidAmount);
-      if (updatedItem != null) {
-        try {
-          AnalyticsService.instance.logEvent('transfer_bid', parameters: {
-            'market_id': marketId,
-            'bid_amount': bidAmount,
-          });
-        } catch (_) {}
-        _upsertTransferMarketItem(updatedItem);
-        await _createInboxMessage(
-          'Transfer Teklifi',
-          'Transfer pazarında ${updatedItem.currentHighestBid} GP teklifiniz kabul edildi.',
-        );
-      }
-    } finally {
-      _setBusy(false);
-    }
   }
 
   Future<void> listPlayerForTransfer({required String playerId, required int askingPrice}) async {
@@ -650,61 +668,84 @@ class GameProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> acceptTransferOffer({required String playerId}) async {
+  /// Bir oyuncu için gerçek transfer teklifi gönderir (açık artırma değil).
+  /// Oyuncu bir kulübe aitse, o kulüp (gerçek kullanıcı ya da bot) teklifi
+  /// kabul/red edecek. Teklif bloke edilen bütçeyle (blocked_budget) güvence
+  /// altına alınır.
+  Future<void> makeTransferOffer({required String playerId, required int offerAmount}) async {
     if (_activeClub == null) throw Exception('Aktif kulüp bulunamadı.');
     if (_isBusy) return;
 
     _setBusy(true);
     try {
-      final updatedClub = await _repository.acceptTransferOffer(playerId: playerId);
+      final offer = await _repository.makeTransferOffer(playerId: playerId, offerAmount: offerAmount);
+      try {
+        AnalyticsService.instance.logEvent('transfer_offer_made', parameters: {
+          'player_id': playerId,
+          'offer_amount': offerAmount,
+        });
+      } catch (_) {}
+      await refreshGameState();
+      // Bot clubs resolve immediately - surface a rejection now rather
+      // than waiting for the player to check their inbox.
+      if (offer != null && offer.status == 'rejected') {
+        throw Exception('Teklif reddedildi.');
+      }
+    } finally {
+      _setBusy(false);
+    }
+  }
 
+  /// Kendi oyuncuna gelen bir teklifi kabul veya reddeder.
+  Future<void> respondToTransferOffer({required String offerId, required bool accept}) async {
+    if (_isBusy) return;
+    _setBusy(true);
+    try {
+      await _repository.respondToTransferOffer(offerId: offerId, accept: accept);
+      await refreshGameState();
+    } finally {
+      _setBusy(false);
+    }
+  }
+
+  /// Gönderdiğin bekleyen bir teklifi geri çeker, bloke edilen bütçe serbest kalır.
+  Future<void> withdrawTransferOffer({required String offerId}) async {
+    if (_isBusy) return;
+    _setBusy(true);
+    try {
+      await _repository.withdrawTransferOffer(offerId: offerId);
+      await refreshGameState();
+    } finally {
+      _setBusy(false);
+    }
+  }
+
+  /// Serbest (kulüpsüz) bir oyuncuyu doğrudan, pazarlıksız satın alır.
+  Future<void> signFreeAgent({required String playerId}) async {
+    if (_activeClub == null) throw Exception('Aktif kulüp bulunamadı.');
+    if (_isBusy) return;
+
+    _setBusy(true);
+    try {
+      final updatedClub = await _repository.signFreeAgent(playerId: playerId);
       if (updatedClub != null) {
         _activeClub = updatedClub;
       }
-
-      final inbox = await _repository.addInboxMessage(
-        title: 'Transfer İşlemi',
-        body: 'Transfer işlemi tamamlandı.',
-      );
-      if (inbox != null) {
-        _inboxMessages.insert(0, inbox);
-      }
-
-      notifyListeners();
+      try {
+        AnalyticsService.instance.logEvent('sign_free_agent', parameters: {'player_id': playerId});
+      } catch (_) {}
+      await refreshGameState();
     } finally {
       _setBusy(false);
     }
   }
 
   /// Bilet fiyatını günceller. Anında uygulanır (inşaat gerektirmez).
-  Future<void> upgradeClub({required int ticketPrice}) async {
-    final activeClub = _activeClub;
-    if (activeClub == null) throw Exception('Aktif kulüp bulunamadı.');
-    if (_isBusy) return;
-
-    _setBusy(true);
-    try {
-      final updatedClub = await _repository.upgradeClub(
-        clubId: activeClub.id,
-        ticketPrice: ticketPrice,
-      );
-
-      if (updatedClub != null) {
-        _activeClub = updatedClub;
-      }
-
-      await _createInboxMessage('Bilet Fiyatı', 'Bilet fiyatı $ticketPrice GP olarak güncellendi.');
-
-      notifyListeners();
-    } finally {
-      _setBusy(false);
-    }
-  }
-
-  /// Stadyum kapasitesi veya tesis seviyesi için zamanlı bir geliştirme
-  /// başlatır. [upgradeType] 'stadium' veya 'facility' olmalı. Kulüp
-  /// başına aynı anda tek bir geliştirme sürebilir; tamamlanma sunucu
-  /// tarafında (cron) uygulanır, uygulama kapalı olsa bile ilerler.
+  /// Stadyum kapasitesi, tesis seviyesi veya bilet fiyatı için zamanlı bir
+  /// geliştirme başlatır. [upgradeType] 'stadium', 'facility' veya
+  /// 'ticket_price' olmalı. Kulüp başına aynı anda tek bir geliştirme
+  /// sürebilir; tamamlanma sunucu tarafında (cron) uygulanır, uygulama
+  /// kapalı olsa bile ilerler.
   Future<void> startClubDevelopment({required String upgradeType, required int targetValue}) async {
     final activeClub = _activeClub;
     if (activeClub == null) throw Exception('Aktif kulüp bulunamadı.');
@@ -726,7 +767,11 @@ class GameProvider extends ChangeNotifier {
       }
 
       final completesAt = _activeClub?.developmentCompletesAt;
-      final label = upgradeType == 'stadium' ? 'Stadyum genişletme' : 'Tesis yükseltmesi';
+      final label = switch (upgradeType) {
+        'stadium' => 'Stadyum genişletme',
+        'facility' => 'Tesis yükseltmesi',
+        _ => 'Bilet fiyatı güncellemesi',
+      };
       await _createInboxMessage(
         label,
         completesAt != null

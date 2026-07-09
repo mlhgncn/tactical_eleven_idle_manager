@@ -106,6 +106,11 @@
     return (currentAbility / 20).clamp(0, 5).toDouble();
   }
 
+  /// Serbest oyuncu imzalama maliyeti: satıcı kulübe ödenecek bir bedel
+  /// olmadığından piyasa değerinin bir kısmı (sign_free_agent RPC'siyle
+  /// aynı formül).
+  int get signingCost => (marketValue * 0.4).round();
+
   String get salaryLabel => '$salary GP';
 
   String get marketValueLabel => '${(marketValue / 1000).round()}K GP';

@@ -6,6 +6,7 @@ class ClubInfo {
   final int stadiumCapacity;
   final int ticketPrice;
   final int trainingFacilityLevel;
+  final int ticketPriceLevel;
   final int sponsorLevel; // 1-5 sponsor seviyesi
   final DateTime? lastMaintenanceDate; // Aylık bakım takibi
   final DateTime? sponsorUpgradeCompletesAt;
@@ -21,6 +22,7 @@ class ClubInfo {
     required this.stadiumCapacity,
     required this.ticketPrice,
     required this.trainingFacilityLevel,
+    this.ticketPriceLevel = 1,
     this.sponsorLevel = 1,
     this.lastMaintenanceDate,
     this.sponsorUpgradeCompletesAt,
@@ -42,6 +44,7 @@ class ClubInfo {
     int? stadiumCapacity,
     int? ticketPrice,
     int? trainingFacilityLevel,
+    int? ticketPriceLevel,
     int? sponsorLevel,
     DateTime? lastMaintenanceDate,
     DateTime? sponsorUpgradeCompletesAt,
@@ -57,6 +60,7 @@ class ClubInfo {
       stadiumCapacity: stadiumCapacity ?? this.stadiumCapacity,
       ticketPrice: ticketPrice ?? this.ticketPrice,
       trainingFacilityLevel: trainingFacilityLevel ?? this.trainingFacilityLevel,
+      ticketPriceLevel: ticketPriceLevel ?? this.ticketPriceLevel,
       sponsorLevel: sponsorLevel ?? this.sponsorLevel,
       lastMaintenanceDate: lastMaintenanceDate ?? this.lastMaintenanceDate,
       sponsorUpgradeCompletesAt: sponsorUpgradeCompletesAt ?? this.sponsorUpgradeCompletesAt,
@@ -75,6 +79,7 @@ class ClubInfo {
       stadiumCapacity: (map['stadium_capacity'] as num).toInt(),
       ticketPrice: (map['ticket_price'] as num).toInt(),
       trainingFacilityLevel: (map['training_facility_level'] as num).toInt(),
+      ticketPriceLevel: (map['ticket_price_level'] as num?)?.toInt() ?? 1,
       sponsorLevel: (map['sponsor_level'] as num?)?.toInt() ?? 1,
       lastMaintenanceDate: map['last_maintenance_date'] != null ? DateTime.parse(map['last_maintenance_date'] as String) : null,
       sponsorUpgradeCompletesAt: map['sponsor_upgrade_completes_at'] != null

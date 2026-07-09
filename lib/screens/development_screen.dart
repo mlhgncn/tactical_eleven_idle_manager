@@ -26,9 +26,34 @@ class DevelopmentScreen extends StatelessWidget {
     }
 
     final isUpgrading = club.isDevelopmentUpgrading;
-    final upgradingLabel = club.developmentUpgradeType == 'stadium' ? 'Stadyum genişletme' : 'Tesis yükseltmesi';
+    final upgradingLabel = switch (club.developmentUpgradeType) {
+      'stadium' => 'Stadyum genişletme',
+      'facility' => 'Tesis yükseltmesi',
+      _ => 'Bilet fiyatı güncellemesi',
+    };
     final stadiumMaxed = club.stadiumCapacity >= 100000;
     final facilityMaxed = club.trainingFacilityLevel >= 10;
+    final ticketMaxed = club.ticketPriceLevel >= 10;
+
+    Future<void> startUpgrade(String upgradeType, int targetValue, String startedMessage) async {
+      try {
+        await context.read<GameProvider>().startClubDevelopment(
+              upgradeType: upgradeType,
+              targetValue: targetValue,
+            );
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(startedMessage), backgroundColor: Colors.green),
+          );
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
+          );
+        }
+      }
+    }
 
     return Scaffold(
       appBar: AppBar(title: const Text('Kulüp Geliştirme')),
@@ -67,31 +92,14 @@ class DevelopmentScreen extends StatelessWidget {
                   if (stadiumMaxed) {
                     return const Chip(label: Text('MAX'));
                   }
-                  final newCapacity = club.stadiumCapacity + 500;
-                  final cost = 2 * (1000 + (newCapacity ~/ 1000));
-                  final durationDays = (1 + ((club.stadiumCapacity - 15000) ~/ 5000)).clamp(1, 14);
+                  const increment = 2500;
+                  final newCapacity = club.stadiumCapacity + increment;
+                  final cost = (increment * 15) + (club.stadiumCapacity * increment) ~/ 50000;
+                  final durationDays = (1 + ((club.stadiumCapacity - 15000) ~/ 10000)).clamp(1, 14);
                   return ElevatedButton(
                     onPressed: provider.isBusy || isUpgrading
                         ? null
-                        : () async {
-                            try {
-                              await context.read<GameProvider>().startClubDevelopment(
-                                    upgradeType: 'stadium',
-                                    targetValue: newCapacity,
-                                  );
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Stadyum genişletme başlatıldı.'), backgroundColor: Colors.green),
-                                );
-                              }
-                            } catch (e) {
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
-                                );
-                              }
-                            }
-                          },
+                        : () => startUpgrade('stadium', newCapacity, 'Stadyum genişletme başlatıldı.'),
                     child: Text('Başlat ($cost GP, $durationDays gün)'),
                   );
                 }),
@@ -107,30 +115,12 @@ class DevelopmentScreen extends StatelessWidget {
                     return const Chip(label: Text('MAX'));
                   }
                   final newLevel = club.trainingFacilityLevel + 1;
-                  final cost = 2 * (2000 + (newLevel * 1500));
+                  final cost = newLevel * 15000;
                   final durationDays = 2 * club.trainingFacilityLevel - 1;
                   return ElevatedButton(
                     onPressed: provider.isBusy || isUpgrading
-                          ? null
-                          : () async {
-                              try {
-                                await context.read<GameProvider>().startClubDevelopment(
-                                      upgradeType: 'facility',
-                                      targetValue: newLevel,
-                                    );
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('Tesis yükseltmesi başlatıldı.'), backgroundColor: Colors.green),
-                                  );
-                                }
-                              } catch (e) {
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
-                                  );
-                                }
-                              }
-                            },
+                        ? null
+                        : () => startUpgrade('facility', newLevel, 'Tesis yükseltmesi başlatıldı.'),
                     child: Text('Başlat ($cost GP, $durationDays gün)'),
                   );
                 }),
@@ -140,30 +130,22 @@ class DevelopmentScreen extends StatelessWidget {
             Card(
               child: ListTile(
                 title: const Text('Bilet Fiyatı'),
-                subtitle: Text('${club.ticketPrice} GP'),
+                subtitle: Text(ticketMaxed
+                    ? '${club.ticketPrice} GP (maksimum)'
+                    : '${club.ticketPrice} GP (seviye ${club.ticketPriceLevel}/10)'),
                 trailing: Builder(builder: (ctx) {
-                  final newPrice = club.ticketPrice + 10;
-                  const cost = 500;
+                  if (ticketMaxed) {
+                    return const Chip(label: Text('MAX'));
+                  }
+                  final newLevel = club.ticketPriceLevel + 1;
+                  final newPrice = 20 + (newLevel - 1) * 8;
+                  final cost = newLevel * 6000;
+                  final durationDays = 2 * club.ticketPriceLevel - 1;
                   return ElevatedButton(
-                    onPressed: provider.isBusy
-                          ? null
-                          : () async {
-                              try {
-                                await context.read<GameProvider>().upgradeClub(ticketPrice: newPrice);
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('Bilet fiyatı başarıyla güncellendi.'), backgroundColor: Colors.green),
-                                  );
-                                }
-                              } catch (e) {
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
-                                  );
-                                }
-                              }
-                            },
-                    child: const Text('Yükselt ($cost GP)'),
+                    onPressed: provider.isBusy || isUpgrading
+                        ? null
+                        : () => startUpgrade('ticket_price', newLevel, 'Bilet fiyatı güncellemesi başlatıldı ($newPrice GP\'ye).'),
+                    child: Text('Başlat ($cost GP, $durationDays gün)'),
                   );
                 }),
               ),

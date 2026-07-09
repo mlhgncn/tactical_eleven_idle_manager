@@ -48,9 +48,7 @@ class DashboardScreen extends StatelessWidget {
 
     final recentForm = _recentForm(provider, club.id);
     final leagueName = (provider.seasonState?['league'] as Map?)?['name'] as String? ?? 'Lig';
-    final pendingOffers = provider.transferMarketItems
-        .where((item) => item.sellerClubId == club.id && !item.isSold)
-        .length;
+    final pendingOffers = provider.pendingIncomingOfferCount;
 
     return RefreshIndicator(
       onRefresh: () => context.read<GameProvider>().refreshGameState(),

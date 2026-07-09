@@ -4,6 +4,7 @@ import '../models/match_result.dart';
 import '../models/player_fm.dart';
 import '../models/profile.dart';
 import '../models/transfer_market_item.dart';
+import '../models/transfer_offer.dart';
 import '../models/transfer_history_entry.dart';
 import '../models/tactics.dart';
 import '../models/financial_transaction.dart';
@@ -14,14 +15,9 @@ abstract class GameRepository {
   Future<Profile?> loadProfile();
   Future<ClubInfo?> createLeagueAndJoin();
   Future<ClubInfo?> joinLeagueWithCode(String invitationCode);
+  Future<void> leaveCurrentClub();
   Future<List<PlayerFM>> loadSquadPlayers(String clubId);
-  Future<PlayerFM?> startPlayerDevelopment({
-    required String playerId,
-    required int minutesPlayed,
-    required int trainingFacilityLevel,
-    required int morale,
-    required double formRating,
-  });
+  Future<PlayerFM?> startPlayerDevelopment({required String playerId});
   Future<List<InboxMessage>> loadInboxMessages();
   Future<InboxMessage?> addInboxMessage({required String title, required String body});
   Future<Map<String, dynamic>?> awardAdReward({required String rewardType, int? amount});
@@ -34,16 +30,17 @@ abstract class GameRepository {
   Future<Tactics?> loadTactics(String clubId);
   Future<Tactics?> saveTacticsForClub(String clubId, Tactics tactics);
   Future<Tactics?> saveTactics(String clubId, Tactics tactics);
-  Future<TransferMarketItem?> placeBid(String marketId, int bidAmount);
   Future<TransferMarketItem?> listPlayerForTransfer({required String playerId, required int askingPrice});
   Future<void> withdrawTransferListing({required String playerId});
   Future<List<TransferHistoryEntry>> loadTransferHistory(String clubId);
-  Future<ClubInfo?> acceptTransferOffer({required String playerId});
+  Future<List<PlayerFM>> loadFreeAgents();
+  Future<ClubInfo?> signFreeAgent({required String playerId});
+  Future<TransferOffer?> makeTransferOffer({required String playerId, required int offerAmount});
+  Future<void> respondToTransferOffer({required String offerId, required bool accept});
+  Future<void> withdrawTransferOffer({required String offerId});
+  Future<List<TransferOffer>> loadIncomingTransferOffers(String clubId);
+  Future<List<TransferOffer>> loadOutgoingTransferOffers(String clubId);
   Future<bool> markMessageAsRead(String messageId);
-  Future<ClubInfo?> upgradeClub({
-    required String clubId,
-    required int ticketPrice,
-  });
   Future<ClubInfo?> startClubDevelopment({
     required String clubId,
     required String upgradeType,

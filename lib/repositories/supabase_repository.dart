@@ -11,6 +11,7 @@ import '../models/match_result.dart';
 import '../models/player_fm.dart';
 import '../models/profile.dart';
 import '../models/transfer_market_item.dart';
+import '../models/transfer_offer.dart';
 import '../models/transfer_history_entry.dart';
 import '../models/financial_transaction.dart';
 import '../models/tactics.dart';
@@ -52,7 +53,7 @@ class SupabaseRepository implements GameRepository {
       final response = await _client
           .from('clubs')
           .select(
-              'id,name,budget,blocked_budget,stadium_capacity,ticket_price,training_facility_level,sponsor_level,last_maintenance_date,sponsor_upgrade_completes_at,development_upgrade_type,development_target_value,development_completes_at')
+              'id,name,budget,blocked_budget,stadium_capacity,ticket_price,ticket_price_level,training_facility_level,sponsor_level,last_maintenance_date,sponsor_upgrade_completes_at,development_upgrade_type,development_target_value,development_completes_at')
           .eq('user_id', userId)
           .order('created_at', ascending: true)
           .limit(1)
@@ -83,6 +84,13 @@ class SupabaseRepository implements GameRepository {
     });
   }
 
+  @override
+  Future<void> leaveCurrentClub() async {
+    return _wrap(() async {
+      await _client.rpc('leave_current_club');
+    });
+  }
+
   Future<Profile?> loadProfile() async {
     return _wrap(() async {
       final userId = currentUserId;
@@ -91,7 +99,7 @@ class SupabaseRepository implements GameRepository {
       final response = await _client
           .from('profiles')
           .select(
-              'id,full_name,avatar_url,email,language,fcm_token,created_at,updated_at')
+              'id,full_name,avatar_url,email,language,fcm_token,league_titles,created_at,updated_at')
           .eq('id', userId)
           .maybeSingle();
 
@@ -113,19 +121,9 @@ class SupabaseRepository implements GameRepository {
     });
   }
 
-  Future<PlayerFM?> startPlayerDevelopment({
-    required String playerId,
-    required int minutesPlayed,
-    required int trainingFacilityLevel,
-    required int morale,
-    required double formRating,
-  }) async {
+  Future<PlayerFM?> startPlayerDevelopment({required String playerId}) async {
     final response = await _client.rpc('start_player_development', params: {
       'p_player_id': playerId,
-      'p_minutes_played': minutesPlayed,
-      'p_training_facility_level': trainingFacilityLevel,
-      'p_morale': morale,
-      'p_form_rating': formRating,
     }).select(
       'id,club_id,name,position,age,current_ability,potential_ability,morale,fitness,finishing,passing,tackling,composure,determination,consistency,injury_proneness,form_rating,injury_type,injury_duration_weeks,is_suspended,development_completes_at',
     ).single();
@@ -199,13 +197,9 @@ class SupabaseRepository implements GameRepository {
   }
 
   Future<List<TransferMarketItem>> loadTransferMarket() async {
-    await _client.rpc('release_expired_transfer_bids');
-
     final data = await _client
         .from('transfer_market')
-        .select(
-            'id,player_id,current_highest_bid,highest_bidder_id,end_time,players(name,position,club:clubs(id,name)),highest_bidder:clubs(id,name)')
-        .order('end_time', ascending: true);
+        .select('id,player_id,asking_price,players(name,position,club:clubs(id,name))');
 
     if (data is! List<dynamic>) {
       return <TransferMarketItem>[];
@@ -215,6 +209,84 @@ class SupabaseRepository implements GameRepository {
         .cast<Map<String, dynamic>>()
         .map(TransferMarketItem.fromMap)
         .toList();
+  }
+
+  Future<List<PlayerFM>> loadFreeAgents() async {
+    final data = await _client
+        .from('players')
+        .select(
+            'id,club_id,name,position,age,current_ability,potential_ability,morale,fitness,finishing,passing,tackling,composure,determination,consistency,injury_proneness,injury_type,injury_duration_weeks,is_suspended')
+        .filter('club_id', 'is', null)
+        .order('current_ability', ascending: false);
+
+    if (data is! List<dynamic>) return <PlayerFM>[];
+    return data.cast<Map<String, dynamic>>().map(PlayerFM.fromMap).toList();
+  }
+
+  Future<ClubInfo?> signFreeAgent({required String playerId}) async {
+    return _wrap(() async {
+      final updated = await _client.rpc('sign_free_agent', params: {
+        'p_player_id': playerId,
+      }).single();
+
+      if (updated == null) return null;
+      return ClubInfo.fromMap(updated as Map<String, dynamic>);
+    });
+  }
+
+  Future<TransferOffer?> makeTransferOffer({required String playerId, required int offerAmount}) async {
+    return _wrap(() async {
+      final created = await _client.rpc('make_transfer_offer', params: {
+        'p_player_id': playerId,
+        'p_offer_amount': offerAmount,
+      }).select('id,player_id,from_club_id,to_club_id,offer_amount,status,created_at,responded_at,player:players(name),from_club:clubs!from_club_id(name),to_club:clubs!to_club_id(name)').single();
+
+      if (created == null) return null;
+      return TransferOffer.fromMap(created as Map<String, dynamic>);
+    });
+  }
+
+  Future<void> respondToTransferOffer({required String offerId, required bool accept}) async {
+    return _wrap(() async {
+      await _client.rpc('respond_to_transfer_offer', params: {
+        'p_offer_id': offerId,
+        'p_accept': accept,
+      });
+    });
+  }
+
+  Future<void> withdrawTransferOffer({required String offerId}) async {
+    return _wrap(() async {
+      await _client.rpc('withdraw_transfer_offer', params: {
+        'p_offer_id': offerId,
+      });
+    });
+  }
+
+  Future<List<TransferOffer>> loadIncomingTransferOffers(String clubId) async {
+    return _wrap(() async {
+      final data = await _client
+          .from('transfer_offers')
+          .select('id,player_id,from_club_id,to_club_id,offer_amount,status,created_at,responded_at,player:players(name),from_club:clubs!from_club_id(name),to_club:clubs!to_club_id(name)')
+          .eq('to_club_id', clubId)
+          .order('created_at', ascending: false);
+
+      if (data is! List<dynamic>) return <TransferOffer>[];
+      return data.cast<Map<String, dynamic>>().map(TransferOffer.fromMap).toList();
+    });
+  }
+
+  Future<List<TransferOffer>> loadOutgoingTransferOffers(String clubId) async {
+    return _wrap(() async {
+      final data = await _client
+          .from('transfer_offers')
+          .select('id,player_id,from_club_id,to_club_id,offer_amount,status,created_at,responded_at,player:players(name),from_club:clubs!from_club_id(name),to_club:clubs!to_club_id(name)')
+          .eq('from_club_id', clubId)
+          .order('created_at', ascending: false);
+
+      if (data is! List<dynamic>) return <TransferOffer>[];
+      return data.cast<Map<String, dynamic>>().map(TransferOffer.fromMap).toList();
+    });
   }
 
   Future<List<Map<String, dynamic>>> loadFixturesForClub(String clubId) async {
@@ -281,18 +353,6 @@ class SupabaseRepository implements GameRepository {
 
     if (data is! List<dynamic>) return <Map<String, dynamic>>[];
     return data.cast<Map<String, dynamic>>();
-  }
-
-  Future<TransferMarketItem?> placeBid(String marketId, int bidAmount) async {
-    return _wrap(() async {
-      final updated = await _client.rpc('place_transfer_bid', params: {
-        'market_id': marketId,
-        'bid_amount': bidAmount,
-      }).single();
-
-      if (updated == null) return null;
-      return TransferMarketItem.fromMap(updated as Map<String, dynamic>);
-    });
   }
 
   Future<TransferMarketItem?> listPlayerForTransfer({required String playerId, required int askingPrice}) async {
@@ -363,20 +423,6 @@ class SupabaseRepository implements GameRepository {
     });
   }
 
-  Future<ClubInfo?> acceptTransferOffer({required String playerId}) async {
-    return _wrap(() async {
-      final updated = await _client.rpc('accept_transfer_offer', params: {
-        'p_player_id': playerId,
-      }).single();
-
-      if (updated == null) {
-        throw AppException('Transfer işlemi tamamlanamadı. Aktif teklif bulunamadı.');
-      }
-
-      return ClubInfo.fromMap(updated as Map<String, dynamic>);
-    });
-  }
-
   String _transferErrorMessage(String? rawMessage) {
     final message = (rawMessage ?? '').trim();
     if (message.isEmpty) {
@@ -423,20 +469,6 @@ class SupabaseRepository implements GameRepository {
 
       return response != null;
     });
-  }
-
-  @override
-  Future<ClubInfo?> upgradeClub({
-    required String clubId,
-    required int ticketPrice,
-  }) async {
-    final updated = await _client.rpc('upgrade_club', params: {
-      'p_club_id': clubId,
-      'p_ticket_price': ticketPrice,
-    }).single();
-
-    if (updated == null) return null;
-    return ClubInfo.fromMap(updated as Map<String, dynamic>);
   }
 
   @override

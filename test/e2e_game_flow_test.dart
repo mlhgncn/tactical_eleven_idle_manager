@@ -8,6 +8,7 @@ import 'package:tactical_eleven_idle_manager/models/inbox_message.dart';
 import 'package:tactical_eleven_idle_manager/models/player_fm.dart';
 import 'package:tactical_eleven_idle_manager/models/profile.dart';
 import 'package:tactical_eleven_idle_manager/models/transfer_market_item.dart';
+import 'package:tactical_eleven_idle_manager/models/transfer_offer.dart';
 import 'package:tactical_eleven_idle_manager/models/transfer_history_entry.dart';
 import 'package:tactical_eleven_idle_manager/models/tactics.dart';
 import 'package:tactical_eleven_idle_manager/models/match_result.dart';
@@ -52,6 +53,15 @@ class _FakeAuthRepository implements AuthRepository {
   Future<void> signOut() async {
     _currentUserId = null;
   }
+
+  @override
+  Future<void> updateEmail(String newEmail) async {}
+
+  @override
+  Future<void> updatePassword(String newPassword) async {}
+
+  @override
+  String? get currentUserEmail => 'test@example.com';
 }
 
 class _FakeAuthResponse {
@@ -133,6 +143,11 @@ class _FakeGameRepository implements GameRepository {
   }
 
   @override
+  Future<void> leaveCurrentClub() async {
+    _activeClub = null;
+  }
+
+  @override
   Future<List<PlayerFM>> loadSquadPlayers(String clubId) async {
     return List<PlayerFM>.generate(
       11,
@@ -197,9 +212,6 @@ class _FakeGameRepository implements GameRepository {
   Future<Tactics?> saveTactics(String clubId, Tactics tactics) async => null;
 
   @override
-  Future<TransferMarketItem?> placeBid(String marketId, int bidAmount) async => null;
-
-  @override
   Future<TransferMarketItem?> listPlayerForTransfer({required String playerId, required int askingPrice}) async => null;
 
   @override
@@ -209,18 +221,28 @@ class _FakeGameRepository implements GameRepository {
   Future<List<TransferHistoryEntry>> loadTransferHistory(String clubId) async => <TransferHistoryEntry>[];
 
   @override
-  Future<ClubInfo?> acceptTransferOffer({required String playerId}) async => null;
+  Future<List<PlayerFM>> loadFreeAgents() async => <PlayerFM>[];
+
+  @override
+  Future<ClubInfo?> signFreeAgent({required String playerId}) async => null;
+
+  @override
+  Future<TransferOffer?> makeTransferOffer({required String playerId, required int offerAmount}) async => null;
+
+  @override
+  Future<void> respondToTransferOffer({required String offerId, required bool accept}) async {}
+
+  @override
+  Future<void> withdrawTransferOffer({required String offerId}) async {}
+
+  @override
+  Future<List<TransferOffer>> loadIncomingTransferOffers(String clubId) async => <TransferOffer>[];
+
+  @override
+  Future<List<TransferOffer>> loadOutgoingTransferOffers(String clubId) async => <TransferOffer>[];
 
   @override
   Future<bool> markMessageAsRead(String messageId) async => true;
-
-  @override
-  Future<ClubInfo?> upgradeClub({required String clubId, required int ticketPrice}) async {
-    if (_activeClub == null) return null;
-    final updatedClub = _activeClub!.copyWith(ticketPrice: ticketPrice);
-    _activeClub = updatedClub;
-    return updatedClub;
-  }
 
   @override
   Future<ClubInfo?> startClubDevelopment({
@@ -229,9 +251,11 @@ class _FakeGameRepository implements GameRepository {
     required int targetValue,
   }) async {
     if (_activeClub == null) return null;
-    final updatedClub = upgradeType == 'stadium'
-        ? _activeClub!.copyWith(stadiumCapacity: targetValue)
-        : _activeClub!.copyWith(trainingFacilityLevel: targetValue);
+    final updatedClub = switch (upgradeType) {
+      'stadium' => _activeClub!.copyWith(stadiumCapacity: targetValue),
+      'facility' => _activeClub!.copyWith(trainingFacilityLevel: targetValue),
+      _ => _activeClub!.copyWith(ticketPriceLevel: targetValue),
+    };
     _activeClub = updatedClub;
     return updatedClub;
   }
@@ -255,13 +279,7 @@ class _FakeGameRepository implements GameRepository {
   Future<bool?> loadNotificationPreference() async => null;
 
   @override
-  Future<PlayerFM?> startPlayerDevelopment({
-    required String playerId,
-    required int minutesPlayed,
-    required int trainingFacilityLevel,
-    required int morale,
-    required double formRating,
-  }) async => null;
+  Future<PlayerFM?> startPlayerDevelopment({required String playerId}) async => null;
 
   @override
   Future<Map<String, dynamic>?> loadCurrentSeasonState(String clubId) async => null;
