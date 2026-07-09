@@ -561,7 +561,8 @@ class SupabaseRepository implements GameRepository {
   Future<Tactics?> loadTactics(String clubId) async {
     final data = await _client
         .from('tactics')
-        .select('club_id,formation,mentality,captain_id,penalty_taker_id')
+        .select(
+            'club_id,formation,mentality,captain_id,penalty_taker_id,free_kick_taker_id,corner_taker_id,press_intensity,tempo,defensive_line,offside_trap,time_wasting')
         .eq('club_id', clubId)
         .maybeSingle();
 

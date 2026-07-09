@@ -1,237 +1,547 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:easy_localization/easy_localization.dart';
 
+import '../models/player_fm.dart';
+import '../models/tactics.dart';
 import '../providers/game_provider.dart';
+import '../theme/app_assets.dart';
 import '../theme/app_theme.dart';
 import 'player_detail_screen.dart';
-import 'transfer_market_screen.dart';
 
-class SquadScreen extends StatefulWidget {
-  const SquadScreen({super.key});
-
-  @override
-  State<SquadScreen> createState() => _SquadScreenState();
+class _FormationSlot {
+  const _FormationSlot(this.group, this.x, this.y);
+  final String group;
+  final double x;
+  final double y;
 }
 
-class _SquadScreenState extends State<SquadScreen> {
-  static const positionFilters = ['All', 'GK', 'DEF', 'MID', 'FOR'];
-  String _selectedFilter = positionFilters.first;
+const Map<Formation, List<_FormationSlot>> _formationSlots = {
+  Formation.f433: [
+    _FormationSlot('GK', 0.5, 0.90),
+    _FormationSlot('DEF', 0.14, 0.68),
+    _FormationSlot('DEF', 0.38, 0.71),
+    _FormationSlot('DEF', 0.62, 0.71),
+    _FormationSlot('DEF', 0.86, 0.68),
+    _FormationSlot('MID', 0.26, 0.44),
+    _FormationSlot('MID', 0.50, 0.40),
+    _FormationSlot('MID', 0.74, 0.44),
+    _FormationSlot('FOR', 0.20, 0.15),
+    _FormationSlot('FOR', 0.50, 0.11),
+    _FormationSlot('FOR', 0.80, 0.15),
+  ],
+  Formation.f442: [
+    _FormationSlot('GK', 0.5, 0.90),
+    _FormationSlot('DEF', 0.14, 0.68),
+    _FormationSlot('DEF', 0.38, 0.71),
+    _FormationSlot('DEF', 0.62, 0.71),
+    _FormationSlot('DEF', 0.86, 0.68),
+    _FormationSlot('MID', 0.14, 0.42),
+    _FormationSlot('MID', 0.38, 0.39),
+    _FormationSlot('MID', 0.62, 0.39),
+    _FormationSlot('MID', 0.86, 0.42),
+    _FormationSlot('FOR', 0.38, 0.14),
+    _FormationSlot('FOR', 0.62, 0.14),
+  ],
+  Formation.f352: [
+    _FormationSlot('GK', 0.5, 0.90),
+    _FormationSlot('DEF', 0.25, 0.72),
+    _FormationSlot('DEF', 0.50, 0.75),
+    _FormationSlot('DEF', 0.75, 0.72),
+    _FormationSlot('MID', 0.10, 0.44),
+    _FormationSlot('MID', 0.32, 0.40),
+    _FormationSlot('MID', 0.50, 0.36),
+    _FormationSlot('MID', 0.68, 0.40),
+    _FormationSlot('MID', 0.90, 0.44),
+    _FormationSlot('FOR', 0.38, 0.14),
+    _FormationSlot('FOR', 0.62, 0.14),
+  ],
+  Formation.f532: [
+    _FormationSlot('GK', 0.5, 0.90),
+    _FormationSlot('DEF', 0.08, 0.64),
+    _FormationSlot('DEF', 0.28, 0.72),
+    _FormationSlot('DEF', 0.50, 0.75),
+    _FormationSlot('DEF', 0.72, 0.72),
+    _FormationSlot('DEF', 0.92, 0.64),
+    _FormationSlot('MID', 0.28, 0.42),
+    _FormationSlot('MID', 0.50, 0.39),
+    _FormationSlot('MID', 0.72, 0.42),
+    _FormationSlot('FOR', 0.38, 0.14),
+    _FormationSlot('FOR', 0.62, 0.14),
+  ],
+};
+
+/// Greedily fills each formation slot with the highest-rated available
+/// player whose position group matches, falling back to the best remaining
+/// player of any group if a formation needs more of a group than the squad
+/// has. Injured/suspended players are excluded so they fall to the bench.
+List<PlayerFM?> _pickStartingXI(List<PlayerFM> squad, List<_FormationSlot> slots) {
+  final available = squad.where((p) => !p.hasActiveInjury).toList()
+    ..sort((a, b) => b.currentAbility.compareTo(a.currentAbility));
+  final used = <String>{};
+  final result = <PlayerFM?>[];
+  for (final slot in slots) {
+    PlayerFM? pick;
+    for (final p in available) {
+      if (used.contains(p.id)) continue;
+      if (p.positionGroup == slot.group) {
+        pick = p;
+        break;
+      }
+    }
+    if (pick == null) {
+      for (final p in available) {
+        if (!used.contains(p.id)) {
+          pick = p;
+          break;
+        }
+      }
+    }
+    if (pick != null) used.add(pick.id);
+    result.add(pick);
+  }
+  return result;
+}
+
+String _initialsOf(String name) {
+  final words = name.trim().split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
+  if (words.isEmpty) return '?';
+  if (words.length == 1) return words.first.substring(0, words.first.length.clamp(0, 2)).toUpperCase();
+  return (words[0][0] + words[1][0]).toUpperCase();
+}
+
+String _firstNameOf(String name) => name.trim().split(RegExp(r'\s+')).first;
+
+class SquadScreen extends StatelessWidget {
+  const SquadScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<GameProvider>();
     final squad = provider.squadPlayers;
-    final isLoading = provider.isLoading;
-    final startingIds = squad.take(11).map((player) => player.id).toSet();
-    final filteredPlayers = _selectedFilter == 'All'
-        ? squad
-        : squad.where((player) => player.positionGroup == _selectedFilter).toList();
+    final tactics = provider.tactics;
+
+    if (provider.isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    if (squad.isEmpty) {
+      return const Scaffold(body: Center(child: Text('Kadro yüklenemedi.')));
+    }
+
+    final formation = tactics?.formation ?? Formation.f442;
+    final slots = _formationSlots[formation]!;
+    final starters = _pickStartingXI(squad, slots);
+    final startingIds = starters.whereType<PlayerFM>().map((p) => p.id).toSet();
+    final bench = squad.where((p) => !startingIds.contains(p.id)).toList()
+      ..sort((a, b) => b.currentAbility.compareTo(a.currentAbility));
+
+    final ratedStarters = starters.whereType<PlayerFM>().toList();
+    final avgPower = ratedStarters.isEmpty
+        ? 0
+        : (ratedStarters.map((p) => p.currentAbility).reduce((a, b) => a + b) / ratedStarters.length).round();
+    final topRatedId = ratedStarters.isEmpty
+        ? null
+        : ratedStarters.reduce((a, b) => a.currentAbility >= b.currentAbility ? a : b).id;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('squad.title'.tr()),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Kadro', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 19)),
+            Text('İlk 11 · Ortalama güç $avgPower', style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
+          ],
+        ),
         actions: [
-          IconButton(
-            tooltip: 'squad.transferMarketTooltip'.tr(),
-            icon: const Icon(Icons.swap_horiz),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const TransferMarketScreen()),
-              );
-            },
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: _FormationPill(
+              formation: formation,
+              onSelected: (value) => _changeFormation(context, provider, value),
+            ),
           ),
         ],
       ),
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : squad.isEmpty
-              ? Center(child: Text('squad.noSquad'.tr()))
-              : Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              'squad.position'.tr(),
-                              style: Theme.of(context).textTheme.titleMedium,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          DropdownButton<String>(
-                            value: _selectedFilter,
-                            dropdownColor: AppColors.cardTop,
-                            items: positionFilters
-                                .map(
-                                  (filter) => DropdownMenuItem(
-                                    value: filter,
-                                    child: Text(filter),
-                                  ),
-                                )
-                                .toList(),
-                            onChanged: (value) {
-                              if (value == null) return;
-                              setState(() => _selectedFilter = value);
-                            },
-                          ),
-                        ],
+      body: RefreshIndicator(
+        onRefresh: () => provider.refreshGameState(),
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            AspectRatio(
+              aspectRatio: 0.78,
+              child: _Pitch(
+                slots: slots,
+                starters: starters,
+                topRatedId: topRatedId,
+                captainId: tactics?.captainId,
+                onTapPlayer: (player) => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => PlayerDetailScreen(player: player)),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('YEDEK KULÜBESİ',
+                    style: TextStyle(color: AppColors.textMuted, fontWeight: FontWeight.bold, fontSize: 12, letterSpacing: 1)),
+                GestureDetector(
+                  onTap: () => _showFullBench(context, bench),
+                  child: const Text('Tümü ›', style: TextStyle(color: AppColors.goldLight, fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 92,
+              child: bench.isEmpty
+                  ? const Center(child: Text('Yedek oyuncu yok.', style: TextStyle(color: AppColors.textMuted)))
+                  : ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: bench.length,
+                      separatorBuilder: (_, __) => const SizedBox(width: 12),
+                      itemBuilder: (context, index) => _BenchToken(
+                        player: bench[index],
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => PlayerDetailScreen(player: bench[index])),
+                        ),
                       ),
                     ),
-                    Expanded(
-                      child: filteredPlayers.isEmpty
-                          ? Center(child: Text('squad.noPlayersInPosition'.tr()))
-                          : ListView.separated(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                              itemCount: filteredPlayers.length,
-                              separatorBuilder: (_, __) => const SizedBox(height: 10),
-                              itemBuilder: (context, index) {
-                                final player = filteredPlayers[index];
-                                final isStarter = startingIds.contains(player.id);
-                                return Card(
-                                  elevation: 1,
-                                  child: InkWell(
-                                    onTap: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (_) => PlayerDetailScreen(player: player),
-                                        ),
-                                      );
-                                    },
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(16),
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Row(
-                                            children: [
-                                              Expanded(
-                                                child: Text(
-                                                  player.name,
-                                                  style: Theme.of(context).textTheme.titleMedium,
-                                                ),
-                                              ),
-                                              if (player.hasActiveInjury)
-                                                const Icon(Icons.healing, color: AppColors.red),
-                                              if (player.isSuspended)
-                                                const Padding(
-                                                  padding: EdgeInsets.only(left: 8),
-                                                  child: Icon(Icons.block, color: AppColors.red),
-                                                ),
-                                            ],
-                                          ),
-                                          const SizedBox(height: 8),
-                                          Row(
-                                            children: [
-                                              _buildStarRow(player.starRating),
-                                              const SizedBox(width: 10),
-                                              Text(player.position),
-                                              const SizedBox(width: 12),
-                                              Chip(
-                                                label: Text(isStarter ? 'squad.starter'.tr() : 'squad.bench'.tr()),
-                                                backgroundColor:
-                                                    isStarter ? AppColors.green.withValues(alpha: 0.16) : AppColors.cardBottom,
-                                                labelStyle: TextStyle(
-                                                  color: isStarter ? AppColors.green : AppColors.textMuted,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                                side: BorderSide(color: isStarter ? AppColors.green.withValues(alpha: 0.4) : AppColors.cardBorder),
-                                              ),
-                                            ],
-                                          ),
-                                          const SizedBox(height: 12),
-                                          Wrap(
-                                            spacing: 10,
-                                            runSpacing: 6,
-                                            children: [
-                                              _buildInfoChip('squad.age'.tr(), player.age.toString()),
-                                              _buildInfoChip('squad.ca'.tr(), player.currentAbility.toString()),
-                                              _buildInfoChip('squad.pa'.tr(), player.potentialAbility.toString()),
-                                              _buildInfoChip('squad.morale'.tr(), player.morale.toString()),
-                                              _buildInfoChip('squad.fitness'.tr(), player.fitness.toString()),
-                                              _buildInfoChip('squad.form'.tr(), player.formRating.toStringAsFixed(1)),
-                                            ],
-                                          ),
-                                          const SizedBox(height: 8),
-                                          Wrap(
-                                            spacing: 10,
-                                            runSpacing: 6,
-                                            children: [
-                                              _buildInfoChip('squad.salary'.tr(), player.salaryLabel),
-                                              _buildInfoChip('squad.marketValue'.tr(), player.marketValueLabel),
-                                              _buildInfoChip(
-                                                'squad.status'.tr(),
-                                                player.hasActiveInjury
-                                                    ? player.injuryDisplayLabel
-                                                    : player.isSuspended
-                                                        ? 'squad.suspended'.tr()
-                                                        : 'squad.healthy'.tr(),
-                                                highlight: player.hasActiveInjury || player.isSuspended,
-                                              ),
-                                            ],
-                                          ),
-                                          const SizedBox(height: 12),
-                                          Row(
-                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                            children: [
-                                              Text(
-                                                isStarter ? 'squad.starting11'.tr() : 'squad.benchLabel'.tr(),
-                                                style: const TextStyle(fontWeight: FontWeight.w600),
-                                              ),
-                                              ElevatedButton.icon(
-                                                onPressed: () {
-                                                  Navigator.push(
-                                                    context,
-                                                    MaterialPageRoute(
-                                                      builder: (_) => const TransferMarketScreen(),
-                                                    ),
-                                                  );
-                                                },
-                                                icon: const Icon(Icons.swap_horiz),
-                                                label: Text('squad.transfer'.tr()),
-                                              ),
-                                            ],
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                );
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _changeFormation(BuildContext context, GameProvider provider, Formation newFormation) {
+    final current = provider.tactics;
+    if (current == null) return;
+    final updated = Tactics(
+      clubId: current.clubId,
+      formation: newFormation,
+      mentality: current.mentality,
+      captainId: current.captainId,
+      penaltyTakerId: current.penaltyTakerId,
+      freeKickTakerId: current.freeKickTakerId,
+      cornerTakerId: current.cornerTakerId,
+      pressIntensity: current.pressIntensity,
+      tempo: current.tempo,
+      defensiveLine: current.defensiveLine,
+      offsideTrap: current.offsideTrap,
+      timeWasting: current.timeWasting,
+    );
+    provider.saveTactics(updated).catchError((error) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Formasyon kaydedilemedi: $error')),
+        );
+      }
+    });
+  }
+
+  void _showFullBench(BuildContext context, List<PlayerFM> bench) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.cardTop,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(18))),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text('Yedek Kulübesi', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
+                const SizedBox(height: 12),
+                Flexible(
+                  child: bench.isEmpty
+                      ? const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 24),
+                          child: Center(child: Text('Yedek oyuncu yok.', style: TextStyle(color: AppColors.textMuted))),
+                        )
+                      : ListView.separated(
+                          shrinkWrap: true,
+                          itemCount: bench.length,
+                          separatorBuilder: (_, __) => const Divider(color: AppColors.cardBorder, height: 1),
+                          itemBuilder: (context, index) {
+                            final player = bench[index];
+                            return ListTile(
+                              leading: CircleAvatar(
+                                backgroundColor: player.hasActiveInjury ? AppColors.red.withValues(alpha: 0.25) : AppColors.cardBottom,
+                                child: Text(_initialsOf(player.name), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                              ),
+                              title: Text(player.name),
+                              subtitle: Text(
+                                player.hasActiveInjury ? player.injuryDisplayLabel : '${player.position} · ${player.currentAbility}',
+                                style: TextStyle(color: player.hasActiveInjury ? AppColors.red : AppColors.textMuted),
+                              ),
+                              onTap: () {
+                                Navigator.pop(context);
+                                Navigator.push(context, MaterialPageRoute(builder: (_) => PlayerDetailScreen(player: player)));
                               },
-                            ),
-                    ),
-                  ],
+                            );
+                          },
+                        ),
                 ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
+}
 
-  Widget _buildStarRow(double starRating) {
-    final fullStars = starRating.floor();
-    final hasHalf = (starRating - fullStars) >= 0.5;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: List.generate(5, (index) {
-        if (index < fullStars) {
-          return const Icon(Icons.star, size: 16, color: AppColors.goldLight);
-        }
-        if (index == fullStars && hasHalf) {
-          return const Icon(Icons.star_half, size: 16, color: AppColors.goldLight);
-        }
-        return const Icon(Icons.star_border, size: 16, color: AppColors.goldLight);
-      }),
+class _FormationPill extends StatelessWidget {
+  const _FormationPill({required this.formation, required this.onSelected});
+  final Formation formation;
+  final ValueChanged<Formation> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return PopupMenuButton<Formation>(
+      onSelected: onSelected,
+      color: AppColors.cardTop,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10), side: const BorderSide(color: AppColors.cardBorder)),
+      itemBuilder: (context) => Formation.values
+          .map((f) => PopupMenuItem(
+                value: f,
+                child: Text(f.label, style: const TextStyle(color: AppColors.textPrimary)),
+              ))
+          .toList(),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(colors: [AppColors.goldLight, AppColors.gold]),
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(formation.label, style: const TextStyle(color: AppColors.goldOnGoldText, fontWeight: FontWeight.bold, fontSize: 14)),
+            const SizedBox(width: 4),
+            const Icon(Icons.arrow_drop_down, color: AppColors.goldOnGoldText, size: 20),
+          ],
+        ),
+      ),
     );
   }
+}
 
-  Widget _buildInfoChip(String label, String value, {bool highlight = false}) {
-    return Chip(
-      visualDensity: VisualDensity.compact,
-      label: Text('$label: $value'),
-      backgroundColor: highlight ? AppColors.red.withValues(alpha: 0.14) : AppColors.cardBottom,
-      labelStyle: TextStyle(color: highlight ? AppColors.red : AppColors.textPrimary, fontSize: 12),
-      side: BorderSide(color: highlight ? AppColors.red.withValues(alpha: 0.35) : AppColors.cardBorder),
+class _Pitch extends StatelessWidget {
+  const _Pitch({
+    required this.slots,
+    required this.starters,
+    required this.topRatedId,
+    required this.captainId,
+    required this.onTapPlayer,
+  });
+
+  final List<_FormationSlot> slots;
+  final List<PlayerFM?> starters;
+  final String? topRatedId;
+  final String? captainId;
+  final ValueChanged<PlayerFM> onTapPlayer;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(18),
+      child: Container(
+        decoration: const BoxDecoration(
+          image: DecorationImage(image: AssetImage(AppAssets.pitchTile), repeat: ImageRepeat.repeat),
+          border: Border.fromBorderSide(BorderSide(color: AppColors.cardBorder)),
+        ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final width = constraints.maxWidth;
+            final height = constraints.maxHeight;
+            return Stack(
+              children: [
+                Positioned.fill(child: CustomPaint(painter: _PitchMarkingsPainter())),
+                for (var i = 0; i < slots.length; i++)
+                  if (starters[i] != null)
+                    Positioned(
+                      left: slots[i].x * width - 28,
+                      top: slots[i].y * height - 28,
+                      width: 56,
+                      height: 72,
+                      child: _PlayerToken(
+                        player: starters[i]!,
+                        isGoalkeeper: slots[i].group == 'GK',
+                        isTopRated: starters[i]!.id == topRatedId,
+                        isCaptain: starters[i]!.id == captainId,
+                        onTap: () => onTapPlayer(starters[i]!),
+                      ),
+                    ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _PitchMarkingsPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.35)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+
+    canvas.drawLine(Offset(0, size.height * 0.5), Offset(size.width, size.height * 0.5), paint);
+    canvas.drawCircle(Offset(size.width * 0.5, size.height * 0.5), size.width * 0.16, paint);
+
+    final boxWidth = size.width * 0.56;
+    final boxLeft = (size.width - boxWidth) / 2;
+    canvas.drawRect(Rect.fromLTWH(boxLeft, 0, boxWidth, size.height * 0.14), paint);
+    canvas.drawRect(Rect.fromLTWH(boxLeft, size.height * 0.86, boxWidth, size.height * 0.14), paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _PlayerToken extends StatelessWidget {
+  const _PlayerToken({
+    required this.player,
+    required this.isGoalkeeper,
+    required this.isTopRated,
+    required this.isCaptain,
+    required this.onTap,
+  });
+
+  final PlayerFM player;
+  final bool isGoalkeeper;
+  final bool isTopRated;
+  final bool isCaptain;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final circleColor = isGoalkeeper ? AppColors.green : (isTopRated ? AppColors.gold : AppColors.cardTop);
+    final textColor = isGoalkeeper || isTopRated ? AppColors.goldOnGoldText : Colors.white;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 52,
+            height: 52,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: circleColor,
+                    border: Border.all(color: isCaptain ? AppColors.blue : Colors.black45, width: isCaptain ? 2.5 : 1.5),
+                    boxShadow: const [BoxShadow(color: Colors.black45, blurRadius: 4, offset: Offset(0, 2))],
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    _initialsOf(player.name),
+                    style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 15),
+                  ),
+                ),
+                Positioned(
+                  top: -6,
+                  right: -8,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                    decoration: BoxDecoration(
+                      color: AppColors.gold,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.background, width: 1.5),
+                    ),
+                    child: Text(
+                      '${player.currentAbility}',
+                      style: const TextStyle(color: AppColors.goldOnGoldText, fontWeight: FontWeight.bold, fontSize: 10),
+                    ),
+                  ),
+                ),
+                if (isCaptain)
+                  Positioned(
+                    bottom: -4,
+                    left: -6,
+                    child: Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: const BoxDecoration(color: AppColors.blue, shape: BoxShape.circle),
+                      child: const Text('K', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.white)),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            _firstNameOf(player.name),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BenchToken extends StatelessWidget {
+  const _BenchToken({required this.player, required this.onTap});
+  final PlayerFM player;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final injured = player.hasActiveInjury;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 76,
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [AppColors.cardTop, AppColors.cardBottom]),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: injured ? AppColors.red.withValues(alpha: 0.4) : AppColors.cardBorder),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: injured ? AppColors.red.withValues(alpha: 0.22) : AppColors.cardBottom,
+                border: Border.all(color: injured ? AppColors.red : AppColors.cardBorder),
+              ),
+              alignment: Alignment.center,
+              child: Text(_initialsOf(player.name), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white)),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              _firstNameOf(player.name),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
+            ),
+            Text(
+              injured ? player.injuryDisplayLabel : '${player.position} · ${player.currentAbility}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: injured ? AppColors.red : AppColors.textMuted, fontSize: 10),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

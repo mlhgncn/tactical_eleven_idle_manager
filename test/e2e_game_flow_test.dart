@@ -417,12 +417,14 @@ void main() {
 
     await tester.tap(find.text('Kadro'));
     await tester.pumpAndSettle(const Duration(milliseconds: 500));
-    expect(find.text('Test Player 1'), findsOneWidget);
+    expect(find.textContaining('İlk 11'), findsOneWidget);
 
     await tester.tap(find.text('Taktik'));
     await tester.pumpAndSettle(const Duration(milliseconds: 500));
-    expect(find.text('Taktik Paneli'), findsOneWidget);
-    await tester.tap(find.widgetWithText(GoldButton, 'Taktikleri Kaydet'));
+    expect(find.text('OYUN ANLAYIŞI'), findsOneWidget);
+    await tester.drag(find.text('OYUN ANLAYIŞI'), const Offset(0, -500));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(GoldButton, 'TAKTİĞİ KAYDET'));
     await tester.pumpAndSettle(const Duration(milliseconds: 500));
 
     final initialBudget = gameProvider.activeClub!.budget;
