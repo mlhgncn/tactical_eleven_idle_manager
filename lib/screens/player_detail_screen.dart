@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../models/player_fm.dart';
+import '../models/transfer_market_item.dart';
 import '../providers/game_provider.dart';
 import '../widgets/player_card.dart';
 import '../widgets/themed_button.dart';
@@ -19,6 +20,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
   int minutesPlayed = 90;
   bool isUpdating = false;
   bool isListing = false;
+  bool isWithdrawing = false;
   late final TextEditingController _askingPriceController =
       TextEditingController(text: widget.player.marketValue.toString());
 
@@ -131,58 +133,111 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Transfer Pazarı', style: Theme.of(context).textTheme.titleMedium),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _askingPriceController,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: 'İstenen fiyat (GP)'),
-                  ),
-                  const SizedBox(height: 12),
-                  GlassButton(
-                    isLoading: isListing,
-                    onPressed: isListing
-                        ? null
-                        : () async {
-                            final askingPrice = int.tryParse(_askingPriceController.text.trim());
-                            if (askingPrice == null || askingPrice <= 0) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Geçerli bir fiyat girin')),
-                              );
-                              return;
-                            }
-                            setState(() => isListing = true);
-                            try {
-                              await provider.listPlayerForTransfer(
-                                playerId: player.id,
-                                askingPrice: askingPrice,
-                              );
-                              if (!mounted) return;
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Oyuncu transfer pazarına çıkarıldı')),
-                              );
-                            } catch (error) {
-                              if (!mounted) return;
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text(error.toString())),
-                              );
-                            } finally {
-                              if (mounted) setState(() => isListing = false);
-                            }
-                          },
-                    label: 'Transfere Çıkar',
-                  ),
-                ],
-              ),
-            ),
-          ),
+          _buildTransferCard(context, provider, player),
         ],
+      ),
+    );
+  }
+
+  Widget _buildTransferCard(BuildContext context, GameProvider provider, PlayerFM player) {
+    final matchingListings =
+        provider.transferMarketItems.where((item) => item.playerId == player.id && !item.isSold).toList();
+    final activeListing = matchingListings.isEmpty ? null : matchingListings.first;
+
+    if (activeListing != null) {
+      final hasBid = activeListing.highestBidderId != null;
+      return Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Transfer Pazarı', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 12),
+              Text('İstenen/en yüksek teklif: ${activeListing.currentHighestBid} GP'),
+              const SizedBox(height: 4),
+              Text(hasBid
+                  ? 'Bu oyuncuya zaten bir teklif verildi, listeden kaldırılamaz.'
+                  : 'Henüz teklif yok, istersen listeden geri çekebilirsin.'),
+              const SizedBox(height: 12),
+              GlassButton(
+                isLoading: isWithdrawing,
+                onPressed: hasBid || isWithdrawing
+                    ? null
+                    : () async {
+                        setState(() => isWithdrawing = true);
+                        try {
+                          await provider.withdrawTransferListing(playerId: player.id);
+                          if (!mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Oyuncu transfer pazarından kaldırıldı')),
+                          );
+                        } catch (error) {
+                          if (!mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(error.toString())),
+                          );
+                        } finally {
+                          if (mounted) setState(() => isWithdrawing = false);
+                        }
+                      },
+                label: 'Listeden Kaldır',
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Transfer Pazarı', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _askingPriceController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(labelText: 'İstenen fiyat (GP)'),
+            ),
+            const SizedBox(height: 12),
+            GlassButton(
+              isLoading: isListing,
+              onPressed: isListing
+                  ? null
+                  : () async {
+                      final askingPrice = int.tryParse(_askingPriceController.text.trim());
+                      if (askingPrice == null || askingPrice <= 0) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Geçerli bir fiyat girin')),
+                        );
+                        return;
+                      }
+                      setState(() => isListing = true);
+                      try {
+                        await provider.listPlayerForTransfer(
+                          playerId: player.id,
+                          askingPrice: askingPrice,
+                        );
+                        if (!mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Oyuncu transfer pazarına çıkarıldı')),
+                        );
+                      } catch (error) {
+                        if (!mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(error.toString())),
+                        );
+                      } finally {
+                        if (mounted) setState(() => isListing = false);
+                      }
+                    },
+              label: 'Transfere Çıkar',
+            ),
+          ],
+        ),
       ),
     );
   }

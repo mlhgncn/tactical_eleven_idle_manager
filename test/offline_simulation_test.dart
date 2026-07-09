@@ -93,6 +93,9 @@ class _FakeRepository implements GameRepository {
   Future<TransferMarketItem?> listPlayerForTransfer({required String playerId, required int askingPrice}) async => null;
 
   @override
+  Future<void> withdrawTransferListing({required String playerId}) async {}
+
+  @override
   Future<ClubInfo?> acceptTransferOffer({required String playerId}) async => null;
 
   @override

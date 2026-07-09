@@ -368,6 +368,14 @@ class SupabaseRepository implements GameRepository {
     });
   }
 
+  Future<void> withdrawTransferListing({required String playerId}) async {
+    return _wrap(() async {
+      await _client.rpc('withdraw_transfer_listing', params: {
+        'p_player_id': playerId,
+      });
+    });
+  }
+
   Future<ClubInfo?> acceptTransferOffer({required String playerId}) async {
     return _wrap(() async {
       final updated = await _client.rpc('accept_transfer_offer', params: {

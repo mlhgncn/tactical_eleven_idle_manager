@@ -39,6 +39,7 @@ abstract class GameRepository {
   Future<Tactics?> saveTactics(String clubId, Tactics tactics);
   Future<TransferMarketItem?> placeBid(String marketId, int bidAmount);
   Future<TransferMarketItem?> listPlayerForTransfer({required String playerId, required int askingPrice});
+  Future<void> withdrawTransferListing({required String playerId});
   Future<ClubInfo?> acceptTransferOffer({required String playerId});
   Future<bool> markMessageAsRead(String messageId);
   Future<ClubInfo?> upgradeClub({
