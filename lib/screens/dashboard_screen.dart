@@ -116,7 +116,7 @@ class DashboardScreen extends StatelessWidget {
                   color: AppColors.red,
                   title: 'Takvim',
                   subtitle: '${provider.fixtures.length} maç',
-                  onTap: () => _push(context, const MatchScheduleScreen()),
+                  onTap: () => _push(context, const MatchScheduleScreen(), title: 'Takvim'),
                 ),
               ],
             ),
@@ -133,7 +133,7 @@ class DashboardScreen extends StatelessWidget {
                       Text('$leagueName · Puan Durumu',
                           style: const TextStyle(color: AppColors.textMuted, fontWeight: FontWeight.bold, fontSize: 10.5, letterSpacing: 1)),
                       GestureDetector(
-                        onTap: () => _push(context, const LeagueTableScreen()),
+                        onTap: () => _push(context, const LeagueTableScreen(), title: 'Puan Durumu'),
                         child: const Text('Tamamı ›', style: TextStyle(color: AppColors.goldLight, fontWeight: FontWeight.bold, fontSize: 11.5)),
                       ),
                     ],
@@ -176,8 +176,16 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  static void _push(BuildContext context, Widget screen) {
-    Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
+  /// Pushes [screen] as a standalone route. Screens that already provide
+  /// their own Scaffold/AppBar (Squad, Tactics, Transfer Market) are pushed
+  /// as-is; screens designed as bare tab content for RootShell (League
+  /// Table, Match Schedule - no Scaffold of their own, since RootShell
+  /// supplies the chrome when they're a tab) need [title] so they get a
+  /// Scaffold/AppBar/back button here too, otherwise they render with no
+  /// safe-area padding and no way back.
+  static void _push(BuildContext context, Widget screen, {String? title}) {
+    final routeBody = title == null ? screen : Scaffold(appBar: AppBar(title: Text(title)), body: screen);
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => routeBody));
   }
 
   static Widget _card({required Widget child}) {
@@ -382,7 +390,9 @@ class _MatchCard extends StatelessWidget {
                       flex: 2,
                       child: GlassButton(
                         height: 44,
-                        onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const MatchScheduleScreen())),
+                        onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                          builder: (_) => Scaffold(appBar: AppBar(title: const Text('Takvim')), body: const MatchScheduleScreen()),
+                        )),
                         label: 'Takvim',
                       ),
                     ),

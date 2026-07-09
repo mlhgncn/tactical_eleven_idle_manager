@@ -94,39 +94,55 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                 children: [
                   Text('Gelişim', style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(height: 12),
-                  Text('Dakika: $minutesPlayed'),
-                  Slider(
-                    min: 0,
-                    max: 180,
-                    divisions: 6,
-                    value: minutesPlayed.toDouble(),
-                    onChanged: (value) => setState(() => minutesPlayed = value.toInt()),
-                  ),
-                  const SizedBox(height: 12),
-                  GoldButton(
-                    isLoading: isUpdating,
-                    onPressed: isUpdating ? null : () async {
-                        setState(() => isUpdating = true);
-                        try {
-                          await provider.applyPlayerDevelopmentToPlayer(
-                            playerId: player.id,
-                            minutesPlayed: minutesPlayed,
-                            trainingFacilityLevel: provider.activeClub?.trainingFacilityLevel ?? 1,
-                            morale: player.morale,
-                            formRating: player.formRating,
-                          );
-                          if (!mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Gelişim güncellendi')),
-                          );
-                        } finally {
-                          if (mounted) {
-                            setState(() => isUpdating = false);
+                  if (player.isDeveloping) ...[
+                    Text(
+                      'Gelişim sürüyor. Tamamlanma: ${_formatRemaining(player.developmentCompletesAt!)}',
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Uygulamadan çıksan bile süre sunucuda ilerlemeye devam eder.',
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                  ] else ...[
+                    Text('Dakika: $minutesPlayed'),
+                    Slider(
+                      min: 0,
+                      max: 180,
+                      divisions: 6,
+                      value: minutesPlayed.toDouble(),
+                      onChanged: (value) => setState(() => minutesPlayed = value.toInt()),
+                    ),
+                    const SizedBox(height: 12),
+                    GoldButton(
+                      isLoading: isUpdating,
+                      onPressed: isUpdating ? null : () async {
+                          setState(() => isUpdating = true);
+                          try {
+                            await provider.startPlayerDevelopment(
+                              playerId: player.id,
+                              minutesPlayed: minutesPlayed,
+                              trainingFacilityLevel: provider.activeClub?.trainingFacilityLevel ?? 1,
+                              morale: player.morale,
+                              formRating: player.formRating,
+                            );
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Gelişim başlatıldı')),
+                            );
+                          } catch (error) {
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(error.toString().replaceAll('Exception: ', ''))),
+                            );
+                          } finally {
+                            if (mounted) {
+                              setState(() => isUpdating = false);
+                            }
                           }
-                        }
-                      },
-                    label: 'Gelişimi uygula',
-                  ),
+                        },
+                      label: 'Gelişimi başlat',
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -136,6 +152,15 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
         ],
       ),
     );
+  }
+
+  String _formatRemaining(DateTime completesAt) {
+    final remaining = completesAt.difference(DateTime.now());
+    if (remaining.isNegative) return 'birazdan';
+    final hours = remaining.inHours;
+    final minutes = remaining.inMinutes % 60;
+    if (hours > 0) return '$hours sa $minutes dk';
+    return '$minutes dk';
   }
 
   Widget _buildTransferCard(BuildContext context, GameProvider provider, PlayerFM player) {

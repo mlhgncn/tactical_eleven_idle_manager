@@ -215,13 +215,23 @@ class _FakeGameRepository implements GameRepository {
   Future<bool> markMessageAsRead(String messageId) async => true;
 
   @override
-  Future<ClubInfo?> upgradeClub({required String clubId, int? stadiumCapacity, int? trainingFacilityLevel, int? ticketPrice}) async {
+  Future<ClubInfo?> upgradeClub({required String clubId, required int ticketPrice}) async {
     if (_activeClub == null) return null;
-    final updatedClub = _activeClub!.copyWith(
-      stadiumCapacity: stadiumCapacity ?? _activeClub!.stadiumCapacity,
-      trainingFacilityLevel: trainingFacilityLevel ?? _activeClub!.trainingFacilityLevel,
-      ticketPrice: ticketPrice ?? _activeClub!.ticketPrice,
-    );
+    final updatedClub = _activeClub!.copyWith(ticketPrice: ticketPrice);
+    _activeClub = updatedClub;
+    return updatedClub;
+  }
+
+  @override
+  Future<ClubInfo?> startClubDevelopment({
+    required String clubId,
+    required String upgradeType,
+    required int targetValue,
+  }) async {
+    if (_activeClub == null) return null;
+    final updatedClub = upgradeType == 'stadium'
+        ? _activeClub!.copyWith(stadiumCapacity: targetValue)
+        : _activeClub!.copyWith(trainingFacilityLevel: targetValue);
     _activeClub = updatedClub;
     return updatedClub;
   }
@@ -245,7 +255,7 @@ class _FakeGameRepository implements GameRepository {
   Future<bool?> loadNotificationPreference() async => null;
 
   @override
-  Future<PlayerFM?> advancePlayerDevelopment({
+  Future<PlayerFM?> startPlayerDevelopment({
     required String playerId,
     required int minutesPlayed,
     required int trainingFacilityLevel,

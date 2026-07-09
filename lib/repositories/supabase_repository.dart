@@ -52,7 +52,7 @@ class SupabaseRepository implements GameRepository {
       final response = await _client
           .from('clubs')
           .select(
-              'id,name,budget,blocked_budget,stadium_capacity,ticket_price,training_facility_level')
+              'id,name,budget,blocked_budget,stadium_capacity,ticket_price,training_facility_level,sponsor_level,last_maintenance_date,sponsor_upgrade_completes_at,development_upgrade_type,development_target_value,development_completes_at')
           .eq('user_id', userId)
           .order('created_at', ascending: true)
           .limit(1)
@@ -113,21 +113,21 @@ class SupabaseRepository implements GameRepository {
     });
   }
 
-  Future<PlayerFM?> advancePlayerDevelopment({
+  Future<PlayerFM?> startPlayerDevelopment({
     required String playerId,
     required int minutesPlayed,
     required int trainingFacilityLevel,
     required int morale,
     required double formRating,
   }) async {
-    final response = await _client.rpc('advance_player_development', params: {
+    final response = await _client.rpc('start_player_development', params: {
       'p_player_id': playerId,
       'p_minutes_played': minutesPlayed,
       'p_training_facility_level': trainingFacilityLevel,
       'p_morale': morale,
       'p_form_rating': formRating,
     }).select(
-      'id,club_id,name,position,age,current_ability,potential_ability,morale,fitness,finishing,passing,tackling,composure,determination,consistency,injury_proneness,form_rating,injury_type,injury_duration_weeks,is_suspended',
+      'id,club_id,name,position,age,current_ability,potential_ability,morale,fitness,finishing,passing,tackling,composure,determination,consistency,injury_proneness,form_rating,injury_type,injury_duration_weeks,is_suspended,development_completes_at',
     ).single();
 
     if (response == null) return null;
@@ -143,7 +143,7 @@ class SupabaseRepository implements GameRepository {
     final data = await _client
         .from('players')
         .select(
-            'id,club_id,name,position,age,current_ability,potential_ability,morale,fitness,finishing,passing,tackling,composure,determination,consistency,injury_proneness,injury_type,injury_duration_weeks,is_suspended')
+            'id,club_id,name,position,age,current_ability,potential_ability,morale,fitness,finishing,passing,tackling,composure,determination,consistency,injury_proneness,injury_type,injury_duration_weeks,is_suspended,development_completes_at')
         .eq('club_id', clubId)
         .order('current_ability', ascending: false);
 
@@ -428,15 +428,27 @@ class SupabaseRepository implements GameRepository {
   @override
   Future<ClubInfo?> upgradeClub({
     required String clubId,
-    int? stadiumCapacity,
-    int? trainingFacilityLevel,
-    int? ticketPrice,
+    required int ticketPrice,
   }) async {
     final updated = await _client.rpc('upgrade_club', params: {
       'p_club_id': clubId,
-      'p_stadium_capacity': stadiumCapacity,
-      'p_training_facility_level': trainingFacilityLevel,
       'p_ticket_price': ticketPrice,
+    }).single();
+
+    if (updated == null) return null;
+    return ClubInfo.fromMap(updated as Map<String, dynamic>);
+  }
+
+  @override
+  Future<ClubInfo?> startClubDevelopment({
+    required String clubId,
+    required String upgradeType,
+    required int targetValue,
+  }) async {
+    final updated = await _client.rpc('start_club_development', params: {
+      'p_club_id': clubId,
+      'p_upgrade_type': upgradeType,
+      'p_target_value': targetValue,
     }).single();
 
     if (updated == null) return null;

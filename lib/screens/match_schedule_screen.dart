@@ -1,21 +1,49 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import '../models/match_fixture.dart';
 import '../providers/game_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/club_badge.dart';
-import '../widgets/themed_button.dart';
-import 'match_summary_screen.dart';
 
-class MatchScheduleScreen extends StatelessWidget {
+class MatchScheduleScreen extends StatefulWidget {
   const MatchScheduleScreen({super.key});
+
+  @override
+  State<MatchScheduleScreen> createState() => _MatchScheduleScreenState();
+}
+
+class _MatchScheduleScreenState extends State<MatchScheduleScreen> {
+  Timer? _liveRefreshTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    // Matches now resolve automatically server-side (pg_cron) at kickoff
+    // time, whether the user is in the app or not. This periodic refresh
+    // is what lets someone who *is* in the app around kickoff time actually
+    // see it land - without it they'd only find out on the next manual
+    // pull-to-refresh.
+    _liveRefreshTimer = Timer.periodic(const Duration(seconds: 20), (_) {
+      if (!mounted) return;
+      context.read<GameProvider>().refreshGameState();
+    });
+  }
+
+  @override
+  void dispose() {
+    _liveRefreshTimer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<GameProvider>();
     final fixtures = provider.fixtures;
-    final results = provider.results;
+    final playedFixtures = fixtures.where((f) => f.status == 'Tamamlandı').toList().reversed.toList();
 
     if (provider.isLoading) {
       return const Center(child: CircularProgressIndicator());
@@ -52,131 +80,92 @@ class MatchScheduleScreen extends StatelessWidget {
                           ),
                         ],
                       )
-                    : Builder(builder: (context) {
-                        final nextUpcomingIndex = fixtures.indexWhere((fixture) => fixture.status == 'Yaklaşan');
-                        return ListView.builder(
-                          padding: const EdgeInsets.all(16),
-                          itemCount: fixtures.length,
-                          itemBuilder: (context, index) {
-                            final fixture = fixtures[index];
-                            final isPlayed = fixture.status == 'Tamamlandı';
-                            final homeAwayLabel = fixture.isHome ? 'Ev' : 'Deplasman';
-                            final homeAwayColor = fixture.isHome ? AppColors.green : AppColors.blue;
-                            final dateLabel = DateFormat('dd.MM.yyyy HH:mm', 'tr_TR')
-                                .format(fixture.kickoff.toLocal());
-                            final isNextUpcoming = index == nextUpcomingIndex && !isPlayed;
+                    : ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: fixtures.length,
+                        itemBuilder: (context, index) {
+                          final fixture = fixtures[index];
+                          final isPlayed = fixture.status == 'Tamamlandı';
+                          final homeAwayLabel = fixture.isHome ? 'Ev' : 'Deplasman';
+                          final homeAwayColor = fixture.isHome ? AppColors.green : AppColors.blue;
+                          final dateLabel = DateFormat('dd.MM.yyyy HH:mm', 'tr_TR')
+                              .format(fixture.kickoff.toLocal());
 
-                            return Card(
-                              margin: const EdgeInsets.only(bottom: 12),
-                              child: Padding(
-                                padding: const EdgeInsets.all(12),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            child: Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: ListTile(
+                                contentPadding: EdgeInsets.zero,
+                                leading: ClubBadge(
+                                  clubName: fixture.opponentName,
+                                  kind: fixture.isHome ? ClubBadgeKind.away : ClubBadgeKind.home,
+                                  size: 36,
+                                ),
+                                title: Text(fixture.opponentName,
+                                    style: const TextStyle(fontWeight: FontWeight.w600)),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    ListTile(
-                                      contentPadding: EdgeInsets.zero,
-                                      leading: ClubBadge(
-                                        clubName: fixture.opponentName,
-                                        kind: fixture.isHome ? ClubBadgeKind.away : ClubBadgeKind.home,
-                                        size: 36,
-                                      ),
-                                      title: Text(fixture.opponentName,
-                                          style: const TextStyle(fontWeight: FontWeight.w600)),
-                                      subtitle: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          const SizedBox(height: 4),
-                                          Row(
-                                            children: [
-                                              Container(
-                                                padding: const EdgeInsets.symmetric(
-                                                  horizontal: 12,
-                                                  vertical: 6,
-                                                ),
-                                                decoration: BoxDecoration(
-                                                  color: homeAwayColor.withValues(alpha: 0.16),
-                                                  borderRadius: BorderRadius.circular(16),
-                                                  border: Border.all(color: homeAwayColor.withValues(alpha: 0.4)),
-                                                ),
-                                                child: Text(
-                                                  homeAwayLabel,
-                                                  style: TextStyle(
-                                                    color: homeAwayColor,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                              ),
-                                              const SizedBox(width: 10),
-                                              Text('Hafta ${fixture.week}', style: const TextStyle(color: AppColors.textMuted)),
-                                            ],
+                                    const SizedBox(height: 4),
+                                    Row(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 6,
                                           ),
-                                          const SizedBox(height: 8),
-                                          Text(
-                                            isPlayed
-                                                ? '${fixture.homeScore} - ${fixture.awayScore}'
-                                                : dateLabel,
+                                          decoration: BoxDecoration(
+                                            color: homeAwayColor.withValues(alpha: 0.16),
+                                            borderRadius: BorderRadius.circular(16),
+                                            border: Border.all(color: homeAwayColor.withValues(alpha: 0.4)),
+                                          ),
+                                          child: Text(
+                                            homeAwayLabel,
                                             style: TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w500,
-                                              color: isPlayed ? AppColors.textPrimary : AppColors.textMuted,
+                                              color: homeAwayColor,
+                                              fontWeight: FontWeight.bold,
                                             ),
                                           ),
-                                        ],
-                                      ),
-                                      trailing: Chip(
-                                        label: Text(fixture.status),
-                                        backgroundColor: fixture.status == 'Tamamlandı'
-                                            ? AppColors.green.withValues(alpha: 0.14)
-                                            : AppColors.gold.withValues(alpha: 0.14),
-                                        labelStyle: TextStyle(
-                                          color: fixture.status == 'Tamamlandı' ? AppColors.green : AppColors.goldLight,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 11,
                                         ),
-                                        side: BorderSide.none,
+                                        const SizedBox(width: 10),
+                                        Text('Hafta ${fixture.week}', style: const TextStyle(color: AppColors.textMuted)),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      isPlayed
+                                          ? '${fixture.homeScore} - ${fixture.awayScore}'
+                                          : dateLabel,
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                        color: isPlayed ? AppColors.textPrimary : AppColors.textMuted,
                                       ),
                                     ),
-                                    if (isNextUpcoming) ...[
-                                      const SizedBox(height: 12),
-                                      GoldButton(
-                                        height: 44,
-                                        isLoading: provider.isBusy,
-                                        onPressed: provider.isBusy
-                                            ? null
-                                            : () async {
-                                                final scaffoldMessenger = ScaffoldMessenger.of(context);
-                                                final navigator = Navigator.of(context);
-                                                try {
-                                                  final result = await provider.playNextFixture();
-                                                  navigator.push(
-                                                    MaterialPageRoute(
-                                                      builder: (_) => MatchSummaryScreen(result: result),
-                                                    ),
-                                                  );
-                                                } catch (error) {
-                                                  scaffoldMessenger.showSnackBar(
-                                                    SnackBar(
-                                                      content: Text(
-                                                        'Maç oynatılırken hata oluştu: ${error.toString()}',
-                                                      ),
-                                                    ),
-                                                  );
-                                                }
-                                              },
-                                        label: 'Maçı Oyna',
-                                      ),
-                                    ],
                                   ],
                                 ),
+                                trailing: Chip(
+                                  label: Text(fixture.status),
+                                  backgroundColor: fixture.status == 'Tamamlandı'
+                                      ? AppColors.green.withValues(alpha: 0.14)
+                                      : AppColors.gold.withValues(alpha: 0.14),
+                                  labelStyle: TextStyle(
+                                    color: fixture.status == 'Tamamlandı' ? AppColors.green : AppColors.goldLight,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 11,
+                                  ),
+                                  side: BorderSide.none,
+                                ),
                               ),
-                            );
-                          },
-                        );
-                      }),
+                            ),
+                          );
+                        },
+                      ),
                 ),
                 RefreshIndicator(
                   onRefresh: () => context.read<GameProvider>().refreshGameState(),
-                  child: results.isEmpty
+                  child: playedFixtures.isEmpty
                     ? ListView(
                         children: const [
                           Padding(
@@ -187,37 +176,69 @@ class MatchScheduleScreen extends StatelessWidget {
                       )
                     : ListView.builder(
                         padding: const EdgeInsets.all(16),
-                        itemCount: results.length,
-                        itemBuilder: (context, index) {
-                          final result = results[index];
-                          return Card(
-                            margin: const EdgeInsets.only(bottom: 12),
-                            child: ListTile(
-                              contentPadding: const EdgeInsets.all(16),
-                              title: Text(
-                                'Sonuç: ${result.homeScore} - ${result.awayScore}',
-                                style: Theme.of(context).textTheme.titleMedium,
-                              ),
-                              subtitle: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const SizedBox(height: 8),
-                                  Text('Toplam şutlar: ${result.homeShots} - ${result.awayShots}'),
-                                  Text('Possession: ${result.homePossession}%'),
-                                  const SizedBox(height: 10),
-                                  const Text('Özet:',
-                                      style: TextStyle(fontWeight: FontWeight.bold)),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
+                        itemCount: playedFixtures.length,
+                        itemBuilder: (context, index) => _ResultCard(fixture: playedFixtures[index]),
                       ),
                 ),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ResultCard extends StatelessWidget {
+  const _ResultCard({required this.fixture});
+
+  final MatchFixture fixture;
+
+  @override
+  Widget build(BuildContext context) {
+    final ownScore = fixture.isHome ? fixture.homeScore : fixture.awayScore;
+    final opponentScore = fixture.isHome ? fixture.awayScore : fixture.homeScore;
+    final Color resultColor;
+    final String resultLabel;
+    if (ownScore > opponentScore) {
+      resultColor = AppColors.green;
+      resultLabel = 'Galibiyet';
+    } else if (ownScore < opponentScore) {
+      resultColor = AppColors.red;
+      resultLabel = 'Mağlubiyet';
+    } else {
+      resultColor = AppColors.gold;
+      resultLabel = 'Beraberlik';
+    }
+    final dateLabel = DateFormat('dd.MM.yyyy', 'tr_TR').format(fixture.kickoff.toLocal());
+    final homeAwayLabel = fixture.isHome ? 'Ev sahibi' : 'Deplasman';
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: ListTile(
+        contentPadding: const EdgeInsets.all(16),
+        leading: ClubBadge(
+          clubName: fixture.opponentName,
+          kind: fixture.isHome ? ClubBadgeKind.away : ClubBadgeKind.home,
+          size: 36,
+        ),
+        title: Text(
+          '${fixture.isHome ? fixture.homeScore : fixture.awayScore} - ${fixture.isHome ? fixture.awayScore : fixture.homeScore}  ${fixture.opponentName}',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 8),
+            Text('$homeAwayLabel · Hafta ${fixture.week} · $dateLabel'),
+          ],
+        ),
+        trailing: Chip(
+          label: Text(resultLabel),
+          backgroundColor: resultColor.withValues(alpha: 0.14),
+          labelStyle: TextStyle(color: resultColor, fontWeight: FontWeight.bold, fontSize: 11),
+          side: BorderSide.none,
+        ),
       ),
     );
   }

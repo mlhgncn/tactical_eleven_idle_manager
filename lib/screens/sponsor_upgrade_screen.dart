@@ -15,6 +15,16 @@ class _SponsorUpgradeScreenState extends State<SponsorUpgradeScreen> {
   bool _isUpgrading = false;
   String? _errorMessage;
 
+  String _formatRemaining(DateTime completesAt) {
+    final remaining = completesAt.difference(DateTime.now());
+    if (remaining.isNegative) return 'birazdan';
+    final days = remaining.inDays;
+    final hours = remaining.inHours % 24;
+    if (days > 0) return '$days gün $hours sa';
+    final minutes = remaining.inMinutes % 60;
+    return '$hours sa $minutes dk';
+  }
+
   void _handleUpgrade() async {
     final provider = context.read<GameProvider>();
 
@@ -28,7 +38,7 @@ class _SponsorUpgradeScreenState extends State<SponsorUpgradeScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('✓ Sponsorluğu başarıyla yükselttiniz!'),
+            content: Text('✓ Sponsor yükseltmesi başlatıldı!'),
             backgroundColor: AppColors.green,
             duration: Duration(seconds: 2),
           ),
@@ -66,7 +76,9 @@ class _SponsorUpgradeScreenState extends State<SponsorUpgradeScreen> {
     final currentLevel = club.sponsorLevel;
     final maxLevel = 5;
     final isMaxed = currentLevel >= maxLevel;
+    final isUpgradingNow = club.isSponsorUpgrading;
     final upgradeCost = 5000 * currentLevel;
+    final upgradeDurationDays = 2 * currentLevel - 1;
     final newLevel = currentLevel + 1;
     final newRevenuePerMatch = newLevel * 500;
     final currentRevenuePerMatch = currentLevel * 500;
@@ -140,7 +152,31 @@ class _SponsorUpgradeScreenState extends State<SponsorUpgradeScreen> {
             ),
             const SizedBox(height: 16),
 
-            if (!isMaxed) ...[
+            if (isUpgradingNow) ...[
+              Card(
+                color: AppColors.gold.withValues(alpha: 0.10),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  side: BorderSide(color: AppColors.gold.withValues(alpha: 0.3)),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Sponsor Yükseltmesi Sürüyor', style: Theme.of(context).textTheme.titleSmall),
+                      const SizedBox(height: 8),
+                      Text('Tamamlanmasına kalan süre: ${_formatRemaining(club.sponsorUpgradeCompletesAt!)}'),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'Uygulama kapalıyken de süre ilerler.',
+                        style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ] else if (!isMaxed) ...[
               // Yükseltme Bilgisi
               Card(
                 color: AppColors.blue.withValues(alpha: 0.10),
@@ -234,6 +270,17 @@ class _SponsorUpgradeScreenState extends State<SponsorUpgradeScreen> {
                               fontSize: 16,
                               color: AppColors.goldLight,
                             ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Süre'),
+                          Text(
+                            '$upgradeDurationDays gün',
+                            style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.blue),
                           ),
                         ],
                       ),
@@ -352,7 +399,7 @@ class _SponsorUpgradeScreenState extends State<SponsorUpgradeScreen> {
                           ),
                         )
                       : const Icon(Icons.upgrade),
-                  label: Text(_isUpgrading ? 'Yükseltiliyor...' : 'Sponsorluğu Yükselt'),
+                  label: Text(_isUpgrading ? 'Başlatılıyor...' : 'Yükseltmeyi Başlat'),
                 ),
               ),
             ] else ...[

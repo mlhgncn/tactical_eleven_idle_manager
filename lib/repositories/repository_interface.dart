@@ -15,7 +15,7 @@ abstract class GameRepository {
   Future<ClubInfo?> createLeagueAndJoin();
   Future<ClubInfo?> joinLeagueWithCode(String invitationCode);
   Future<List<PlayerFM>> loadSquadPlayers(String clubId);
-  Future<PlayerFM?> advancePlayerDevelopment({
+  Future<PlayerFM?> startPlayerDevelopment({
     required String playerId,
     required int minutesPlayed,
     required int trainingFacilityLevel,
@@ -42,9 +42,12 @@ abstract class GameRepository {
   Future<bool> markMessageAsRead(String messageId);
   Future<ClubInfo?> upgradeClub({
     required String clubId,
-    int? stadiumCapacity,
-    int? trainingFacilityLevel,
-    int? ticketPrice,
+    required int ticketPrice,
+  });
+  Future<ClubInfo?> startClubDevelopment({
+    required String clubId,
+    required String upgradeType,
+    required int targetValue,
   });
   Future<ClubInfo?> upgradeSponsor({required String clubId});
   Future<void> updateFcmToken(String token);

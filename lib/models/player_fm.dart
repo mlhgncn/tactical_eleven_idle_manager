@@ -19,6 +19,7 @@
   String? injuryType;
   int injuryDurationWeeks;
   bool isSuspended;
+  DateTime? developmentCompletesAt;
 
   PlayerFM({
     required this.id,
@@ -41,6 +42,7 @@
     this.injuryType,
     this.injuryDurationWeeks = 0,
     this.isSuspended = false,
+    this.developmentCompletesAt,
   });
 
   factory PlayerFM.fromMap(Map<String, dynamic> map) {
@@ -65,8 +67,14 @@
       injuryType: map['injury_type'] as String?,
       injuryDurationWeeks: (map['injury_duration_weeks'] as num?)?.toInt() ?? 0,
       isSuspended: (map['is_suspended'] as bool?) ?? false,
+      developmentCompletesAt: map['development_completes_at'] != null
+          ? DateTime.tryParse(map['development_completes_at'] as String)
+          : null,
     );
   }
+
+  bool get isDeveloping =>
+      developmentCompletesAt != null && developmentCompletesAt!.isAfter(DateTime.now());
 
   bool get hasActiveInjury {
     return injuryDurationWeeks > 0 || isSuspended || (injuryType?.trim().isNotEmpty ?? false);

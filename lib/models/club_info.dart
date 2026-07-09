@@ -8,6 +8,10 @@ class ClubInfo {
   final int trainingFacilityLevel;
   final int sponsorLevel; // 1-5 sponsor seviyesi
   final DateTime? lastMaintenanceDate; // Aylık bakım takibi
+  final DateTime? sponsorUpgradeCompletesAt;
+  final String? developmentUpgradeType; // 'stadium' | 'facility'
+  final int? developmentTargetValue;
+  final DateTime? developmentCompletesAt;
 
   const ClubInfo({
     required this.id,
@@ -19,7 +23,17 @@ class ClubInfo {
     required this.trainingFacilityLevel,
     this.sponsorLevel = 1,
     this.lastMaintenanceDate,
+    this.sponsorUpgradeCompletesAt,
+    this.developmentUpgradeType,
+    this.developmentTargetValue,
+    this.developmentCompletesAt,
   });
+
+  bool get isSponsorUpgrading =>
+      sponsorUpgradeCompletesAt != null && sponsorUpgradeCompletesAt!.isAfter(DateTime.now());
+
+  bool get isDevelopmentUpgrading =>
+      developmentCompletesAt != null && developmentCompletesAt!.isAfter(DateTime.now());
 
   ClubInfo copyWith({
     String? name,
@@ -30,6 +44,10 @@ class ClubInfo {
     int? trainingFacilityLevel,
     int? sponsorLevel,
     DateTime? lastMaintenanceDate,
+    DateTime? sponsorUpgradeCompletesAt,
+    String? developmentUpgradeType,
+    int? developmentTargetValue,
+    DateTime? developmentCompletesAt,
   }) {
     return ClubInfo(
       id: id,
@@ -41,6 +59,10 @@ class ClubInfo {
       trainingFacilityLevel: trainingFacilityLevel ?? this.trainingFacilityLevel,
       sponsorLevel: sponsorLevel ?? this.sponsorLevel,
       lastMaintenanceDate: lastMaintenanceDate ?? this.lastMaintenanceDate,
+      sponsorUpgradeCompletesAt: sponsorUpgradeCompletesAt ?? this.sponsorUpgradeCompletesAt,
+      developmentUpgradeType: developmentUpgradeType ?? this.developmentUpgradeType,
+      developmentTargetValue: developmentTargetValue ?? this.developmentTargetValue,
+      developmentCompletesAt: developmentCompletesAt ?? this.developmentCompletesAt,
     );
   }
 
@@ -55,6 +77,14 @@ class ClubInfo {
       trainingFacilityLevel: (map['training_facility_level'] as num).toInt(),
       sponsorLevel: (map['sponsor_level'] as num?)?.toInt() ?? 1,
       lastMaintenanceDate: map['last_maintenance_date'] != null ? DateTime.parse(map['last_maintenance_date'] as String) : null,
+      sponsorUpgradeCompletesAt: map['sponsor_upgrade_completes_at'] != null
+          ? DateTime.tryParse(map['sponsor_upgrade_completes_at'] as String)
+          : null,
+      developmentUpgradeType: map['development_upgrade_type'] as String?,
+      developmentTargetValue: (map['development_target_value'] as num?)?.toInt(),
+      developmentCompletesAt: map['development_completes_at'] != null
+          ? DateTime.tryParse(map['development_completes_at'] as String)
+          : null,
     );
   }
 }

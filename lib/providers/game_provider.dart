@@ -252,14 +252,14 @@ class GameProvider extends ChangeNotifier {
     }
   }
 
-  Future<PlayerFM?> applyPlayerDevelopmentToPlayer({
+  Future<PlayerFM?> startPlayerDevelopment({
     required String playerId,
     required int minutesPlayed,
     required int trainingFacilityLevel,
     required int morale,
     required double formRating,
   }) async {
-    final updatedPlayer = await _repository.advancePlayerDevelopment(
+    final updatedPlayer = await _repository.startPlayerDevelopment(
       playerId: playerId,
       minutesPlayed: minutesPlayed,
       trainingFacilityLevel: trainingFacilityLevel,
@@ -676,7 +676,8 @@ class GameProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> upgradeClub({int? stadiumCapacity, int? trainingFacilityLevel, int? ticketPrice}) async {
+  /// Bilet fiyatını günceller. Anında uygulanır (inşaat gerektirmez).
+  Future<void> upgradeClub({required int ticketPrice}) async {
     final activeClub = _activeClub;
     if (activeClub == null) throw Exception('Aktif kulüp bulunamadı.');
     if (_isBusy) return;
@@ -685,8 +686,6 @@ class GameProvider extends ChangeNotifier {
     try {
       final updatedClub = await _repository.upgradeClub(
         clubId: activeClub.id,
-        stadiumCapacity: stadiumCapacity,
-        trainingFacilityLevel: trainingFacilityLevel,
         ticketPrice: ticketPrice,
       );
 
@@ -694,13 +693,7 @@ class GameProvider extends ChangeNotifier {
         _activeClub = updatedClub;
       }
 
-      final upgradeMessage = await _repository.addInboxMessage(
-        title: 'Tesis Yükseltmesi',
-        body: 'Yükseltme tamamlandı!',
-      );
-      if (upgradeMessage != null) {
-        _inboxMessages.insert(0, upgradeMessage);
-      }
+      await _createInboxMessage('Bilet Fiyatı', 'Bilet fiyatı $ticketPrice GP olarak güncellendi.');
 
       notifyListeners();
     } finally {
@@ -708,12 +701,56 @@ class GameProvider extends ChangeNotifier {
     }
   }
 
-  /// Sponsor seviyesini yükselt (1-5 arası)
+  /// Stadyum kapasitesi veya tesis seviyesi için zamanlı bir geliştirme
+  /// başlatır. [upgradeType] 'stadium' veya 'facility' olmalı. Kulüp
+  /// başına aynı anda tek bir geliştirme sürebilir; tamamlanma sunucu
+  /// tarafında (cron) uygulanır, uygulama kapalı olsa bile ilerler.
+  Future<void> startClubDevelopment({required String upgradeType, required int targetValue}) async {
+    final activeClub = _activeClub;
+    if (activeClub == null) throw Exception('Aktif kulüp bulunamadı.');
+    if (activeClub.isDevelopmentUpgrading) {
+      throw Exception('Zaten sürmekte olan bir geliştirme var.');
+    }
+    if (_isBusy) return;
+
+    _setBusy(true);
+    try {
+      final updatedClub = await _repository.startClubDevelopment(
+        clubId: activeClub.id,
+        upgradeType: upgradeType,
+        targetValue: targetValue,
+      );
+
+      if (updatedClub != null) {
+        _activeClub = updatedClub;
+      }
+
+      final completesAt = _activeClub?.developmentCompletesAt;
+      final label = upgradeType == 'stadium' ? 'Stadyum genişletme' : 'Tesis yükseltmesi';
+      await _createInboxMessage(
+        label,
+        completesAt != null
+            ? '$label başlatıldı. Tahmini tamamlanma: ${completesAt.toLocal()}'
+            : '$label başlatıldı.',
+      );
+
+      notifyListeners();
+    } finally {
+      _setBusy(false);
+    }
+  }
+
+  /// Sponsor seviyesini yükseltmek için zamanlı bir yükseltme başlatır
+  /// (1-5 arası). Tamamlanma sunucu tarafında (cron) uygulanır, uygulama
+  /// kapalı olsa bile ilerler.
   Future<void> upgradeSponsor() async {
     final activeClub = _activeClub;
     if (activeClub == null) throw Exception('Aktif kulüp bulunamadı.');
     if (activeClub.sponsorLevel >= 5) {
       throw Exception('Sponsor maksimum seviyesi 5 olabilir.');
+    }
+    if (activeClub.isSponsorUpgrading) {
+      throw Exception('Sponsor yükseltmesi zaten sürüyor.');
     }
     if (_isBusy) return;
 
@@ -725,10 +762,12 @@ class GameProvider extends ChangeNotifier {
         _activeClub = updatedClub;
       }
 
-      final sponsorLevel = _activeClub?.sponsorLevel ?? activeClub.sponsorLevel;
+      final completesAt = _activeClub?.sponsorUpgradeCompletesAt;
       await _createInboxMessage(
         'Sponsor Anlaşması',
-        'Sponsor seviyesi $sponsorLevel\'ye yükseltildi! Yeni aylık gelir: ${sponsorLevel * 1000} GP',
+        completesAt != null
+            ? 'Sponsor yükseltmesi başlatıldı. Tahmini tamamlanma: ${completesAt.toLocal()}'
+            : 'Sponsor yükseltmesi başlatıldı.',
       );
 
       notifyListeners();
