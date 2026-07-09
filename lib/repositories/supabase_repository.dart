@@ -221,7 +221,7 @@ class SupabaseRepository implements GameRepository {
     final data = await _client
         .from('matches')
         .select(
-            'id,match_date,is_played,home_score,away_score,home_club_id,away_club_id,home_club(name),away_club(name),week,league_id,season_id')
+            'id,match_date,is_played,home_score,away_score,home_club_id,away_club_id,home_club:clubs!home_club_id(name),away_club:clubs!away_club_id(name),week,league_id,season_id')
         .or('home_club_id.eq.$clubId,away_club_id.eq.$clubId')
         .order('match_date', ascending: true);
 
@@ -582,30 +582,6 @@ class SupabaseRepository implements GameRepository {
 
     if (data == null) return null;
     return Tactics.fromMap(data as Map<String, dynamic>);
-  }
-
-  Future<void> assignPlayersFromTeamIds() async {
-    // Find players with team_id set but club_id null and assign club_id = team_id
-    final rows = await _client
-        .from('players')
-        .select('id,team_id')
-        .filter('club_id', 'is', null)
-        .not('team_id', 'is', null);
-
-    // rows is a List<dynamic> from PostgREST
-    if (rows is! List<dynamic>) return;
-    if (rows.isEmpty) return;
-
-    for (final r in rows.cast<Map<String, dynamic>>()) {
-      final id = r['id'] as String?;
-      final teamId = r['team_id'] as String?;
-      if (id == null || teamId == null) continue;
-      try {
-        await _client.from('players').update({'club_id': teamId}).eq('id', id);
-      } catch (_) {
-        // ignore individual update errors
-      }
-    }
   }
 
   Future<void> updateFcmToken(String token) async {

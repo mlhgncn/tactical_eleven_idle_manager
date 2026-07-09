@@ -245,9 +245,6 @@ class _FakeGameRepository implements GameRepository {
   Future<bool?> loadNotificationPreference() async => null;
 
   @override
-  Future<void> assignPlayersFromTeamIds() async {}
-
-  @override
   Future<PlayerFM?> advancePlayerDevelopment({
     required String playerId,
     required int minutesPlayed,

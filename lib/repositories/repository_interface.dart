@@ -22,8 +22,6 @@ abstract class GameRepository {
     required int morale,
     required double formRating,
   });
-  // Assign players to clubs based on seed `team_id` when `club_id` is null
-  Future<void> assignPlayersFromTeamIds();
   Future<List<InboxMessage>> loadInboxMessages();
   Future<InboxMessage?> addInboxMessage({required String title, required String body});
   Future<Map<String, dynamic>?> awardAdReward({required String rewardType, int? amount});

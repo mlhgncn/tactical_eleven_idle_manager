@@ -191,16 +191,6 @@ class GameProvider extends ChangeNotifier {
     try {
       await _loadActiveClub();
 
-      // Keep the club setup flow explicit for new users. When no active club is present,
-      // the auth/setup screen should decide whether to create or claim a club.
-      if (_activeClub != null) {
-        try {
-          await _repository.assignPlayersFromTeamIds();
-        } catch (e) {
-          debugPrint('assignPlayersFromTeamIds failed: $e');
-        }
-      }
-
       await _loadUserProfile();
       await Future.wait(<Future<void>>[
         _loadSquadPlayers(),
