@@ -45,37 +45,52 @@ CREATE POLICY transfer_offers_update_policy ON public.transfer_offers FOR UPDATE
 -- BEFORE the old bidding columns are dropped below, so no bidder's
 -- already-reserved blocked_budget is silently orphaned or lost - it now
 -- represents a transfer_offers row the seller can accept/reject instead.
-INSERT INTO public.transfer_offers (player_id, from_club_id, to_club_id, offer_amount, status, created_at)
-SELECT tm.player_id, tm.highest_bidder_id, p.club_id, tm.current_highest_bid, 'pending', now()
-FROM public.transfer_market tm
-JOIN public.players p ON p.id = tm.player_id
-WHERE tm.highest_bidder_id IS NOT NULL AND p.club_id IS NOT NULL;
+--
+-- Guarded on highest_bidder_id still existing: this whole migration was
+-- already applied once directly against production, which renamed/
+-- dropped these columns. The CI deploy workflow tracks applied migration
+-- filenames in its own separate ledger (_migrations_applied) and doesn't
+-- know that happened, so it replays this file - without the guard, the
+-- SELECT below would fail with "column does not exist" on that replay.
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'transfer_market' AND column_name = 'highest_bidder_id'
+  ) THEN
+    INSERT INTO public.transfer_offers (player_id, from_club_id, to_club_id, offer_amount, status, created_at)
+    SELECT tm.player_id, tm.highest_bidder_id, p.club_id, tm.current_highest_bid, 'pending', now()
+    FROM public.transfer_market tm
+    JOIN public.players p ON p.id = tm.player_id
+    WHERE tm.highest_bidder_id IS NOT NULL AND p.club_id IS NOT NULL;
 
--- Any bidder whose auction had already expired (bid never accepted) gets
--- their reservation released, exactly like release_expired_transfer_bids
--- used to do - only relevant if any exist at migration time.
-UPDATE public.clubs c
-SET blocked_budget = GREATEST(0, c.blocked_budget - tm.current_highest_bid)
-FROM public.transfer_market tm
-WHERE tm.highest_bidder_id = c.id AND tm.end_time <= now();
+    -- Any bidder whose auction had already expired (bid never accepted)
+    -- gets their reservation released, exactly like
+    -- release_expired_transfer_bids used to do.
+    UPDATE public.clubs c
+    SET blocked_budget = GREATEST(0, c.blocked_budget - tm.current_highest_bid)
+    FROM public.transfer_market tm
+    WHERE tm.highest_bidder_id = c.id AND tm.end_time <= now();
 
--- Notify sellers of the offers we just carried forward, so they're not
--- left unaware there's now something actionable waiting on them.
-INSERT INTO public.inbox_messages (recipient_id, title, body, is_read, created_at)
-SELECT c.user_id, 'Transfer Teklifi', format('%s için %s GP teklif aldın.', p.name, tm.current_highest_bid), false, now()
-FROM public.transfer_market tm
-JOIN public.players p ON p.id = tm.player_id
-JOIN public.clubs c ON c.id = p.club_id
-WHERE tm.highest_bidder_id IS NOT NULL AND tm.end_time > now() AND c.user_id IS NOT NULL;
+    -- Notify sellers of the offers we just carried forward, so they're
+    -- not left unaware there's now something actionable waiting on them.
+    INSERT INTO public.inbox_messages (recipient_id, title, body, is_read, created_at)
+    SELECT c.user_id, 'Transfer Teklifi', format('%s için %s GP teklif aldın.', p.name, tm.current_highest_bid), false, now()
+    FROM public.transfer_market tm
+    JOIN public.players p ON p.id = tm.player_id
+    JOIN public.clubs c ON c.id = p.club_id
+    WHERE tm.highest_bidder_id IS NOT NULL AND tm.end_time > now() AND c.user_id IS NOT NULL;
 
--- transfer_market keeps its name/shape as a lightweight "listing" concept
--- (surfaces a player in the browsable market with a reference price) but
--- drops the bidding mechanics entirely now that every live bid has been
--- migrated above - current_highest_bid becomes a plain asking_price,
--- highest_bidder_id/end_time are gone.
-ALTER TABLE public.transfer_market RENAME COLUMN current_highest_bid TO asking_price;
-ALTER TABLE public.transfer_market DROP COLUMN IF EXISTS highest_bidder_id;
-ALTER TABLE public.transfer_market DROP COLUMN IF EXISTS end_time;
+    -- transfer_market keeps its name/shape as a lightweight "listing"
+    -- concept (surfaces a player in the browsable market with a
+    -- reference price) but drops the bidding mechanics entirely now
+    -- that every live bid has been migrated above - current_highest_bid
+    -- becomes a plain asking_price, highest_bidder_id/end_time are gone.
+    ALTER TABLE public.transfer_market RENAME COLUMN current_highest_bid TO asking_price;
+    ALTER TABLE public.transfer_market DROP COLUMN highest_bidder_id;
+    ALTER TABLE public.transfer_market DROP COLUMN IF EXISTS end_time;
+  END IF;
+END $$;
 
 -- Old auction functions are fully superseded - drop them.
 DROP FUNCTION IF EXISTS public.place_transfer_bid(uuid, bigint);
