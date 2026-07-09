@@ -985,28 +985,11 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
-CREATE OR REPLACE FUNCTION public.assign_club_to_new_user()
-RETURNS trigger AS $$
-BEGIN
-  IF TG_OP IS NULL THEN
-    RAISE EXCEPTION 'This function may only be called as a trigger';
-  END IF;
-
-  UPDATE public.clubs
-  SET user_id = NEW.id
-  WHERE id = (
-    SELECT id
-    FROM public.clubs
-    WHERE user_id IS NULL
-    ORDER BY id
-    LIMIT 1
-  );
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
-
+-- Removed: assign_club_to_new_user() / assign_club_to_new_user_trigger used
+-- to silently hand every new signup the first unclaimed club, bypassing the
+-- create-league/join-league onboarding screen entirely. Superseded by the
+-- explicit create_league_and_join / join_league_with_code RPCs (see
+-- supabase/migrations/20260709090000_league_create_join_flow.sql and
+-- the migration that dropped this trigger in production).
 DROP TRIGGER IF EXISTS assign_club_to_new_user_trigger ON auth.users;
-CREATE TRIGGER assign_club_to_new_user_trigger
-AFTER INSERT ON auth.users
-FOR EACH ROW
-EXECUTE FUNCTION public.assign_club_to_new_user();
+DROP FUNCTION IF EXISTS public.assign_club_to_new_user();
