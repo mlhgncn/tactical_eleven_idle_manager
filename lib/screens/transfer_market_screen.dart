@@ -34,43 +34,53 @@ class TransferMarketScreen extends StatelessWidget {
       appBar: AppBar(title: const Text('Canlı Transfer Pazarı')),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
-          : items.isEmpty
-              ? const Center(child: Text('Şu anda açık transfer yok.'))
-              : Stack(
-                  children: [
-                    ListView.builder(
-                      itemCount: items.length,
-                      itemBuilder: (context, index) {
-                        final item = items[index];
-                        return TransferMarketCard(
-                          item: item,
-                          activeClubId: activeClub.id,
-                          onBidPressed: item.isSold
-                              ? null
-                              : () async {
-                                  try {
-                                    await context.read<GameProvider>().placeBid(
-                                          marketId: item.id,
-                                          bidAmount: item.currentHighestBid + 100,
+          : RefreshIndicator(
+              onRefresh: () => context.read<GameProvider>().refreshGameState(),
+              child: Stack(
+                children: [
+                  items.isEmpty
+                      ? ListView(
+                          children: const [
+                            Padding(
+                              padding: EdgeInsets.only(top: 80),
+                              child: Center(child: Text('Şu anda açık transfer yok.')),
+                            ),
+                          ],
+                        )
+                      : ListView.builder(
+                          itemCount: items.length,
+                          itemBuilder: (context, index) {
+                            final item = items[index];
+                            return TransferMarketCard(
+                              item: item,
+                              activeClubId: activeClub.id,
+                              onBidPressed: item.isSold
+                                  ? null
+                                  : () async {
+                                      try {
+                                        await context.read<GameProvider>().placeBid(
+                                              marketId: item.id,
+                                              bidAmount: item.currentHighestBid + 100,
+                                            );
+                                      } catch (error) {
+                                        if (!context.mounted) return;
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(content: Text(error.toString())),
                                         );
-                                  } catch (error) {
-                                    if (!context.mounted) return;
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(content: Text(error.toString())),
-                                    );
-                                  }
-                                },
-                        );
-                      },
+                                      }
+                                    },
+                            );
+                          },
+                        ),
+                  if (isSyncing)
+                    const Positioned(
+                      right: 16,
+                      top: 16,
+                      child: Chip(label: Text('Senkrone ediliyor...')),
                     ),
-                    if (isSyncing)
-                      const Positioned(
-                        right: 16,
-                        top: 16,
-                        child: Chip(label: Text('Senkrone ediliyor...')),
-                      ),
-                  ],
-                ),
+                ],
+              ),
+            ),
     );
   }
 }

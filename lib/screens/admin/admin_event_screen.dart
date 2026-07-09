@@ -29,7 +29,7 @@ class _AdminEventScreenState extends State<AdminEventScreen> {
       await provider.repo.adminCreateEvent(title: _titleController.text.trim(), body: _bodyController.text.trim());
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Etkinlik oluşturuldu')));
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: ${e.toString().replaceAll('Exception: ', '')}')));
     }
     setState(() => _loading = false);
   }

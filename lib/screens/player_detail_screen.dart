@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../models/player_fm.dart';
-import '../models/transfer_market_item.dart';
 import '../providers/game_provider.dart';
 import '../widgets/player_card.dart';
 import '../widgets/themed_button.dart';

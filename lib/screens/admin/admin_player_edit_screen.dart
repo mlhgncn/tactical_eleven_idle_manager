@@ -44,7 +44,7 @@ class _AdminPlayerEditScreenState extends State<AdminPlayerEditScreen> {
       );
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Oyuncu güncellendi')));
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: ${e.toString().replaceAll('Exception: ', '')}')));
     }
     setState(() => _loading = false);
   }

@@ -4,12 +4,12 @@ import '../models/club_info.dart';
 import '../models/inbox_message.dart';
 import '../models/match_fixture.dart';
 import '../models/match_result.dart';
-import '../models/offline_simulation_result.dart';
 import '../models/player_fm.dart';
 import '../models/financial_transaction.dart';
 import '../models/profile.dart';
 import '../models/tactics.dart';
 import '../models/transfer_market_item.dart';
+import '../models/transfer_history_entry.dart';
 import '../repositories/match_preview_repository.dart';
 import '../repositories/repository_interface.dart';
 import '../repositories/supabase_repository.dart';
@@ -74,6 +74,10 @@ class GameProvider extends ChangeNotifier {
   bool _isLoadingTransactions = false;
   String? _transactionsErrorMessage;
 
+  List<TransferHistoryEntry> _transferHistory = <TransferHistoryEntry>[];
+  bool _isLoadingTransferHistory = false;
+  String? _transferHistoryErrorMessage;
+
   bool _isLoading = false;
   bool _isBusy = false;
   bool _isSyncing = false;
@@ -94,6 +98,31 @@ class GameProvider extends ChangeNotifier {
       List.unmodifiable(_financialTransactions);
   bool get isLoadingTransactions => _isLoadingTransactions;
   String? get transactionsErrorMessage => _transactionsErrorMessage;
+
+  List<TransferHistoryEntry> get transferHistory => List.unmodifiable(_transferHistory);
+  bool get isLoadingTransferHistory => _isLoadingTransferHistory;
+  String? get transferHistoryErrorMessage => _transferHistoryErrorMessage;
+
+  Future<void> loadTransferHistory() async {
+    final activeClub = _activeClub;
+    if (activeClub == null) {
+      _transferHistory = <TransferHistoryEntry>[];
+      return;
+    }
+    _isLoadingTransferHistory = true;
+    _transferHistoryErrorMessage = null;
+    notifyListeners();
+
+    try {
+      _transferHistory = await _repository.loadTransferHistory(activeClub.id);
+    } catch (e) {
+      _transferHistory = <TransferHistoryEntry>[];
+      _transferHistoryErrorMessage = 'Transfer geçmişi yüklenemedi. Lütfen internet bağlantınızı kontrol edip tekrar deneyin.';
+    } finally {
+      _isLoadingTransferHistory = false;
+      notifyListeners();
+    }
+  }
 
   Map<String, dynamic>? get seasonState => _seasonState;
   List<Map<String, dynamic>> get standings => List.unmodifiable(_standings);
@@ -687,40 +716,6 @@ class GameProvider extends ChangeNotifier {
       notifyListeners();
     } finally {
       _setBusy(false);
-    }
-  }
-
-  Future<OfflineSimulationResult> simulateOfflineMatches() async {
-    if (_isBusy) {
-      return OfflineSimulationResult(
-        matchesSimulated: 0,
-        totalIncome: 0,
-        playersImproved: 0,
-        transferOffersReceived: 0,
-        inboxMessagesAdded: 0,
-        offlineDuration: Duration.zero,
-      );
-    }
-
-    try {
-      await _repository.touchLastActivity();
-      final result = await _repository.simulateOfflineProgress();
-
-      await _loadActiveClub();
-      await _loadInboxMessages();
-
-      notifyListeners();
-      return result;
-    } catch (error) {
-      debugPrint('simulateOfflineMatches failed: $error');
-      return OfflineSimulationResult(
-        matchesSimulated: 0,
-        totalIncome: 0,
-        playersImproved: 0,
-        transferOffersReceived: 0,
-        inboxMessagesAdded: 0,
-        offlineDuration: Duration.zero,
-      );
     }
   }
 

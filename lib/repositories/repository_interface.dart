@@ -4,8 +4,8 @@ import '../models/match_result.dart';
 import '../models/player_fm.dart';
 import '../models/profile.dart';
 import '../models/transfer_market_item.dart';
+import '../models/transfer_history_entry.dart';
 import '../models/tactics.dart';
-import '../models/offline_simulation_result.dart';
 import '../models/financial_transaction.dart';
 
 abstract class GameRepository {
@@ -40,6 +40,7 @@ abstract class GameRepository {
   Future<TransferMarketItem?> placeBid(String marketId, int bidAmount);
   Future<TransferMarketItem?> listPlayerForTransfer({required String playerId, required int askingPrice});
   Future<void> withdrawTransferListing({required String playerId});
+  Future<List<TransferHistoryEntry>> loadTransferHistory(String clubId);
   Future<ClubInfo?> acceptTransferOffer({required String playerId});
   Future<bool> markMessageAsRead(String messageId);
   Future<ClubInfo?> upgradeClub({
@@ -52,8 +53,6 @@ abstract class GameRepository {
   Future<void> updateFcmToken(String token);
   Future<void> updateNotificationPreference(bool enabled);
   Future<bool?> loadNotificationPreference();
-  Future<void> touchLastActivity();
-  Future<OfflineSimulationResult> simulateOfflineProgress();
   Future<MatchResult?> playNextFixture();
   // Admin actions
   Future<bool> isAdmin();

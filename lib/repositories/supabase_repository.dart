@@ -11,9 +11,9 @@ import '../models/match_result.dart';
 import '../models/player_fm.dart';
 import '../models/profile.dart';
 import '../models/transfer_market_item.dart';
+import '../models/transfer_history_entry.dart';
 import '../models/financial_transaction.dart';
 import '../models/tactics.dart';
-import '../models/offline_simulation_result.dart';
 import 'repository_interface.dart';
 
 class SupabaseRepository implements GameRepository {
@@ -376,6 +376,54 @@ class SupabaseRepository implements GameRepository {
     });
   }
 
+  Future<List<TransferHistoryEntry>> loadTransferHistory(String clubId) async {
+    return _wrap(() async {
+      final rows = await _client
+          .from('transfer_history')
+          .select('id,player_id,seller_club_id,buyer_club_id,price,completed_at')
+          .or('seller_club_id.eq.$clubId,buyer_club_id.eq.$clubId')
+          .order('completed_at', ascending: false);
+
+      if (rows is! List || rows.isEmpty) return <TransferHistoryEntry>[];
+      final typedRows = rows.cast<Map<String, dynamic>>();
+
+      final playerIds = typedRows.map((r) => r['player_id'] as String).toSet().toList();
+      final clubIds = typedRows
+          .expand((r) => [r['seller_club_id'] as String?, r['buyer_club_id'] as String?])
+          .whereType<String>()
+          .toSet()
+          .toList();
+
+      final playerRows = playerIds.isEmpty
+          ? <Map<String, dynamic>>[]
+          : (await _client.from('players').select('id,name').inFilter('id', playerIds))
+              .cast<Map<String, dynamic>>();
+      final clubRows = clubIds.isEmpty
+          ? <Map<String, dynamic>>[]
+          : (await _client.from('clubs').select('id,name').inFilter('id', clubIds))
+              .cast<Map<String, dynamic>>();
+
+      final playerNames = {for (final p in playerRows) p['id'] as String: p['name'] as String? ?? 'Bilinmiyor'};
+      final clubNames = {for (final c in clubRows) c['id'] as String: c['name'] as String? ?? 'Bilinmiyor'};
+
+      return typedRows.map((row) {
+        final sellerId = row['seller_club_id'] as String?;
+        final buyerId = row['buyer_club_id'] as String?;
+        return TransferHistoryEntry(
+          id: row['id'] as String,
+          playerId: row['player_id'] as String,
+          playerName: playerNames[row['player_id']] ?? 'Bilinmiyor',
+          sellerClubId: sellerId,
+          sellerClubName: sellerId != null ? (clubNames[sellerId] ?? 'Bilinmiyor') : 'Bilinmiyor',
+          buyerClubId: buyerId,
+          buyerClubName: buyerId != null ? (clubNames[buyerId] ?? 'Bilinmiyor') : 'Bilinmiyor',
+          price: (row['price'] as num).toInt(),
+          completedAt: DateTime.parse(row['completed_at'] as String),
+        );
+      }).toList();
+    });
+  }
+
   Future<ClubInfo?> acceptTransferOffer({required String playerId}) async {
     return _wrap(() async {
       final updated = await _client.rpc('accept_transfer_offer', params: {
@@ -422,18 +470,20 @@ class SupabaseRepository implements GameRepository {
 
   @override
   Future<bool> markMessageAsRead(String messageId) async {
-    final userId = currentUserId;
-    if (userId == null) return false;
+    return _wrap(() async {
+      final userId = currentUserId;
+      if (userId == null) return false;
 
-    final response = await _client
-        .from('inbox_messages')
-        .update({'is_read': true})
-        .eq('id', messageId)
-        .eq('recipient_id', userId)
-        .select()
-        .single();
+      final response = await _client
+          .from('inbox_messages')
+          .update({'is_read': true})
+          .eq('id', messageId)
+          .eq('recipient_id', userId)
+          .select()
+          .single();
 
-    return response != null;
+      return response != null;
+    });
   }
 
   @override
@@ -651,46 +701,6 @@ class SupabaseRepository implements GameRepository {
   }
 
   @override
-  Future<void> touchLastActivity() async {
-    // Offline activity timing is owned by the server-side edge function.
-    // The client should not write the last_activity_at timestamp.
-  }
-
-  @override
-  Future<OfflineSimulationResult> simulateOfflineProgress() async {
-    final response =
-        await _client.functions.invoke('simulate_offline_progress', body: {});
-
-    if (response.status != 200) {
-      throw Exception('Offline ilerleme işlemi başarısız oldu.');
-    }
-
-    final data = response.data;
-    if (data == null) {
-      return OfflineSimulationResult(
-        matchesSimulated: 0,
-        totalIncome: 0,
-        playersImproved: 0,
-        transferOffersReceived: 0,
-        inboxMessagesAdded: 0,
-        offlineDuration: Duration.zero,
-      );
-    }
-
-    final map = Map<String, dynamic>.from(data as Map<String, dynamic>);
-    return OfflineSimulationResult(
-      matchesSimulated: (map['matchesSimulated'] as num?)?.toInt() ?? 0,
-      totalIncome: (map['totalIncome'] as num?)?.toInt() ?? 0,
-      playersImproved: (map['playersImproved'] as num?)?.toInt() ?? 0,
-      transferOffersReceived:
-          (map['transferOffersReceived'] as num?)?.toInt() ?? 0,
-      inboxMessagesAdded: (map['inboxMessagesAdded'] as num?)?.toInt() ?? 0,
-      offlineDuration: Duration(
-          minutes: (map['offlineDurationMinutes'] as num?)?.toInt() ?? 0),
-      serverSummary: map['summary'] as String?,
-    );
-  }
-
   Future<MatchResult?> playNextFixture() async {
     final response = await _client.functions.invoke('play_next_fixture', body: {});
     if (response.status != 200) {

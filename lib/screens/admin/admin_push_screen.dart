@@ -31,7 +31,7 @@ class _AdminPushScreenState extends State<AdminPushScreen> {
       await provider.repo.adminSendPush(title: _titleController.text.trim(), body: _bodyController.text.trim(), targetUserId: _targetController.text.trim().isEmpty ? null : _targetController.text.trim());
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Bildirim kuyruğa alındı')));
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: ${e.toString().replaceAll('Exception: ', '')}')));
     }
     setState(() => _loading = false);
   }

@@ -8,9 +8,9 @@ import 'package:tactical_eleven_idle_manager/models/inbox_message.dart';
 import 'package:tactical_eleven_idle_manager/models/player_fm.dart';
 import 'package:tactical_eleven_idle_manager/models/profile.dart';
 import 'package:tactical_eleven_idle_manager/models/transfer_market_item.dart';
+import 'package:tactical_eleven_idle_manager/models/transfer_history_entry.dart';
 import 'package:tactical_eleven_idle_manager/models/tactics.dart';
 import 'package:tactical_eleven_idle_manager/models/match_result.dart';
-import 'package:tactical_eleven_idle_manager/models/offline_simulation_result.dart';
 import 'package:tactical_eleven_idle_manager/models/financial_transaction.dart';
 import 'package:tactical_eleven_idle_manager/providers/game_provider.dart';
 import 'package:tactical_eleven_idle_manager/repositories/repository_interface.dart';
@@ -220,6 +220,9 @@ class _FakeGameRepository implements GameRepository {
   Future<void> withdrawTransferListing({required String playerId}) async {}
 
   @override
+  Future<List<TransferHistoryEntry>> loadTransferHistory(String clubId) async => <TransferHistoryEntry>[];
+
+  @override
   Future<ClubInfo?> acceptTransferOffer({required String playerId}) async => null;
 
   @override
@@ -268,9 +271,6 @@ class _FakeGameRepository implements GameRepository {
   }) async => null;
 
   @override
-  Future<void> touchLastActivity() async {}
-
-  @override
   Future<Map<String, dynamic>?> loadCurrentSeasonState(String clubId) async => null;
 
   @override
@@ -313,18 +313,6 @@ class _FakeGameRepository implements GameRepository {
       summary: 'Ev sahibi takım maçı kazandı.',
       commentary: const ['Maç başladı.', 'Gol!', 'Maç sona erdi.'],
       events: const [],
-    );
-  }
-
-  @override
-  Future<OfflineSimulationResult> simulateOfflineProgress() async {
-    return OfflineSimulationResult(
-      matchesSimulated: 0,
-      totalIncome: 0,
-      playersImproved: 0,
-      transferOffersReceived: 0,
-      inboxMessagesAdded: 0,
-      offlineDuration: Duration.zero,
     );
   }
 

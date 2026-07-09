@@ -29,7 +29,7 @@ class _AdminGiftCodeScreenState extends State<AdminGiftCodeScreen> {
       await provider.repo.adminCreateGiftCode(code: _codeController.text.trim(), amount: int.parse(_amountController.text.trim()));
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Hediye kodu oluşturuldu')));
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: ${e.toString().replaceAll('Exception: ', '')}')));
     }
     setState(() => _loading = false);
   }

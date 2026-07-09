@@ -41,7 +41,7 @@ class _SponsorUpgradeScreenState extends State<SponsorUpgradeScreen> {
           SnackBar(content: Text(msg)),
         );
         setState(() {
-          _errorMessage = null;
+          _errorMessage = msg;
         });
       }
     } finally {
