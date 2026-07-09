@@ -26,7 +26,38 @@ interface ClubTactic {
   club_id: string;
   mentality: string | null;
   formation: string | null;
+  press_intensity: number | null;
+  tempo: number | null;
+  defensive_line: number | null;
+  offside_trap: boolean | null;
+  time_wasting: boolean | null;
+  free_kick_taker_id: string | null;
+  corner_taker_id: string | null;
 }
+
+interface TacticSnapshot {
+  mentality: string | null;
+  formation: string | null;
+  pressIntensity: number;
+  tempo: number;
+  defensiveLine: number;
+  offsideTrap: boolean;
+  timeWasting: boolean;
+  freeKickTakerId: string | null;
+  cornerTakerId: string | null;
+}
+
+const DEFAULT_TACTIC: TacticSnapshot = {
+  mentality: 'balanced',
+  formation: 'f442',
+  pressIntensity: 50,
+  tempo: 50,
+  defensiveLine: 50,
+  offsideTrap: false,
+  timeWasting: false,
+  freeKickTakerId: null,
+  cornerTakerId: null,
+};
 
 export interface PlayerRow {
   id: string;
@@ -84,6 +115,31 @@ function mentalityModifier(mentality: string | null): { attack: number; defense:
   }
 }
 
+function normalizedDelta(value: number): number {
+  return (value - 50) / 50; // 0 -> -1, 50 -> 0, 100 -> 1
+}
+
+// A good dedicated free-kick/corner taker (finishing for free kicks, passing
+// for corner delivery, relative to their own squad's average) nudges attack
+// output slightly - capped small since this is a refinement, not a
+// dominant factor like mentality or formation.
+function setPieceBonus(players: PlayerRow[], takerId: string | null, statKey: 'finishing' | 'passing'): number {
+  if (!takerId || players.length === 0) return 0;
+  const taker = players.find((p) => p.id === takerId);
+  if (!taker) return 0;
+  const squadAvg = players.reduce((sum, p) => sum + (p[statKey] ?? 10), 0) / players.length;
+  const delta = ((taker[statKey] ?? 10) - squadAvg) / 20;
+  return Math.max(-0.02, Math.min(0.02, delta * 0.02));
+}
+
+// "Riskli ama etkili" (risky but effective), per the tactics screen's own
+// description: usually suppresses the opponent's attack, but can
+// occasionally be played through and backfire.
+function offsideTrapEffect(enabled: boolean): number {
+  if (!enabled) return 0;
+  return Math.random() < 0.72 ? -0.06 : 0.05;
+}
+
 function averageMorale(players: PlayerRow[]): number {
   if (players.length === 0) return 75;
   return players.reduce((sum, p) => sum + (p.morale ?? 75), 0) / players.length;
@@ -118,8 +174,8 @@ function blendedRating(abilityRating: number, tacticalModifier: number, moraleAv
 function makeExpectedGoals(
   homePlayers: PlayerRow[],
   awayPlayers: PlayerRow[],
-  homeTactic: { mentality: string | null; formation: string | null },
-  awayTactic: { mentality: string | null; formation: string | null },
+  homeTactic: TacticSnapshot,
+  awayTactic: TacticSnapshot,
 ) {
   const homeAttackAbility = phaseRating(homePlayers, 'FOR');
   const homeDefenseAbility = phaseRating(homePlayers, 'DEF');
@@ -133,12 +189,41 @@ function makeExpectedGoals(
   const homeFormationMod = formationMatchupModifier(homeTactic.formation, awayTactic.formation);
   const awayFormationMod = formationMatchupModifier(awayTactic.formation, homeTactic.formation);
 
+  // Press: disrupts the OPPONENT's attack, doesn't boost your own directly.
+  const homePressMod = normalizedDelta(homeTactic.pressIntensity) * 0.05;
+  const awayPressMod = normalizedDelta(awayTactic.pressIntensity) * 0.05;
+  // Tempo: more direct/urgent play boosts your own attack output.
+  const homeTempoMod = normalizedDelta(homeTactic.tempo) * 0.05;
+  const awayTempoMod = normalizedDelta(awayTactic.tempo) * 0.05;
+  // Defensive line: pushing up boosts your own attack but opens up space
+  // in behind - the opponent's counter-attack threat rises with it.
+  const homeLineMod = normalizedDelta(homeTactic.defensiveLine) * 0.04;
+  const awayLineMod = normalizedDelta(awayTactic.defensiveLine) * 0.04;
+  const homeLineCounterRisk = normalizedDelta(homeTactic.defensiveLine) * 0.035;
+  const awayLineCounterRisk = normalizedDelta(awayTactic.defensiveLine) * 0.035;
+  const homeOffsideEffect = offsideTrapEffect(homeTactic.offsideTrap);
+  const awayOffsideEffect = offsideTrapEffect(awayTactic.offsideTrap);
+  // Time-wasting: patient possession retention trims some threat off both
+  // ends - a simplified, whole-match proxy for "hold the ball late while
+  // leading" since xG here is computed before the scoreline is known.
+  const homeTimeWasteMod = homeTactic.timeWasting ? -0.01 : 0;
+  const awayTimeWasteMod = awayTactic.timeWasting ? -0.01 : 0;
+  const homeSetPieceMod = setPieceBonus(homePlayers, homeTactic.freeKickTakerId, 'finishing') +
+    setPieceBonus(homePlayers, homeTactic.cornerTakerId, 'passing');
+  const awaySetPieceMod = setPieceBonus(awayPlayers, awayTactic.freeKickTakerId, 'finishing') +
+    setPieceBonus(awayPlayers, awayTactic.cornerTakerId, 'passing');
+
   const homeMorale = averageMorale(homePlayers);
   const awayMorale = averageMorale(awayPlayers);
 
-  const homeAttack = blendedRating(homeAttackAbility, homeFormationMod + homeMentalityMod.attack, homeMorale);
+  const homeAttackMod = homeFormationMod + homeMentalityMod.attack + homeTempoMod + homeLineMod +
+    homeSetPieceMod + homeTimeWasteMod - awayPressMod + awayLineCounterRisk + awayOffsideEffect;
+  const awayAttackMod = awayFormationMod + awayMentalityMod.attack + awayTempoMod + awayLineMod +
+    awaySetPieceMod + awayTimeWasteMod - homePressMod + homeLineCounterRisk + homeOffsideEffect;
+
+  const homeAttack = blendedRating(homeAttackAbility, homeAttackMod, homeMorale);
   const homeDefense = blendedRating(homeDefenseAbility, homeMentalityMod.defense, homeMorale);
-  const awayAttack = blendedRating(awayAttackAbility, awayFormationMod + awayMentalityMod.attack, awayMorale);
+  const awayAttack = blendedRating(awayAttackAbility, awayAttackMod, awayMorale);
   const awayDefense = blendedRating(awayDefenseAbility, awayMentalityMod.defense, awayMorale);
 
   const midfieldDiff = (homeMidAbility - awayMidAbility) / 40;
@@ -150,7 +235,9 @@ function makeExpectedGoals(
     (homeMidAbility / Math.max(1, homeMidAbility + awayMidAbility)) * 100,
   );
 
-  return { homeXG, awayXG, homePossession };
+  const pressIntensityAvg = (homeTactic.pressIntensity + awayTactic.pressIntensity) / 2;
+
+  return { homeXG, awayXG, homePossession, pressIntensityAvg };
 }
 
 function rollGoals(xg: number): number {
@@ -324,14 +411,24 @@ export async function resolveMatch(
 
   const { data: tactics, error: tacticsError } = await supabase
     .from('tactics')
-    .select('club_id,mentality,formation')
+    .select('club_id,mentality,formation,press_intensity,tempo,defensive_line,offside_trap,time_wasting,free_kick_taker_id,corner_taker_id')
     .in('club_id', clubIds);
   if (tacticsError) throw new Error(`Taktikler okunamadı: ${tacticsError.message}`);
 
-  const tacticMap = new Map<string, { mentality: string | null; formation: string | null }>();
-  (tactics ?? []).forEach((row: ClubTactic) => tacticMap.set(row.club_id, { mentality: row.mentality ?? 'balanced', formation: row.formation ?? 'f442' }));
-  const homeTactic = tacticMap.get(matchRow.home_club_id) ?? { mentality: 'balanced', formation: 'f442' };
-  const awayTactic = tacticMap.get(matchRow.away_club_id) ?? { mentality: 'balanced', formation: 'f442' };
+  const tacticMap = new Map<string, TacticSnapshot>();
+  (tactics ?? []).forEach((row: ClubTactic) => tacticMap.set(row.club_id, {
+    mentality: row.mentality ?? 'balanced',
+    formation: row.formation ?? 'f442',
+    pressIntensity: row.press_intensity ?? 50,
+    tempo: row.tempo ?? 50,
+    defensiveLine: row.defensive_line ?? 50,
+    offsideTrap: row.offside_trap ?? false,
+    timeWasting: row.time_wasting ?? false,
+    freeKickTakerId: row.free_kick_taker_id ?? null,
+    cornerTakerId: row.corner_taker_id ?? null,
+  }));
+  const homeTactic = tacticMap.get(matchRow.home_club_id) ?? { ...DEFAULT_TACTIC };
+  const awayTactic = tacticMap.get(matchRow.away_club_id) ?? { ...DEFAULT_TACTIC };
 
   const allPlayers: PlayerRow[] = playerRows ?? [];
   const homeClubPlayers = allPlayers.filter((p) => p.club_id === matchRow.home_club_id);
@@ -339,10 +436,13 @@ export async function resolveMatch(
   const homePlayers = homeClubPlayers.filter((p) => p.injury_duration_weeks <= 0 && !p.is_suspended);
   const awayPlayers = awayClubPlayers.filter((p) => p.injury_duration_weeks <= 0 && !p.is_suspended);
 
-  const { homeXG, awayXG, homePossession } = makeExpectedGoals(homePlayers, awayPlayers, homeTactic, awayTactic);
+  const { homeXG, awayXG, homePossession, pressIntensityAvg } = makeExpectedGoals(homePlayers, awayPlayers, homeTactic, awayTactic);
   const homeScore = rollGoals(homeXG);
   const awayScore = rollGoals(awayXG);
-  const matchIntensity = Math.min(1.4, 0.35 + (homeScore + awayScore) * 0.12 + Math.abs(homeScore - awayScore) * 0.08);
+  // High-press matches are more physical - a small extra bump to injury
+  // risk on top of the existing scoreline-driven intensity.
+  const pressPhysicality = Math.max(0, normalizedDelta(pressIntensityAvg)) * 0.15;
+  const matchIntensity = Math.min(1.4, 0.35 + (homeScore + awayScore) * 0.12 + Math.abs(homeScore - awayScore) * 0.08 + pressPhysicality);
 
   const { error: updateError, data: updatedRows } = await supabase
     .from('matches')
@@ -391,7 +491,9 @@ export async function resolveMatch(
     }
   }
 
-  if (Math.random() < 0.6) {
+  // High-press matches draw more fouls and cards; passive matches fewer.
+  const cardProbability = Math.min(0.85, Math.max(0.35, 0.6 + normalizedDelta(pressIntensityAvg) * 0.15));
+  if (Math.random() < cardProbability) {
     const cardCount = Math.max(1, Math.min(2, Math.floor(Math.random() * 3)));
     for (let idx = 0; idx < cardCount; idx += 1) {
       const side = Math.random() < 0.5 ? 'home' : 'away';
