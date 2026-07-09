@@ -41,8 +41,17 @@ class MatchScheduleScreen extends StatelessWidget {
           Expanded(
             child: TabBarView(
               children: [
-                fixtures.isEmpty
-                    ? const Center(child: Text('Henüz fikstür oluşturulmadı.'))
+                RefreshIndicator(
+                  onRefresh: () => context.read<GameProvider>().refreshGameState(),
+                  child: fixtures.isEmpty
+                    ? ListView(
+                        children: const [
+                          Padding(
+                            padding: EdgeInsets.only(top: 80),
+                            child: Center(child: Text('Henüz fikstür oluşturulmadı.')),
+                          ),
+                        ],
+                      )
                     : Builder(builder: (context) {
                         final nextUpcomingIndex = fixtures.indexWhere((fixture) => fixture.status == 'Yaklaşan');
                         return ListView.builder(
@@ -164,8 +173,18 @@ class MatchScheduleScreen extends StatelessWidget {
                           },
                         );
                       }),
-                results.isEmpty
-                    ? const Center(child: Text('Geçmiş maç yok.'))
+                ),
+                RefreshIndicator(
+                  onRefresh: () => context.read<GameProvider>().refreshGameState(),
+                  child: results.isEmpty
+                    ? ListView(
+                        children: const [
+                          Padding(
+                            padding: EdgeInsets.only(top: 80),
+                            child: Center(child: Text('Geçmiş maç yok.')),
+                          ),
+                        ],
+                      )
                     : ListView.builder(
                         padding: const EdgeInsets.all(16),
                         itemCount: results.length,
@@ -194,6 +213,7 @@ class MatchScheduleScreen extends StatelessWidget {
                           );
                         },
                       ),
+                ),
               ],
             ),
           ),

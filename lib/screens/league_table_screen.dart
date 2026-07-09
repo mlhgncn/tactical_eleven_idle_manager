@@ -37,7 +37,9 @@ class LeagueTableScreen extends StatelessWidget {
         return goalsForB.compareTo(goalsForA);
       });
 
-    return ListView(
+    return RefreshIndicator(
+      onRefresh: () => context.read<GameProvider>().refreshGameState(),
+      child: ListView(
       padding: const EdgeInsets.all(16),
       children: [
         if (seasonState != null) ...[
@@ -188,6 +190,7 @@ class LeagueTableScreen extends StatelessWidget {
             ),
           ),
       ],
+      ),
     );
   }
 }

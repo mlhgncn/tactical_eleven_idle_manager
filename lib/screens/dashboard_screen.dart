@@ -52,7 +52,10 @@ class DashboardScreen extends StatelessWidget {
         .where((item) => item.sellerClubId == club.id && !item.isSold)
         .length;
 
-    return SingleChildScrollView(
+    return RefreshIndicator(
+      onRefresh: () => context.read<GameProvider>().refreshGameState(),
+      child: SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -168,6 +171,7 @@ class DashboardScreen extends StatelessWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }
