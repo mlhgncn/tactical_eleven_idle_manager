@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/player_fm.dart';
 import '../theme/app_assets.dart';
+import '../theme/app_theme.dart';
 
 /// Overlays player stats onto the gold player-card-frame asset. The frame's
 /// artwork is a fixed 480x640 (0.75 aspect) layout, so child positions are
@@ -38,32 +39,65 @@ class PlayerCard extends StatelessWidget {
       child: Stack(
         children: [
           Image.asset(AppAssets.playerCardFrame, width: width, height: height, fit: BoxFit.fill),
+          // The frame artwork bakes a placeholder "87 / GÜÇ" badge into this
+          // corner - an opaque gold badge covers it before redrawing the
+          // real value, instead of layering text on top of the baked one.
           at(
-            left: 0.13,
-            top: 0.09,
-            w: 0.2,
-            h: 0.13,
-            child: Center(
-              child: Text(
-                '${player.currentAbility}',
-                style: TextStyle(
-                  color: const Color(0xFF241A05),
-                  fontWeight: FontWeight.bold,
-                  fontSize: width * 0.11,
+            left: 0.065,
+            top: 0.07,
+            w: 0.31,
+            h: 0.16,
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [AppColors.goldLight, AppColors.gold],
                 ),
+                borderRadius: BorderRadius.circular(width * 0.05),
+              ),
+              alignment: Alignment.center,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '${player.currentAbility}',
+                    style: TextStyle(
+                      color: AppColors.goldOnGoldText,
+                      fontWeight: FontWeight.bold,
+                      height: 1,
+                      fontSize: width * 0.1,
+                    ),
+                  ),
+                  Text(
+                    'GÜÇ',
+                    style: TextStyle(
+                      color: AppColors.goldOnGoldText,
+                      fontWeight: FontWeight.bold,
+                      height: 1,
+                      fontSize: width * 0.04,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
           at(
-            left: 0.69,
-            top: 0.115,
-            w: 0.19,
-            h: 0.06,
-            child: Center(
+            left: 0.64,
+            top: 0.095,
+            w: 0.29,
+            h: 0.09,
+            child: Container(
+              decoration: BoxDecoration(
+                color: AppColors.cardBottom,
+                borderRadius: BorderRadius.circular(width * 0.045),
+                border: Border.all(color: AppColors.blue, width: width * 0.006),
+              ),
+              alignment: Alignment.center,
               child: Text(
                 player.position,
                 style: TextStyle(
-                  color: const Color(0xFF7EC8F2),
+                  color: AppColors.blue,
                   fontWeight: FontWeight.bold,
                   fontSize: width * 0.055,
                 ),

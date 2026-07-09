@@ -494,10 +494,10 @@ class SupabaseRepository implements GameRepository {
     int? ticketPrice,
   }) async {
     final updated = await _client.rpc('upgrade_club', params: {
-      'club_id': clubId,
-      'stadium_capacity': stadiumCapacity,
-      'training_facility_level': trainingFacilityLevel,
-      'ticket_price': ticketPrice,
+      'p_club_id': clubId,
+      'p_stadium_capacity': stadiumCapacity,
+      'p_training_facility_level': trainingFacilityLevel,
+      'p_ticket_price': ticketPrice,
     }).single();
 
     if (updated == null) return null;
