@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/game_provider.dart';
+import '../theme/app_theme.dart';
 import '../widgets/club_badge.dart';
 
 class LeagueTableScreen extends StatelessWidget {
@@ -73,7 +74,7 @@ class LeagueTableScreen extends StatelessWidget {
               scrollDirection: Axis.horizontal,
               child: DataTable(
                 headingRowColor: WidgetStateProperty.resolveWith(
-                  (states) => Colors.grey.shade100,
+                  (states) => AppColors.cardBottom,
                 ),
                 columns: const [
                   DataColumn(label: Text('#')),
@@ -103,10 +104,13 @@ class LeagueTableScreen extends StatelessWidget {
 
                   return DataRow(
                     color: WidgetStateProperty.resolveWith(
-                      (states) => isActiveClub ? Colors.yellow.shade100 : null,
+                      (states) => isActiveClub ? AppColors.gold.withValues(alpha: 0.14) : null,
                     ),
                     cells: [
-                      DataCell(Text('$position')),
+                      DataCell(Text(
+                        '$position',
+                        style: TextStyle(color: isActiveClub ? AppColors.goldLight : AppColors.textPrimary, fontWeight: isActiveClub ? FontWeight.bold : FontWeight.normal),
+                      )),
                       DataCell(
                         Row(
                           mainAxisSize: MainAxisSize.min,
@@ -117,17 +121,26 @@ class LeagueTableScreen extends StatelessWidget {
                               size: 24,
                             ),
                             const SizedBox(width: 8),
-                            Text(club['name']?.toString() ?? 'Takım'),
+                            Text(
+                              club['name']?.toString() ?? 'Takım',
+                              style: TextStyle(
+                                color: isActiveClub ? AppColors.goldLight : AppColors.textPrimary,
+                                fontWeight: isActiveClub ? FontWeight.bold : FontWeight.normal,
+                              ),
+                            ),
                           ],
                         ),
                       ),
-                      DataCell(Text('$wins')),
-                      DataCell(Text('$draws')),
-                      DataCell(Text('$losses')),
-                      DataCell(Text('$goalsFor')),
-                      DataCell(Text('$goalsAgainst')),
-                      DataCell(Text('$goalDifference')),
-                      DataCell(Text('$points')),
+                      DataCell(Text('$wins', style: const TextStyle(color: AppColors.textMuted))),
+                      DataCell(Text('$draws', style: const TextStyle(color: AppColors.textMuted))),
+                      DataCell(Text('$losses', style: const TextStyle(color: AppColors.textMuted))),
+                      DataCell(Text('$goalsFor', style: const TextStyle(color: AppColors.textMuted))),
+                      DataCell(Text('$goalsAgainst', style: const TextStyle(color: AppColors.textMuted))),
+                      DataCell(Text('$goalDifference', style: const TextStyle(color: AppColors.textMuted))),
+                      DataCell(Text(
+                        '$points',
+                        style: TextStyle(color: isActiveClub ? AppColors.goldLight : AppColors.textPrimary, fontWeight: FontWeight.bold),
+                      )),
                     ],
                   );
                 }).toList(),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/game_provider.dart';
+import '../theme/app_theme.dart';
 
 class SponsorUpgradeScreen extends StatefulWidget {
   const SponsorUpgradeScreen({super.key});
@@ -16,7 +17,7 @@ class _SponsorUpgradeScreenState extends State<SponsorUpgradeScreen> {
 
   void _handleUpgrade() async {
     final provider = context.read<GameProvider>();
-    
+
     setState(() {
       _isUpgrading = true;
       _errorMessage = null;
@@ -28,7 +29,7 @@ class _SponsorUpgradeScreenState extends State<SponsorUpgradeScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('✓ Sponsorluğu başarıyla yükselttiniz!'),
-            backgroundColor: Colors.green,
+            backgroundColor: AppColors.green,
             duration: Duration(seconds: 2),
           ),
         );
@@ -82,7 +83,6 @@ class _SponsorUpgradeScreenState extends State<SponsorUpgradeScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Başlık
             Text(
               'Sponsorluk Anlaşması',
               style: Theme.of(context).textTheme.headlineSmall,
@@ -113,27 +113,26 @@ class _SponsorUpgradeScreenState extends State<SponsorUpgradeScreen> {
                         const Text('Maç Başına Gelir'),
                         Text(
                           '$currentRevenuePerMatch GP',
-                          style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
+                          style: const TextStyle(color: AppColors.green, fontWeight: FontWeight.bold),
                         ),
                       ],
                     ),
                     const SizedBox(height: 12),
-                    // Progress bar
                     ClipRRect(
                       borderRadius: BorderRadius.circular(8),
                       child: LinearProgressIndicator(
                         value: currentLevel / maxLevel,
                         minHeight: 8,
-                        backgroundColor: Colors.grey.shade300,
+                        backgroundColor: AppColors.cardBottom,
                         valueColor: AlwaysStoppedAnimation<Color>(
-                          isMaxed ? Colors.green : Colors.blue,
+                          isMaxed ? AppColors.green : AppColors.blue,
                         ),
                       ),
                     ),
                     const SizedBox(height: 8),
                     Text(
                       '$currentLevel / $maxLevel',
-                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                      style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
                     ),
                   ],
                 ),
@@ -144,7 +143,11 @@ class _SponsorUpgradeScreenState extends State<SponsorUpgradeScreen> {
             if (!isMaxed) ...[
               // Yükseltme Bilgisi
               Card(
-                color: Colors.blue.shade50,
+                color: AppColors.blue.withValues(alpha: 0.10),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  side: BorderSide(color: AppColors.blue.withValues(alpha: 0.3)),
+                ),
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Column(
@@ -172,7 +175,7 @@ class _SponsorUpgradeScreenState extends State<SponsorUpgradeScreen> {
                           const Text('Yeni Maç Geliri'),
                           Text(
                             '$newRevenuePerMatch GP',
-                            style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
+                            style: const TextStyle(color: AppColors.green, fontWeight: FontWeight.bold),
                           ),
                         ],
                       ),
@@ -180,17 +183,17 @@ class _SponsorUpgradeScreenState extends State<SponsorUpgradeScreen> {
                       Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: Colors.green.shade100,
+                          color: AppColors.green.withValues(alpha: 0.14),
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Row(
                           children: [
-                            Icon(Icons.trending_up, color: Colors.green.shade700, size: 20),
+                            const Icon(Icons.trending_up, color: AppColors.green, size: 20),
                             const SizedBox(width: 8),
                             Text(
                               '+$revenueIncrease GP / maç',
-                              style: TextStyle(
-                                color: Colors.green.shade700,
+                              style: const TextStyle(
+                                color: AppColors.green,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -205,7 +208,11 @@ class _SponsorUpgradeScreenState extends State<SponsorUpgradeScreen> {
 
               // Maliyet
               Card(
-                color: Colors.orange.shade50,
+                color: AppColors.gold.withValues(alpha: 0.08),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  side: BorderSide(color: AppColors.gold.withValues(alpha: 0.3)),
+                ),
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Column(
@@ -225,7 +232,7 @@ class _SponsorUpgradeScreenState extends State<SponsorUpgradeScreen> {
                             style: const TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 16,
-                              color: Colors.orange,
+                              color: AppColors.goldLight,
                             ),
                           ),
                         ],
@@ -239,7 +246,7 @@ class _SponsorUpgradeScreenState extends State<SponsorUpgradeScreen> {
                             '${club.budget} GP',
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
-                              color: canAfford ? Colors.green : Colors.red,
+                              color: canAfford ? AppColors.green : AppColors.red,
                             ),
                           ),
                         ],
@@ -249,18 +256,18 @@ class _SponsorUpgradeScreenState extends State<SponsorUpgradeScreen> {
                         Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: Colors.red.shade100,
+                            color: AppColors.red.withValues(alpha: 0.14),
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Row(
                             children: [
-                              Icon(Icons.warning, color: Colors.red.shade700, size: 20),
+                              const Icon(Icons.warning, color: AppColors.red, size: 20),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
                                   'Yeterli bütçeniz yok',
-                                  style: TextStyle(
-                                    color: Colors.red.shade700,
+                                  style: const TextStyle(
+                                    color: AppColors.red,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
@@ -287,9 +294,9 @@ class _SponsorUpgradeScreenState extends State<SponsorUpgradeScreen> {
                         style: Theme.of(context).textTheme.titleSmall,
                       ),
                       const SizedBox(height: 12),
-                      Text(
+                      const Text(
                         'Bu yükseltme şu kadar maçta kendini amorti edecek:',
-                        style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                        style: TextStyle(fontSize: 12, color: AppColors.textMuted),
                       ),
                       const SizedBox(height: 8),
                       Text(
@@ -297,7 +304,7 @@ class _SponsorUpgradeScreenState extends State<SponsorUpgradeScreen> {
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 18,
-                          color: Colors.blue,
+                          color: AppColors.blue,
                         ),
                       ),
                     ],
@@ -311,17 +318,17 @@ class _SponsorUpgradeScreenState extends State<SponsorUpgradeScreen> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.red.shade100,
+                    color: AppColors.red.withValues(alpha: 0.14),
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.error, color: Colors.red.shade700),
+                      const Icon(Icons.error, color: AppColors.red),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
                           _errorMessage!,
-                          style: TextStyle(color: Colors.red.shade700),
+                          style: const TextStyle(color: AppColors.red),
                         ),
                       ),
                     ],
@@ -336,14 +343,12 @@ class _SponsorUpgradeScreenState extends State<SponsorUpgradeScreen> {
                 child: ElevatedButton.icon(
                   onPressed: (canAfford && !_isUpgrading) ? _handleUpgrade : null,
                   icon: _isUpgrading
-                      ? SizedBox(
+                      ? const SizedBox(
                           width: 20,
                           height: 20,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              Theme.of(context).primaryColor,
-                            ),
+                            valueColor: AlwaysStoppedAnimation<Color>(AppColors.goldOnGoldText),
                           ),
                         )
                       : const Icon(Icons.upgrade),
@@ -356,7 +361,7 @@ class _SponsorUpgradeScreenState extends State<SponsorUpgradeScreen> {
                 child: Column(
                   children: [
                     const SizedBox(height: 40),
-                    Icon(Icons.star, size: 64, color: Colors.amber),
+                    const Icon(Icons.star, size: 64, color: AppColors.goldLight),
                     const SizedBox(height: 16),
                     Text(
                       'Maksimum Seviyeye Ulaştınız!',
@@ -367,7 +372,7 @@ class _SponsorUpgradeScreenState extends State<SponsorUpgradeScreen> {
                     Text(
                       'Maç başına $currentRevenuePerMatch GP sponsor geliri kazanıyorsunuz.',
                       textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.grey.shade600),
+                      style: const TextStyle(color: AppColors.textMuted),
                     ),
                   ],
                 ),

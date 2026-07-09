@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:easy_localization/easy_localization.dart';
 
 import '../providers/game_provider.dart';
+import '../theme/app_theme.dart';
 import 'player_detail_screen.dart';
 import 'transfer_market_screen.dart';
 
@@ -62,6 +63,7 @@ class _SquadScreenState extends State<SquadScreen> {
                           const SizedBox(width: 12),
                           DropdownButton<String>(
                             value: _selectedFilter,
+                            dropdownColor: AppColors.cardTop,
                             items: positionFilters
                                 .map(
                                   (filter) => DropdownMenuItem(
@@ -113,11 +115,11 @@ class _SquadScreenState extends State<SquadScreen> {
                                                 ),
                                               ),
                                               if (player.hasActiveInjury)
-                                                const Icon(Icons.healing, color: Colors.orange),
+                                                const Icon(Icons.healing, color: AppColors.red),
                                               if (player.isSuspended)
                                                 const Padding(
                                                   padding: EdgeInsets.only(left: 8),
-                                                  child: Icon(Icons.block, color: Colors.red),
+                                                  child: Icon(Icons.block, color: AppColors.red),
                                                 ),
                                             ],
                                           ),
@@ -131,7 +133,12 @@ class _SquadScreenState extends State<SquadScreen> {
                                               Chip(
                                                 label: Text(isStarter ? 'squad.starter'.tr() : 'squad.bench'.tr()),
                                                 backgroundColor:
-                                                    isStarter ? Colors.green.shade100 : Colors.grey.shade200,
+                                                    isStarter ? AppColors.green.withValues(alpha: 0.16) : AppColors.cardBottom,
+                                                labelStyle: TextStyle(
+                                                  color: isStarter ? AppColors.green : AppColors.textMuted,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                                side: BorderSide(color: isStarter ? AppColors.green.withValues(alpha: 0.4) : AppColors.cardBorder),
                                               ),
                                             ],
                                           ),
@@ -162,6 +169,7 @@ class _SquadScreenState extends State<SquadScreen> {
                                                     : player.isSuspended
                                                         ? 'squad.suspended'.tr()
                                                         : 'squad.healthy'.tr(),
+                                                highlight: player.hasActiveInjury || player.isSuspended,
                                               ),
                                             ],
                                           ),
@@ -207,21 +215,23 @@ class _SquadScreenState extends State<SquadScreen> {
       mainAxisSize: MainAxisSize.min,
       children: List.generate(5, (index) {
         if (index < fullStars) {
-          return const Icon(Icons.star, size: 16, color: Colors.amber);
+          return const Icon(Icons.star, size: 16, color: AppColors.goldLight);
         }
         if (index == fullStars && hasHalf) {
-          return const Icon(Icons.star_half, size: 16, color: Colors.amber);
+          return const Icon(Icons.star_half, size: 16, color: AppColors.goldLight);
         }
-        return const Icon(Icons.star_border, size: 16, color: Colors.amber);
+        return const Icon(Icons.star_border, size: 16, color: AppColors.goldLight);
       }),
     );
   }
 
-  Widget _buildInfoChip(String label, String value) {
+  Widget _buildInfoChip(String label, String value, {bool highlight = false}) {
     return Chip(
       visualDensity: VisualDensity.compact,
       label: Text('$label: $value'),
-      backgroundColor: Colors.grey.shade100,
+      backgroundColor: highlight ? AppColors.red.withValues(alpha: 0.14) : AppColors.cardBottom,
+      labelStyle: TextStyle(color: highlight ? AppColors.red : AppColors.textPrimary, fontSize: 12),
+      side: BorderSide(color: highlight ? AppColors.red.withValues(alpha: 0.35) : AppColors.cardBorder),
     );
   }
 }

@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/game_provider.dart';
+import '../theme/app_theme.dart';
 import '../widgets/club_badge.dart';
 import '../widgets/themed_button.dart';
 import 'match_summary_screen.dart';
@@ -28,6 +29,9 @@ class MatchScheduleScreen extends StatelessWidget {
           Material(
             color: Theme.of(context).scaffoldBackgroundColor,
             child: TabBar(
+              labelColor: AppColors.goldLight,
+              unselectedLabelColor: AppColors.navInactive,
+              indicatorColor: AppColors.goldLight,
               tabs: const [
                 Tab(text: 'Takvim'),
                 Tab(text: 'Sonuçlar'),
@@ -48,7 +52,7 @@ class MatchScheduleScreen extends StatelessWidget {
                             final fixture = fixtures[index];
                             final isPlayed = fixture.status == 'Tamamlandı';
                             final homeAwayLabel = fixture.isHome ? 'Ev' : 'Deplasman';
-                            final homeAwayColor = fixture.isHome ? Colors.green : Colors.blue;
+                            final homeAwayColor = fixture.isHome ? AppColors.green : AppColors.blue;
                             final dateLabel = DateFormat('dd.MM.yyyy HH:mm', 'tr_TR')
                                 .format(fixture.kickoff.toLocal());
                             final isNextUpcoming = index == nextUpcomingIndex && !isPlayed;
@@ -81,20 +85,20 @@ class MatchScheduleScreen extends StatelessWidget {
                                                   vertical: 6,
                                                 ),
                                                 decoration: BoxDecoration(
-                                                  color: homeAwayColor.withValues(alpha: 0.18),
+                                                  color: homeAwayColor.withValues(alpha: 0.16),
                                                   borderRadius: BorderRadius.circular(16),
-                                                  border: Border.all(color: homeAwayColor.withValues(alpha: 0.5)),
+                                                  border: Border.all(color: homeAwayColor.withValues(alpha: 0.4)),
                                                 ),
                                                 child: Text(
                                                   homeAwayLabel,
                                                   style: TextStyle(
-                                                    color: fixture.isHome ? Colors.green.shade800 : Colors.blue.shade800,
+                                                    color: homeAwayColor,
                                                     fontWeight: FontWeight.bold,
                                                   ),
                                                 ),
                                               ),
                                               const SizedBox(width: 10),
-                                              Text('Hafta ${fixture.week}'),
+                                              Text('Hafta ${fixture.week}', style: const TextStyle(color: AppColors.textMuted)),
                                             ],
                                           ),
                                           const SizedBox(height: 8),
@@ -105,7 +109,7 @@ class MatchScheduleScreen extends StatelessWidget {
                                             style: TextStyle(
                                               fontSize: 14,
                                               fontWeight: FontWeight.w500,
-                                              color: isPlayed ? Colors.black87 : Colors.grey[700],
+                                              color: isPlayed ? AppColors.textPrimary : AppColors.textMuted,
                                             ),
                                           ),
                                         ],
@@ -113,8 +117,14 @@ class MatchScheduleScreen extends StatelessWidget {
                                       trailing: Chip(
                                         label: Text(fixture.status),
                                         backgroundColor: fixture.status == 'Tamamlandı'
-                                            ? Colors.green.shade50
-                                            : Colors.orange.shade50,
+                                            ? AppColors.green.withValues(alpha: 0.14)
+                                            : AppColors.gold.withValues(alpha: 0.14),
+                                        labelStyle: TextStyle(
+                                          color: fixture.status == 'Tamamlandı' ? AppColors.green : AppColors.goldLight,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 11,
+                                        ),
+                                        side: BorderSide.none,
                                       ),
                                     ),
                                     if (isNextUpcoming) ...[
@@ -178,17 +188,8 @@ class MatchScheduleScreen extends StatelessWidget {
                                   const SizedBox(height: 10),
                                   const Text('Özet:',
                                       style: TextStyle(fontWeight: FontWeight.bold)),
-                                  const SizedBox(height: 6),
-                                  Text(result.summary ?? result.commentary.join('\n')),
                                 ],
                               ),
-                              onTap: () {
-                                Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (_) => MatchSummaryScreen(result: result),
-                                  ),
-                                );
-                              },
                             ),
                           );
                         },

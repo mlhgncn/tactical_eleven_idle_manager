@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/game_provider.dart';
+import '../theme/app_theme.dart';
 import '../widgets/currency_label.dart';
 import '../widgets/form_strip.dart';
 import '../widgets/themed_button.dart';
@@ -61,7 +62,7 @@ class ClubFinanceScreen extends StatelessWidget {
                   children: [
                     const Text(
                       'Mevcut Bütçe',
-                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                      style: TextStyle(fontSize: 12, color: AppColors.textMuted),
                     ),
                     const SizedBox(height: 8),
                     CurrencyLabel(
@@ -109,7 +110,11 @@ class ClubFinanceScreen extends StatelessWidget {
 
             // Gelirler
             Card(
-              color: Colors.green.shade50,
+              color: AppColors.green.withValues(alpha: 0.10),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+                side: BorderSide(color: AppColors.green.withValues(alpha: 0.3)),
+              ),
               child: Padding(
                 padding: const EdgeInsets.all(12),
                 child: Column(
@@ -117,18 +122,18 @@ class ClubFinanceScreen extends StatelessWidget {
                   children: [
                     const Text(
                       'GELİRLER',
-                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.green),
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.green),
                     ),
                     const SizedBox(height: 10),
                     _buildEconomyRow('Stadyum Geliri', stadiumRevenue),
                     _buildEconomyRow('Sponsor Geliri', sponsorRevenue),
                     _buildEconomyRow('Maç Bonusu (Kazanma)', matchBonus),
-                    const Divider(height: 12),
+                    Divider(height: 12, color: AppColors.cardBorder),
                     _buildEconomyRow(
                       'Toplam Gelir',
                       totalRevenue,
                       isBold: true,
-                      color: Colors.green,
+                      color: AppColors.green,
                     ),
                   ],
                 ),
@@ -138,7 +143,11 @@ class ClubFinanceScreen extends StatelessWidget {
 
             // Giderler
             Card(
-              color: Colors.red.shade50,
+              color: AppColors.red.withValues(alpha: 0.10),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+                side: BorderSide(color: AppColors.red.withValues(alpha: 0.3)),
+              ),
               child: Padding(
                 padding: const EdgeInsets.all(12),
                 child: Column(
@@ -146,17 +155,17 @@ class ClubFinanceScreen extends StatelessWidget {
                   children: [
                     const Text(
                       'GİDERLER',
-                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.red),
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.red),
                     ),
                     const SizedBox(height: 10),
                     _buildEconomyRow('Oyuncu Maaşları', playerWages),
                     _buildEconomyRow('Bakım Masrafı', maintenanceCost),
-                    const Divider(height: 12),
+                    Divider(height: 12, color: AppColors.cardBorder),
                     _buildEconomyRow(
                       'Toplam Gider',
                       totalExpense,
                       isBold: true,
-                      color: Colors.red,
+                      color: AppColors.red,
                     ),
                   ],
                 ),
@@ -166,7 +175,11 @@ class ClubFinanceScreen extends StatelessWidget {
 
             // Net Gelir
             Card(
-              color: netIncome > 0 ? Colors.blue.shade50 : Colors.orange.shade50,
+              color: (netIncome > 0 ? AppColors.blue : AppColors.gold).withValues(alpha: 0.10),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+                side: BorderSide(color: (netIncome > 0 ? AppColors.blue : AppColors.gold).withValues(alpha: 0.3)),
+              ),
               child: Padding(
                 padding: const EdgeInsets.all(12),
                 child: Row(
@@ -181,7 +194,7 @@ class ClubFinanceScreen extends StatelessWidget {
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
-                        color: netIncome > 0 ? Colors.green : Colors.orange,
+                        color: netIncome > 0 ? AppColors.green : AppColors.gold,
                       ),
                     ),
                   ],
@@ -287,14 +300,14 @@ class ClubFinanceScreen extends StatelessWidget {
           label,
           style: TextStyle(
             fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
-            color: color,
+            color: color ?? AppColors.textPrimary,
           ),
         ),
         Text(
           '$value GP',
           style: TextStyle(
             fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
-            color: color,
+            color: color ?? AppColors.textPrimary,
           ),
         ),
       ],
