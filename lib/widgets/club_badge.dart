@@ -24,6 +24,15 @@ class ClubBadge extends StatelessWidget {
         ClubBadgeKind.neutral => AppAssets.badgeNeutral,
       };
 
+  // The badge artwork bakes placeholder initials ("BS"/"KF"/"FC") into the
+  // ring - an opaque circle matching each ring's inner fill covers them
+  // before the real initials are drawn, instead of layering text on top.
+  Color get _fillColor => switch (kind) {
+        ClubBadgeKind.home => const Color(0xFF1B2A4A),
+        ClubBadgeKind.away => const Color(0xFF3D1420),
+        ClubBadgeKind.neutral => const Color(0xFF2B3242),
+      };
+
   String get _initials {
     final words = clubName.trim().split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
     if (words.isEmpty) return '?';
@@ -40,6 +49,11 @@ class ClubBadge extends StatelessWidget {
         alignment: Alignment.center,
         children: [
           Image.asset(_asset, width: size, height: size),
+          Container(
+            width: size * 0.62,
+            height: size * 0.62,
+            decoration: BoxDecoration(shape: BoxShape.circle, color: _fillColor),
+          ),
           Text(
             _initials,
             style: TextStyle(

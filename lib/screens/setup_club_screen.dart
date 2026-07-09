@@ -14,22 +14,15 @@ class SetupClubScreen extends StatefulWidget {
 }
 
 class _SetupClubScreenState extends State<SetupClubScreen> {
-  final _clubNameController = TextEditingController();
   final _invitationCodeController = TextEditingController();
   bool _isLoading = false;
   bool _showJoinField = false;
 
   Future<void> _createLeague() async {
-    if (_clubNameController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('clubSetup.errors.nameRequired'.tr())),
-      );
-      return;
-    }
     setState(() => _isLoading = true);
 
     try {
-      await context.read<GameProvider>().createLeagueAndJoin(_clubNameController.text.trim());
+      await context.read<GameProvider>().createLeagueAndJoin();
       _navigateToRoot();
     } catch (error) {
       if (!mounted) return;
@@ -68,7 +61,6 @@ class _SetupClubScreenState extends State<SetupClubScreen> {
 
   @override
   void dispose() {
-    _clubNameController.dispose();
     _invitationCodeController.dispose();
     super.dispose();
   }
@@ -92,16 +84,6 @@ class _SetupClubScreenState extends State<SetupClubScreen> {
                       style: theme.textTheme.bodyLarge,
                     ),
                     const SizedBox(height: 24),
-                    Text('clubSetup.clubName'.tr(), style: theme.textTheme.titleMedium),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: _clubNameController,
-                      decoration: InputDecoration(
-                        labelText: 'clubSetup.clubName'.tr(),
-                        border: const OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
                     GoldButton(
                       onPressed: _createLeague,
                       label: 'clubSetup.createLeague'.tr(),

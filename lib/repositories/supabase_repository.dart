@@ -63,11 +63,9 @@ class SupabaseRepository implements GameRepository {
     });
   }
 
-  Future<ClubInfo?> createLeagueAndJoin(String clubName) async {
+  Future<ClubInfo?> createLeagueAndJoin() async {
     return _wrap(() async {
-      final response = await _client.rpc('create_league_and_join', params: {
-        'p_club_name': clubName,
-      }).single();
+      final response = await _client.rpc('create_league_and_join').single();
 
       if (response == null) return null;
       return ClubInfo.fromMap(response as Map<String, dynamic>);

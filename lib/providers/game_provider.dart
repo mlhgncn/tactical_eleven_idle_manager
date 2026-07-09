@@ -436,13 +436,9 @@ class GameProvider extends ChangeNotifier {
     );
   }
 
-  Future<void> createLeagueAndJoin(String clubName) async {
-    if (clubName.trim().isEmpty) {
-      throw Exception('Kulüp adı boş olamaz.');
-    }
-
+  Future<void> createLeagueAndJoin() async {
     try {
-      final club = await _repository.createLeagueAndJoin(clubName);
+      final club = await _repository.createLeagueAndJoin();
       if (club != null) {
         _activeClub = club;
         try {

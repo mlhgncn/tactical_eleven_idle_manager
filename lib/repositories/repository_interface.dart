@@ -12,7 +12,7 @@ abstract class GameRepository {
   String? get currentUserId;
   Future<ClubInfo?> loadActiveClub();
   Future<Profile?> loadProfile();
-  Future<ClubInfo?> createLeagueAndJoin(String clubName);
+  Future<ClubInfo?> createLeagueAndJoin();
   Future<ClubInfo?> joinLeagueWithCode(String invitationCode);
   Future<List<PlayerFM>> loadSquadPlayers(String clubId);
   Future<PlayerFM?> advancePlayerDevelopment({

@@ -101,10 +101,10 @@ class _FakeGameRepository implements GameRepository {
   }
 
   @override
-  Future<ClubInfo?> createLeagueAndJoin(String clubName) async {
+  Future<ClubInfo?> createLeagueAndJoin() async {
     final club = ClubInfo(
       id: 'club-created',
-      name: clubName,
+      name: 'Zero Account FC',
       budget: 10000,
       stadiumCapacity: 5000,
       ticketPrice: 5,
@@ -404,7 +404,6 @@ void main() {
     
     expect(find.text('Menajerliğe Başla'), findsOneWidget);
 
-    await tester.enterText(find.byType(TextField), 'Zero Account FC');
     await tester.tap(find.widgetWithText(GoldButton, 'Lig Oluştur'));
     await tester.pumpAndSettle(const Duration(seconds: 1));
 
