@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/game_provider.dart';
@@ -55,6 +56,45 @@ class LeagueTableScreen extends StatelessWidget {
                   Text(
                     'Durum: ${seasonState['is_completed'] == true ? 'Tamamlandı' : 'Devam ediyor'}',
                   ),
+                  if ((seasonState['league'] as Map<String, dynamic>?)?['invitation_code'] != null) ...[
+                    const SizedBox(height: 12),
+                    Builder(builder: (context) {
+                      final code = (seasonState['league'] as Map<String, dynamic>)['invitation_code'].toString();
+                      return InkWell(
+                        borderRadius: BorderRadius.circular(8),
+                        onTap: () {
+                          Clipboard.setData(ClipboardData(text: code));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Davet kodu kopyalandı.')),
+                          );
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: AppColors.gold.withValues(alpha: 0.10),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: AppColors.gold.withValues(alpha: 0.3)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Text('Davet Kodu: ', style: TextStyle(color: AppColors.textMuted)),
+                              Text(
+                                code,
+                                style: const TextStyle(
+                                  color: AppColors.goldLight,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 1.5,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              const Icon(Icons.copy, size: 16, color: AppColors.goldLight),
+                            ],
+                          ),
+                        ),
+                      );
+                    }),
+                  ],
                 ],
               ),
             ),

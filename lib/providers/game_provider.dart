@@ -436,42 +436,45 @@ class GameProvider extends ChangeNotifier {
     );
   }
 
-  Future<List<ClubInfo>> loadAvailableClubs() async {
-    return _repository.loadAvailableClubs();
-  }
-
-  Future<void> createClub(String name) async {
-    if (name.trim().isEmpty) {
+  Future<void> createLeagueAndJoin(String clubName) async {
+    if (clubName.trim().isEmpty) {
       throw Exception('Kulüp adı boş olamaz.');
     }
 
     try {
-      final club = await _repository.createClub(name);
+      final club = await _repository.createLeagueAndJoin(clubName);
       if (club != null) {
         _activeClub = club;
         try {
-          AnalyticsService.instance.logEvent('create_club');
+          AnalyticsService.instance.logEvent('create_league');
         } catch (_) {}
         await refreshGameState();
         return;
       }
 
-      throw Exception('Kulüp oluşturulamadı.');
+      throw Exception('Lig oluşturulamadı.');
     } catch (error) {
       throw Exception(_formatClubActionError(error));
     }
   }
 
-  Future<void> claimClub(String clubId) async {
+  Future<void> joinLeagueWithCode(String invitationCode) async {
+    if (invitationCode.trim().isEmpty) {
+      throw Exception('Davet kodu boş olamaz.');
+    }
+
     try {
-      final club = await _repository.claimClub(clubId);
+      final club = await _repository.joinLeagueWithCode(invitationCode);
       if (club != null) {
         _activeClub = club;
+        try {
+          AnalyticsService.instance.logEvent('join_league');
+        } catch (_) {}
         await refreshGameState();
         return;
       }
 
-      throw Exception('Kulüp seçilemedi.');
+      throw Exception('Lige katılamadı.');
     } catch (error) {
       throw Exception(_formatClubActionError(error));
     }

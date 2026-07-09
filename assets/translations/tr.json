@@ -24,18 +24,19 @@
     "notifications_desc": "Uygulama bildirimlerini al"
   },
   "clubSetup": {
-    "title": "Kulüp Kurulumu",
-    "description": "Aktif bir kulübünüz bulunamadı. Aşağıdan bir kulüp seçin veya kendinize özel bir kulüp oluşturun.",
-    "existingClubs": "Mevcut Kulüpler",
-    "budget": "Bütçe: {budget}",
-    "select": "Seç",
-    "newClub": "Yeni Kulüp Oluştur",
+    "title": "Menajerliğe Başla",
+    "description": "Henüz bir kulübünüz yok. Yeni ve hemen başlayan bir lig kurun ya da bir arkadaşınızın davet koduyla ligine katılın.",
     "clubName": "Kulüp Adı",
-    "create": "Kulüp Oluştur",
+    "createLeague": "Lig Oluştur",
+    "or": "veya",
+    "joinLeague": "Lige Katıl",
+    "invitationCode": "Davet Kodu",
+    "joinConfirm": "Katıl",
     "errors": {
-      "load": "Kulüp bilgileri yüklenirken hata oluştu: {error}",
-      "create": "Kulüp oluşturulurken hata oluştu: {error}",
-      "claim": "Kulüp seçilirken hata oluştu: {error}"
+      "nameRequired": "Kulüp adı boş olamaz.",
+      "codeRequired": "Davet kodu boş olamaz.",
+      "createLeague": "Lig oluşturulurken hata oluştu: {error}",
+      "joinLeague": "Lige katılırken hata oluştu: {error}"
     }
   },
   "menu": {

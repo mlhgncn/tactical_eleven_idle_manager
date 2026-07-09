@@ -63,65 +63,10 @@ class SupabaseRepository implements GameRepository {
     });
   }
 
-  Future<List<ClubInfo>> loadAvailableClubs() async {
+  Future<ClubInfo?> createLeagueAndJoin(String clubName) async {
     return _wrap(() async {
-      final data = await _client
-        .from('clubs')
-        .select(
-          'id,name,budget,blocked_budget,stadium_capacity,ticket_price,training_facility_level')
-        .filter('user_id', 'is', null)
-        .order('name', ascending: true);
-
-      return (data as List<dynamic>)
-        .cast<Map<String, dynamic>>()
-        .map(ClubInfo.fromMap)
-        .toList();
-    });
-  }
-
-  Future<ClubInfo?> createClub(String name) async {
-    return _wrap(() async {
-      final userId = currentUserId;
-      if (userId == null) return null;
-
-      final existingClub = await _client
-          .from('clubs')
-          .select('id')
-          .eq('user_id', userId)
-          .limit(1)
-          .maybeSingle();
-
-      if (existingClub != null) {
-        throw AppException('Zaten bir kulübünüz var. Mevcut kulübü kullanın veya önce onu seçin.');
-      }
-
-      final response = await _client
-          .from('clubs')
-          .insert({'name': name, 'user_id': userId}).select().single();
-
-      if (response == null) return null;
-      return ClubInfo.fromMap(response as Map<String, dynamic>);
-    });
-  }
-
-  Future<ClubInfo?> claimClub(String clubId) async {
-    return _wrap(() async {
-      final userId = currentUserId;
-      if (userId == null) return null;
-
-      final existingClub = await _client
-          .from('clubs')
-          .select('id')
-          .eq('user_id', userId)
-          .limit(1)
-          .maybeSingle();
-
-      if (existingClub != null) {
-        throw AppException('Zaten bir kulübünüz var. Mevcut kulübü kullanın veya önce onu seçin.');
-      }
-
-      final response = await _client.rpc('claim_club', params: {
-        'club_id': clubId,
+      final response = await _client.rpc('create_league_and_join', params: {
+        'p_club_name': clubName,
       }).single();
 
       if (response == null) return null;
@@ -129,19 +74,15 @@ class SupabaseRepository implements GameRepository {
     });
   }
 
-  String _clubOwnershipErrorMessage(String? rawMessage) {
-    final message = (rawMessage ?? '').trim();
-    if (message.isEmpty) {
-      return 'Kulüp işlemi tamamlanamadı.';
-    }
+  Future<ClubInfo?> joinLeagueWithCode(String invitationCode) async {
+    return _wrap(() async {
+      final response = await _client.rpc('join_league_with_code', params: {
+        'p_invitation_code': invitationCode,
+      }).single();
 
-    if (message.contains('already a club') ||
-        message.contains('already owns') ||
-        message.contains('duplicate key')) {
-      return 'Bir kullanıcı birden fazla kulüp sahibi olamaz.';
-    }
-
-    return message;
+      if (response == null) return null;
+      return ClubInfo.fromMap(response as Map<String, dynamic>);
+    });
   }
 
   Future<Profile?> loadProfile() async {
@@ -304,7 +245,7 @@ class SupabaseRepository implements GameRepository {
     final response = await _client
         .from('seasons')
         .select(
-            'id,name,current_week,is_active,is_completed,league:leagues(id,name),champion_club:clubs(id,name)')
+            'id,name,current_week,is_active,is_completed,league:leagues(id,name,invitation_code),champion_club:clubs(id,name)')
         .eq('league_id', leagueId)
         .eq('is_active', true)
         .limit(1)

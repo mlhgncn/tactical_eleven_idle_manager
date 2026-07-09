@@ -24,18 +24,19 @@
     "notifications_desc": "Receive app notifications"
   },
   "clubSetup": {
-    "title": "Club Setup",
-    "description": "You don't have an active club yet. Select one from below or create your own club.",
-    "existingClubs": "Existing Clubs",
-    "budget": "Budget: {budget}",
-    "select": "Select",
-    "newClub": "Create New Club",
+    "title": "Start Managing",
+    "description": "You don't have a club yet. Start a brand new league that begins right away, or join a friend's league with their invitation code.",
     "clubName": "Club Name",
-    "create": "Create Club",
+    "createLeague": "Create League",
+    "or": "or",
+    "joinLeague": "Join League",
+    "invitationCode": "Invitation Code",
+    "joinConfirm": "Join",
     "errors": {
-      "load": "An error occurred while loading club information: {error}",
-      "create": "An error occurred while creating the club: {error}",
-      "claim": "An error occurred while selecting the club: {error}"
+      "nameRequired": "Club name cannot be empty.",
+      "codeRequired": "Invitation code cannot be empty.",
+      "createLeague": "An error occurred while creating the league: {error}",
+      "joinLeague": "An error occurred while joining the league: {error}"
     }
   },
   "menu": {

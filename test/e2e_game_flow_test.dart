@@ -79,26 +79,6 @@ class _FakeGameRepository implements GameRepository {
   String? _currentUserId = 'test-user-1';
   ClubInfo? _activeClub;
   final List<InboxMessage> _inboxMessages = [];
-  final List<ClubInfo> _availableClubs = [
-    const ClubInfo(
-      id: 'club-1',
-      name: 'Test United',
-      budget: 10000,
-      stadiumCapacity: 5000,
-      ticketPrice: 5,
-      trainingFacilityLevel: 1,
-      sponsorLevel: 1,
-    ),
-    const ClubInfo(
-      id: 'club-2',
-      name: 'Demo City',
-      budget: 9500,
-      stadiumCapacity: 4500,
-      ticketPrice: 5,
-      trainingFacilityLevel: 1,
-      sponsorLevel: 1,
-    ),
-  ];
 
   @override
   String? get currentUserId => _currentUserId;
@@ -121,13 +101,10 @@ class _FakeGameRepository implements GameRepository {
   }
 
   @override
-  Future<List<ClubInfo>> loadAvailableClubs() async => _availableClubs;
-
-  @override
-  Future<ClubInfo?> createClub(String name) async {
+  Future<ClubInfo?> createLeagueAndJoin(String clubName) async {
     final club = ClubInfo(
       id: 'club-created',
-      name: name,
+      name: clubName,
       budget: 10000,
       stadiumCapacity: 5000,
       ticketPrice: 5,
@@ -140,8 +117,17 @@ class _FakeGameRepository implements GameRepository {
   }
 
   @override
-  Future<ClubInfo?> claimClub(String clubId) async {
-    final club = _availableClubs.firstWhere((club) => club.id == clubId, orElse: () => _availableClubs.first);
+  Future<ClubInfo?> joinLeagueWithCode(String invitationCode) async {
+    final club = ClubInfo(
+      id: 'club-joined',
+      name: 'Joined FC',
+      budget: 10000,
+      stadiumCapacity: 5000,
+      ticketPrice: 5,
+      trainingFacilityLevel: 1,
+      sponsorLevel: 1,
+      lastMaintenanceDate: DateTime.now(),
+    );
     _activeClub = club;
     return club;
   }
@@ -416,10 +402,10 @@ void main() {
     await tester.tap(find.widgetWithText(GoldButton, 'Kayıt Ol'));
     await tester.pumpAndSettle(const Duration(seconds: 1));
     
-    expect(find.text('Kulüp Kurulumu'), findsOneWidget);
+    expect(find.text('Menajerliğe Başla'), findsOneWidget);
 
     await tester.enterText(find.byType(TextField), 'Zero Account FC');
-    await tester.tap(find.widgetWithText(ElevatedButton, 'Kulüp Oluştur'));
+    await tester.tap(find.widgetWithText(GoldButton, 'Lig Oluştur'));
     await tester.pumpAndSettle(const Duration(seconds: 1));
 
     expect(gameProvider.activeClub, isNotNull);

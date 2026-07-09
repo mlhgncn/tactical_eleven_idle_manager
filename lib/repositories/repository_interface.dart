@@ -12,9 +12,8 @@ abstract class GameRepository {
   String? get currentUserId;
   Future<ClubInfo?> loadActiveClub();
   Future<Profile?> loadProfile();
-  Future<List<ClubInfo>> loadAvailableClubs();
-  Future<ClubInfo?> createClub(String name);
-  Future<ClubInfo?> claimClub(String clubId);
+  Future<ClubInfo?> createLeagueAndJoin(String clubName);
+  Future<ClubInfo?> joinLeagueWithCode(String invitationCode);
   Future<List<PlayerFM>> loadSquadPlayers(String clubId);
   Future<PlayerFM?> advancePlayerDevelopment({
     required String playerId,
