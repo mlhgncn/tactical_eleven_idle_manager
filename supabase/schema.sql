@@ -151,12 +151,16 @@ DROP POLICY IF EXISTS match_events_delete_policy ON public.match_events;
 CREATE POLICY match_events_delete_policy ON public.match_events FOR DELETE TO authenticated
   USING (false);
 
+-- Auction bidding (current_highest_bid/highest_bidder_id/end_time) is gone
+-- - transfer_market is now just a "listed for transfer" marker with a
+-- reference asking price; real negotiation happens via transfer_offers.
+-- CREATE TABLE IF NOT EXISTS is a no-op against an existing table, so this
+-- shape only matters for a genuinely fresh install (where the migrations
+-- in supabase/migrations/ still replay in order and converge here anyway).
 CREATE TABLE IF NOT EXISTS public.transfer_market (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     player_id UUID UNIQUE REFERENCES public.players(id) ON DELETE CASCADE,
-    current_highest_bid BIGINT NOT NULL DEFAULT 0,
-    highest_bidder_id UUID REFERENCES public.clubs(id) ON DELETE SET NULL,
-    end_time TIMESTAMPTZ NOT NULL DEFAULT now() + interval '1 day',
+    asking_price BIGINT NOT NULL DEFAULT 0,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -254,12 +258,20 @@ CREATE POLICY seasons_select_policy ON public.seasons FOR SELECT TO authenticate
 DROP POLICY IF EXISTS league_standings_select_policy ON public.league_standings;
 CREATE POLICY league_standings_select_policy ON public.league_standings FOR SELECT TO authenticated USING (auth.uid() IS NOT NULL);
 
+-- club_id = own club OR club_id IS NULL used to be the whole policy, which
+-- blocked reading ANY other club's player - not just their name on a
+-- rival's squad screen, but the entire embedded `players` object on every
+-- transfer market listing that wasn't the user's own (PostgREST nulls the
+-- whole embed when the embedded row fails RLS), so listed players showed
+-- neither a name nor a seller club. Also allow reading a player that's
+-- currently listed on the transfer market, since browsing the market
+-- fundamentally requires seeing other clubs' listed players.
 DROP POLICY IF EXISTS players_select_policy ON public.players;
 CREATE POLICY players_select_policy ON public.players FOR SELECT TO authenticated
   USING (
-    club_id = (
-      SELECT id FROM public.clubs WHERE user_id = auth.uid() LIMIT 1
-    ) OR club_id IS NULL
+    club_id IS NULL
+    OR club_id = (SELECT id FROM public.clubs WHERE user_id = auth.uid() LIMIT 1)
+    OR EXISTS (SELECT 1 FROM public.transfer_market tm WHERE tm.player_id = players.id)
   );
 
 DROP POLICY IF EXISTS players_update_policy ON public.players;
@@ -436,66 +448,16 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
-CREATE OR REPLACE FUNCTION public.advance_player_development(
-  p_player_id UUID,
-  p_minutes_played INT DEFAULT 90,
-  p_training_facility_level INT DEFAULT 1,
-  p_morale INT DEFAULT 75,
-  p_form_rating DOUBLE PRECISION DEFAULT 0.0
-)
-RETURNS public.players AS $$
-DECLARE
-  player_row public.players%ROWTYPE;
-  age_factor DOUBLE PRECISION;
-  potential_factor DOUBLE PRECISION;
-  training_factor DOUBLE PRECISION;
-  minutes_factor DOUBLE PRECISION;
-  morale_factor DOUBLE PRECISION;
-  form_factor DOUBLE PRECISION;
-  growth_delta INT;
-  new_current_ability INT;
-  new_fitness INT;
-  new_morale INT;
-  new_form_rating DOUBLE PRECISION;
-BEGIN
-  SELECT * INTO player_row FROM public.players WHERE id = p_player_id;
-  IF NOT FOUND THEN
-    RAISE EXCEPTION 'Player not found';
-  END IF;
-
-  IF player_row.age < 16 THEN
-    age_factor := 0.85;
-  ELSIF player_row.age BETWEEN 16 AND 23 THEN
-    age_factor := 1.25;
-  ELSIF player_row.age BETWEEN 24 AND 29 THEN
-    age_factor := 0.95;
-  ELSE
-    age_factor := 0.75;
-  END IF;
-
-  potential_factor := (player_row.potential_ability / 100.0) * 0.9;
-  training_factor := GREATEST(1, p_training_facility_level) * 0.6;
-  minutes_factor := LEAST(1.0, GREATEST(0.0, p_minutes_played::DOUBLE PRECISION / 180.0));
-  morale_factor := 1.0 + ((p_morale - 75) / 100.0) * 0.15;
-  form_factor := 1.0 + (COALESCE(p_form_rating, 0.0) / 100.0) * 0.1;
-
-  growth_delta := ROUND((8.0 + (player_row.potential_ability - player_row.current_ability) * 0.02) * age_factor * potential_factor * training_factor * minutes_factor * morale_factor * form_factor);
-  new_current_ability := LEAST(99, GREATEST(1, player_row.current_ability + growth_delta));
-  new_fitness := LEAST(100, GREATEST(40, player_row.fitness + ROUND(growth_delta * 0.15)));
-  new_morale := LEAST(100, GREATEST(30, player_row.morale + ROUND(growth_delta * 0.03)));
-  new_form_rating := LEAST(100.0, GREATEST(0.0, player_row.form_rating + (growth_delta * 0.15)));
-
-  UPDATE public.players
-  SET current_ability = new_current_ability,
-      fitness = new_fitness,
-      morale = new_morale,
-      form_rating = new_form_rating
-  WHERE id = p_player_id
-  RETURNING * INTO player_row;
-
-  RETURN player_row;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+-- advance_player_development (the old synchronous instant-growth RPC) is
+-- gone - player development is now a timed session, see
+-- start_player_development/process_player_development in
+-- supabase/migrations/20260709191004_simplify_player_development_random_growth.sql.
+-- Kept out of this baseline file on purpose: schema.sql is executed
+-- unconditionally on every CI deploy (unlike supabase/migrations/*.sql,
+-- which is only applied once per file), so leaving a stale CREATE OR
+-- REPLACE here would silently resurrect dead/superseded functions after
+-- every push - see the sponsor/club upgrade fix below for a case where
+-- that already happened for real.
 
 -- Table to record rewarded ad awards (server-side ledger)
 CREATE TABLE IF NOT EXISTS public.ad_rewards (
@@ -612,230 +574,24 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
-CREATE OR REPLACE FUNCTION public.place_transfer_bid(market_id UUID, bid_amount BIGINT)
-RETURNS public.transfer_market AS $$
-DECLARE
-  bidder_club_id UUID;
-  bidder_budget BIGINT;
-  bidder_blocked BIGINT;
-  seller_club_id UUID;
-  current_bid BIGINT;
-  current_bidder_id UUID;
-  available_budget BIGINT;
-  bid_difference BIGINT;
-  updated_row public.transfer_market;
-BEGIN
-  IF auth.uid() IS NULL THEN
-    RAISE EXCEPTION 'Unauthenticated user cannot place bid';
-  END IF;
+-- place_transfer_bid / accept_transfer_offer / release_expired_transfer_bids
+-- (the old auction-style bidding RPCs) are gone - the transfer market is
+-- now offer-based, see make_transfer_offer/respond_to_transfer_offer in
+-- supabase/migrations/20260709194633_real_transfer_offer_system.sql.
+-- Deliberately not redefined here (see the note above
+-- award_ad_reward's table for why leaving a stale copy in this
+-- unconditionally-applied file is actively dangerous, not just untidy).
 
-  SELECT id, budget, blocked_budget INTO bidder_club_id, bidder_budget, bidder_blocked
-  FROM public.clubs
-  WHERE user_id = auth.uid()
-  LIMIT 1;
-
-  IF bidder_club_id IS NULL THEN
-    RAISE EXCEPTION 'User does not own a club';
-  END IF;
-
-  SELECT tm.current_highest_bid, tm.highest_bidder_id, p.club_id
-  INTO current_bid, current_bidder_id, seller_club_id
-  FROM public.transfer_market tm
-  JOIN public.players p ON p.id = tm.player_id
-  WHERE tm.id = market_id
-    AND tm.end_time > now();
-
-  IF seller_club_id IS NULL THEN
-    RAISE EXCEPTION 'Transfer market listing not found or has expired';
-  END IF;
-
-  IF seller_club_id = bidder_club_id THEN
-    RAISE EXCEPTION 'Cannot bid on your own club player';
-  END IF;
-
-  IF bid_amount <= current_bid THEN
-    RAISE EXCEPTION 'Bid must be higher than the current highest bid';
-  END IF;
-
-  IF current_bidder_id = bidder_club_id THEN
-    available_budget := bidder_budget - bidder_blocked + current_bid;
-  ELSE
-    available_budget := bidder_budget - bidder_blocked;
-  END IF;
-
-  IF available_budget < bid_amount THEN
-    RAISE EXCEPTION 'Insufficient available budget to place bid';
-  END IF;
-
-  UPDATE public.transfer_market
-  SET current_highest_bid = bid_amount,
-      highest_bidder_id = bidder_club_id
-  WHERE id = market_id
-    AND current_highest_bid = current_bid
-    AND end_time > now()
-  RETURNING * INTO updated_row;
-
-  IF NOT FOUND THEN
-    RAISE EXCEPTION 'Bid could not be placed. Please try again.';
-  END IF;
-
-  IF current_bidder_id IS NOT NULL AND current_bidder_id != bidder_club_id THEN
-    UPDATE public.clubs
-    SET blocked_budget = GREATEST(0, blocked_budget - current_bid)
-    WHERE id = current_bidder_id;
-  END IF;
-
-  IF current_bidder_id = bidder_club_id THEN
-    bid_difference := bid_amount - current_bid;
-    UPDATE public.clubs
-    SET blocked_budget = blocked_budget + bid_difference
-    WHERE id = bidder_club_id;
-  ELSE
-    UPDATE public.clubs
-    SET blocked_budget = blocked_budget + bid_amount
-    WHERE id = bidder_club_id;
-  END IF;
-
-  RETURN updated_row;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
-
-CREATE OR REPLACE FUNCTION public.accept_transfer_offer(p_player_id UUID)
-RETURNS public.clubs AS $$
-DECLARE
-  seller_club_id UUID;
-  buyer_club_id UUID;
-  bid_amount BIGINT;
-  seller_club public.clubs%ROWTYPE;
-  buyer_club public.clubs%ROWTYPE;
-  updated_row public.clubs;
-BEGIN
-  IF auth.uid() IS NULL THEN
-    RAISE EXCEPTION 'Unauthenticated user cannot accept transfer offer';
-  END IF;
-
-  SELECT club_id INTO seller_club_id
-  FROM public.players
-  WHERE id = p_player_id;
-
-  IF seller_club_id IS NULL THEN
-    RAISE EXCEPTION 'Player must belong to a club to accept offers';
-  END IF;
-
-  SELECT * INTO seller_club
-  FROM public.clubs
-  WHERE id = seller_club_id
-    AND user_id = auth.uid();
-
-  IF NOT FOUND THEN
-    RAISE EXCEPTION 'User does not own the selling club';
-  END IF;
-
-  SELECT current_highest_bid, highest_bidder_id INTO bid_amount, buyer_club_id
-  FROM public.transfer_market
-  WHERE player_id = p_player_id
-    AND end_time > now();
-
-  IF buyer_club_id IS NULL OR bid_amount <= 0 THEN
-    RAISE EXCEPTION 'No active transfer offer exists for this player';
-  END IF;
-
-  IF buyer_club_id = seller_club_id THEN
-    RAISE EXCEPTION 'Cannot accept a bid from the same club';
-  END IF;
-
-  SELECT * INTO buyer_club
-  FROM public.clubs
-  WHERE id = buyer_club_id;
-
-  IF NOT FOUND THEN
-    RAISE EXCEPTION 'Buyer club not found';
-  END IF;
-
-  IF buyer_club.budget < bid_amount THEN
-    RAISE EXCEPTION 'Buyer club has insufficient budget';
-  END IF;
-
-  IF buyer_club.blocked_budget < bid_amount THEN
-    RAISE EXCEPTION 'Buyer club has insufficient reserved funds to complete transfer';
-  END IF;
-
-  UPDATE public.clubs
-  SET budget = budget + bid_amount
-  WHERE id = seller_club_id;
-
-  UPDATE public.clubs
-  SET budget = budget - bid_amount,
-      blocked_budget = GREATEST(0, blocked_budget - bid_amount)
-  WHERE id = buyer_club_id;
-
-  INSERT INTO public.financial_transactions(club_id, type, amount, description, source)
-  VALUES
-    (seller_club_id, 'transfer_revenue', bid_amount, format('Transfer geliri: %s GP', bid_amount), 'accept_transfer_offer'),
-    (buyer_club_id, 'transfer_cost', -bid_amount, format('Transfer satın alım maliyeti: -%s GP', bid_amount), 'accept_transfer_offer');
-
-  UPDATE public.players
-  SET club_id = buyer_club_id
-  WHERE id = p_player_id;
-
-  INSERT INTO public.transfer_history (player_id, seller_club_id, buyer_club_id, price)
-  VALUES (p_player_id, seller_club_id, buyer_club_id, bid_amount);
-
-  DELETE FROM public.transfer_market
-  WHERE player_id = p_player_id;
-
-  SELECT * INTO updated_row
-  FROM public.clubs
-  WHERE id = seller_club_id;
-
-  RETURN updated_row;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
-
-CREATE OR REPLACE FUNCTION public.release_expired_transfer_bids()
-RETURNS void AS $$
-DECLARE
-  expired_record RECORD;
-BEGIN
-  IF auth.uid() IS NULL THEN
-    RAISE EXCEPTION 'Unauthenticated user cannot release expired bids';
-  END IF;
-
-  FOR expired_record IN
-    SELECT id, current_highest_bid, highest_bidder_id
-    FROM public.transfer_market
-    WHERE end_time <= now()
-  LOOP
-    IF expired_record.highest_bidder_id IS NOT NULL THEN
-      UPDATE public.clubs
-      SET blocked_budget = GREATEST(0, blocked_budget - expired_record.current_highest_bid)
-      WHERE id = expired_record.highest_bidder_id;
-    END IF;
-
-    DELETE FROM public.transfer_market
-    WHERE id = expired_record.id;
-  END LOOP;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
-
--- Parameters were previously named exactly like the public.clubs columns
--- they set (stadium_capacity, training_facility_level, ticket_price), which
--- made every bare reference inside the UPDATE's COALESCE() calls ambiguous
--- between the plpgsql parameter and the table column - plpgsql's default
--- variable_conflict=error setting made this raise on every single call, so
--- stadium/facility/ticket-price upgrades always failed. p_-prefixed names
--- (matching the convention used by every other function in this file)
--- remove the collision.
+-- upgrade_club now only handles ticket price (instant); stadium/facility
+-- upgrades moved to the timed start_club_development flow. See
+-- supabase/migrations/20260709191459_ticket_price_time_gated_and_realistic_values.sql.
 CREATE OR REPLACE FUNCTION public.upgrade_club(
   p_club_id UUID,
-  p_stadium_capacity INT,
-  p_training_facility_level INT,
   p_ticket_price INT
 )
 RETURNS public.clubs AS $$
 DECLARE
   current_club public.clubs%ROWTYPE;
-  total_cost BIGINT := 0;
   updated_row public.clubs;
 BEGIN
   IF auth.uid() IS NULL THEN
@@ -851,62 +607,38 @@ BEGIN
     RAISE EXCEPTION 'Club not found or not owned by current user';
   END IF;
 
-  IF p_stadium_capacity IS NOT NULL AND p_stadium_capacity > current_club.stadium_capacity THEN
-    IF p_stadium_capacity > 100000 THEN
-      RAISE EXCEPTION 'Stadium capacity cannot exceed 100000';
-    END IF;
-    total_cost := total_cost + 1000 + (p_stadium_capacity / 1000);
+  IF p_ticket_price IS NULL OR p_ticket_price <= current_club.ticket_price THEN
+    RAISE EXCEPTION 'Ticket price must be higher than current price';
   END IF;
 
-  IF p_training_facility_level IS NOT NULL THEN
-    IF p_training_facility_level <= current_club.training_facility_level THEN
-      RAISE EXCEPTION 'Training facility level must be higher than current level';
-    END IF;
-    IF p_training_facility_level > 10 THEN
-      RAISE EXCEPTION 'Training facility level cannot exceed 10';
-    END IF;
-    total_cost := total_cost + 2000 + (p_training_facility_level * 1500);
-  END IF;
-
-  IF p_ticket_price IS NOT NULL THEN
-    IF p_ticket_price <= current_club.ticket_price THEN
-      RAISE EXCEPTION 'Ticket price must be higher than current price';
-    END IF;
-    total_cost := total_cost + 500;
-  END IF;
-
-  IF current_club.budget < total_cost THEN
+  IF current_club.budget < 500 THEN
     RAISE EXCEPTION 'Not enough budget for upgrade';
   END IF;
 
   UPDATE public.clubs
-  SET budget = current_club.budget - total_cost,
-      stadium_capacity = COALESCE(p_stadium_capacity, current_club.stadium_capacity),
-      training_facility_level = COALESCE(p_training_facility_level, current_club.training_facility_level),
-      ticket_price = COALESCE(p_ticket_price, current_club.ticket_price)
+  SET budget = current_club.budget - 500,
+      ticket_price = p_ticket_price
   WHERE id = p_club_id
   RETURNING * INTO updated_row;
 
   INSERT INTO public.financial_transactions(club_id, type, amount, description, source)
-  VALUES (
-    p_club_id,
-    'upgrade_club',
-    -total_cost,
-    format('Kulüp yükseltme harcaması: -%s GP', total_cost),
-    'upgrade_club'
-  );
+  VALUES (p_club_id, 'upgrade_club', -500, 'Bilet fiyatı güncelleme harcaması: -500 GP', 'upgrade_club');
 
   RETURN updated_row;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
+-- Sponsor upgrades are timed (1/3/5/7 days by level), not instant. See
+-- supabase/migrations/20260709182919_time_gated_sponsor_upgrade.sql and
+-- process_sponsor_upgrades (applied by the process_timed_upgrades cron)
+-- for the completion side.
 CREATE OR REPLACE FUNCTION public.upgrade_sponsor(club_id UUID)
 RETURNS public.clubs AS $$
 DECLARE
   current_club public.clubs%ROWTYPE;
   updated_row public.clubs;
   new_budget BIGINT;
-  new_sponsor_level INT;
+  duration_days INT;
 BEGIN
   IF auth.uid() IS NULL THEN
     RAISE EXCEPTION 'Unauthenticated user cannot upgrade sponsor';
@@ -925,16 +657,21 @@ BEGIN
     RAISE EXCEPTION 'Sponsor level cannot exceed 5';
   END IF;
 
-  new_sponsor_level := current_club.sponsor_level + 1;
+  IF current_club.sponsor_upgrade_completes_at IS NOT NULL AND current_club.sponsor_upgrade_completes_at > now() THEN
+    RAISE EXCEPTION 'Sponsor upgrade already in progress';
+  END IF;
+
   new_budget := current_club.budget - (5000 * current_club.sponsor_level);
 
   IF new_budget < 0 THEN
     RAISE EXCEPTION 'Not enough budget to upgrade sponsor';
   END IF;
 
+  duration_days := 2 * current_club.sponsor_level - 1;
+
   UPDATE public.clubs
   SET budget = new_budget,
-      sponsor_level = new_sponsor_level
+      sponsor_upgrade_completes_at = now() + make_interval(days => duration_days)
   WHERE id = club_id
   RETURNING * INTO updated_row;
 
@@ -943,7 +680,7 @@ BEGIN
     club_id,
     'upgrade_sponsor',
     -(5000 * current_club.sponsor_level),
-    format('Sponsor yükseltme harcaması: -%s GP', 5000 * current_club.sponsor_level),
+    format('Sponsor yükseltme harcaması: -%s GP (%s gün sürecek)', 5000 * current_club.sponsor_level, duration_days),
     'upgrade_sponsor'
   );
 

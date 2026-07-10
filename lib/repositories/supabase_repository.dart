@@ -201,7 +201,7 @@ class SupabaseRepository implements GameRepository {
   Future<List<TransferMarketItem>> loadTransferMarket() async {
     final data = await _client
         .from('transfer_market')
-        .select('id,player_id,asking_price,players(name,position,club:clubs(id,name))');
+        .select('id,player_id,asking_price,players(name,position,age,current_ability,club:clubs(id,name))');
 
     if (data is! List<dynamic>) {
       return <TransferMarketItem>[];
