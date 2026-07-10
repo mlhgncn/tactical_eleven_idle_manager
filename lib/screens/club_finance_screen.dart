@@ -1,10 +1,10 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/game_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/currency_label.dart';
-import '../widgets/form_strip.dart';
 import '../widgets/themed_button.dart';
 import 'development_screen.dart';
 import 'sponsor_upgrade_screen.dart';
@@ -27,8 +27,8 @@ class ClubFinanceScreen extends StatelessWidget {
     }
 
     if (club == null) {
-      return const Scaffold(
-        body: Center(child: Text('Aktif kulüp bulunamadı.')),
+      return Scaffold(
+        body: Center(child: Text('finance.activeClubNotFound'.tr())),
       );
     }
 
@@ -45,7 +45,7 @@ class ClubFinanceScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Kulüp Finansları'),
+        title: Text('finance.title'.tr()),
         elevation: 0,
       ),
       body: SingleChildScrollView(
@@ -60,9 +60,9 @@ class ClubFinanceScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Mevcut Bütçe',
-                      style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                    Text(
+                      'finance.currentBudget'.tr(),
+                      style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
                     ),
                     const SizedBox(height: 8),
                     CurrencyLabel(
@@ -72,11 +72,11 @@ class ClubFinanceScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      'Rezerve Bütçe: ${club.blockedBudget} GP',
+                      'finance.reservedBudget'.tr(namedArgs: {'amount': club.blockedBudget.toString()}),
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                     Text(
-                      'Kullanılabilir Bütçe: ${club.budget - club.blockedBudget} GP',
+                      'finance.availableBudget'.tr(namedArgs: {'amount': (club.budget - club.blockedBudget).toString()}),
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                   ],
@@ -85,25 +85,9 @@ class ClubFinanceScreen extends StatelessWidget {
             ),
             const SizedBox(height: 16),
 
-            // Son Form
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Son Form', style: Theme.of(context).textTheme.titleMedium),
-                    const SizedBox(height: 12),
-                    FormStrip(results: _recentForm(provider)),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-
             // Ekonomi Özeti (Maç Başına)
             Text(
-              'Maç Başına Ekonomi (Kazanma)',
+              'finance.perMatchEconomyTitle'.tr(),
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 12),
@@ -120,17 +104,17 @@ class ClubFinanceScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'GELİRLER',
-                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.green),
+                    Text(
+                      'finance.revenues'.tr(),
+                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.green),
                     ),
                     const SizedBox(height: 10),
-                    _buildEconomyRow('Stadyum Geliri', stadiumRevenue),
-                    _buildEconomyRow('Sponsor Geliri', sponsorRevenue),
-                    _buildEconomyRow('Maç Bonusu (Kazanma)', matchBonus),
+                    _buildEconomyRow('finance.stadiumRevenue'.tr(), stadiumRevenue),
+                    _buildEconomyRow('finance.sponsorRevenue'.tr(), sponsorRevenue),
+                    _buildEconomyRow('finance.matchBonusWin'.tr(), matchBonus),
                     Divider(height: 12, color: AppColors.cardBorder),
                     _buildEconomyRow(
-                      'Toplam Gelir',
+                      'finance.totalRevenue'.tr(),
                       totalRevenue,
                       isBold: true,
                       color: AppColors.green,
@@ -153,16 +137,16 @@ class ClubFinanceScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'GİDERLER',
-                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.red),
+                    Text(
+                      'finance.expenses'.tr(),
+                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.red),
                     ),
                     const SizedBox(height: 10),
-                    _buildEconomyRow('Oyuncu Maaşları', playerWages),
-                    _buildEconomyRow('Bakım Masrafı', maintenanceCost),
+                    _buildEconomyRow('finance.playerWages'.tr(), playerWages),
+                    _buildEconomyRow('finance.maintenanceCost'.tr(), maintenanceCost),
                     Divider(height: 12, color: AppColors.cardBorder),
                     _buildEconomyRow(
-                      'Toplam Gider',
+                      'finance.totalExpense'.tr(),
                       totalExpense,
                       isBold: true,
                       color: AppColors.red,
@@ -185,12 +169,12 @@ class ClubFinanceScreen extends StatelessWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'Net Gelir (Maç Başına)',
-                      style: TextStyle(fontWeight: FontWeight.bold),
+                    Text(
+                      'finance.netIncomePerMatch'.tr(),
+                      style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                     Text(
-                      '$netIncome GP',
+                      'finance.amountGp'.tr(namedArgs: {'value': netIncome.toString()}),
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
@@ -205,39 +189,39 @@ class ClubFinanceScreen extends StatelessWidget {
 
             // Kulüp Bilgileri
             Text(
-              'Kulüp Bilgileri',
+              'finance.clubInfo'.tr(),
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 12),
 
             Card(
               child: ListTile(
-                title: const Text('Stadyum Kapasitesi'),
-                trailing: Text('${club.stadiumCapacity} kişi'),
+                title: Text('finance.stadiumCapacity'.tr()),
+                trailing: Text('finance.peopleCount'.tr(namedArgs: {'count': club.stadiumCapacity.toString()})),
               ),
             ),
             const SizedBox(height: 8),
 
             Card(
               child: ListTile(
-                title: const Text('Bilet Fiyatı'),
-                trailing: Text('${club.ticketPrice} GP'),
+                title: Text('finance.ticketPrice'.tr()),
+                trailing: Text('finance.amountGp'.tr(namedArgs: {'value': club.ticketPrice.toString()})),
               ),
             ),
             const SizedBox(height: 8),
 
             Card(
               child: ListTile(
-                title: const Text('Tesis Seviyesi'),
-                trailing: Text('Level ${club.trainingFacilityLevel}'),
+                title: Text('finance.facilityLevel'.tr()),
+                trailing: Text('finance.levelValue'.tr(namedArgs: {'level': club.trainingFacilityLevel.toString()})),
               ),
             ),
             const SizedBox(height: 8),
 
             Card(
               child: ListTile(
-                title: const Text('Sponsor Seviyesi'),
-                trailing: Text('Level ${club.sponsorLevel}'),
+                title: Text('finance.sponsorLevel'.tr()),
+                trailing: Text('finance.levelValue'.tr(namedArgs: {'level': club.sponsorLevel.toString()})),
               ),
             ),
             const SizedBox(height: 20),
@@ -247,7 +231,7 @@ class ClubFinanceScreen extends StatelessWidget {
               onPressed: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const SponsorUpgradeScreen()),
               ),
-              label: 'Sponsorluğu Yükselt',
+              label: 'finance.upgradeSponsorButton'.tr(),
             ),
             const SizedBox(height: 10),
 
@@ -255,7 +239,7 @@ class ClubFinanceScreen extends StatelessWidget {
               onPressed: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const DevelopmentScreen()),
               ),
-              label: 'Kulüp Geliştirme',
+              label: 'finance.clubDevelopmentButton'.tr(),
             ),
             const SizedBox(height: 10),
 
@@ -263,33 +247,19 @@ class ClubFinanceScreen extends StatelessWidget {
               onPressed: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const TransferHistoryScreen()),
               ),
-              label: 'Transfer Geçmişi',
+              label: 'finance.transferHistoryButton'.tr(),
             ),
             const SizedBox(height: 10),
             GlassButton(
               onPressed: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const FinancialTransactionsScreen()),
               ),
-              label: 'Bütçe Hareketleri',
+              label: 'finance.budgetTransactionsButton'.tr(),
             ),
           ],
         ),
       ),
     );
-  }
-
-  List<FormResult> _recentForm(GameProvider provider) {
-    final clubId = provider.activeClub?.id;
-    if (clubId == null) return const [];
-    final recent = provider.results.take(5).toList().reversed;
-    return recent.map((result) {
-      final isHome = result.homeTeamId == clubId;
-      final myScore = isHome ? result.homeScore : result.awayScore;
-      final oppScore = isHome ? result.awayScore : result.homeScore;
-      if (myScore > oppScore) return FormResult.win;
-      if (myScore < oppScore) return FormResult.loss;
-      return FormResult.draw;
-    }).toList();
   }
 
   Widget _buildEconomyRow(String label, int value, {bool isBold = false, Color? color}) {
@@ -304,7 +274,7 @@ class ClubFinanceScreen extends StatelessWidget {
           ),
         ),
         Text(
-          '$value GP',
+          'finance.amountGp'.tr(namedArgs: {'value': value.toString()}),
           style: TextStyle(
             fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
             color: color ?? AppColors.textPrimary,

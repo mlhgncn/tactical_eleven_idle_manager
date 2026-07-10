@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 
 class AsyncStateBuilder extends StatelessWidget {
@@ -34,7 +35,7 @@ class AsyncStateBuilder extends StatelessWidget {
     if (isEmpty) {
       return emptyBuilder != null
           ? emptyBuilder!()
-          : const Center(child: Text('Henüz bir veri yok.'));
+          : Center(child: Text('common.noDataYet'.tr()));
     }
 
     return child;

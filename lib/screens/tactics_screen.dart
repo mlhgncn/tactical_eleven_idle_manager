@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -56,12 +57,12 @@ class _TacticsScreenState extends State<TacticsScreen> {
       await context.read<GameProvider>().saveTactics(_tactics);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Taktikler kaydedildi.'), backgroundColor: AppColors.green),
+        SnackBar(content: Text('tactics.savedSuccess'.tr()), backgroundColor: AppColors.green),
       );
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Taktikler kaydedilemedi: $error')),
+        SnackBar(content: Text('tactics.saveFailed'.tr(namedArgs: {'error': error.toString()}))),
       );
     } finally {
       if (mounted) {
@@ -135,7 +136,7 @@ class _TacticsScreenState extends State<TacticsScreen> {
     }
 
     if (squad.isEmpty) {
-      return const Scaffold(body: Center(child: Text('Kadro yüklenemedi.')));
+      return Scaffold(body: Center(child: Text('squad.loadFailed'.tr())));
     }
 
     final nextFixture = provider.fixtures
@@ -144,7 +145,9 @@ class _TacticsScreenState extends State<TacticsScreen> {
       if (best == null) return f;
       return f.kickoff.isBefore(best.kickoff) ? f : best;
     });
-    final subtitle = nextFixture != null ? '${nextFixture.opponentName} maçı için oyun planı' : 'Sıradaki maç için oyun planı';
+    final subtitle = nextFixture != null
+        ? 'tactics.subtitleWithOpponent'.tr(namedArgs: {'opponent': nextFixture.opponentName})
+        : 'tactics.subtitleNoOpponent'.tr();
 
     PlayerFM playerById(String id) => squad.firstWhere((p) => p.id == id, orElse: () => squad.first);
 
@@ -154,7 +157,7 @@ class _TacticsScreenState extends State<TacticsScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('Taktik', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 19)),
+            Text('navigation.tactics'.tr(), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 19)),
             Text(subtitle, style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
           ],
         ),
@@ -163,16 +166,16 @@ class _TacticsScreenState extends State<TacticsScreen> {
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
         children: [
           _SectionCard(
-            title: 'OYUN ANLAYIŞI',
+            title: 'tactics.gameApproach'.tr(),
             child: Row(
               children: [
                 for (final mentality in Mentality.values) ...[
                   Expanded(
                     child: _MentalityChip(
                       label: switch (mentality) {
-                        Mentality.defensive => 'Savunmacı',
-                        Mentality.balanced => 'Dengeli',
-                        Mentality.attacking => 'Hücumcu',
+                        Mentality.defensive => 'tactics.mentalityDefensive'.tr(),
+                        Mentality.balanced => 'tactics.balanced'.tr(),
+                        Mentality.attacking => 'tactics.mentalityAttacking'.tr(),
                       },
                       selected: _tactics.mentality == mentality,
                       onTap: () => setState(() => _tactics.mentality = mentality),
@@ -188,22 +191,22 @@ class _TacticsScreenState extends State<TacticsScreen> {
             child: Column(
               children: [
                 _TacticSlider(
-                  label: 'Pres Yoğunluğu',
-                  valueLabel: _tierLabel(_tactics.pressIntensity, ['Düşük', 'Orta', 'Yüksek']),
+                  label: 'tactics.pressIntensity'.tr(),
+                  valueLabel: _tierLabel(_tactics.pressIntensity, ['tactics.tierLow'.tr(), 'tactics.tierMid'.tr(), 'tactics.tierHigh'.tr()]),
                   value: _tactics.pressIntensity,
                   onChanged: (v) => setState(() => _tactics.pressIntensity = v),
                 ),
                 const SizedBox(height: 18),
                 _TacticSlider(
-                  label: 'Tempo',
-                  valueLabel: _tierLabel(_tactics.tempo, ['Düşük', 'Orta', 'Yüksek']),
+                  label: 'tactics.tempo'.tr(),
+                  valueLabel: _tierLabel(_tactics.tempo, ['tactics.tierLow'.tr(), 'tactics.tierMid'.tr(), 'tactics.tierHigh'.tr()]),
                   value: _tactics.tempo,
                   onChanged: (v) => setState(() => _tactics.tempo = v),
                 ),
                 const SizedBox(height: 18),
                 _TacticSlider(
-                  label: 'Savunma Hattı',
-                  valueLabel: _tierLabel(_tactics.defensiveLine, ['Geri', 'Orta', 'İleri']),
+                  label: 'tactics.defensiveLine'.tr(),
+                  valueLabel: _tierLabel(_tactics.defensiveLine, ['tactics.lineDeep'.tr(), 'tactics.tierMid'.tr(), 'tactics.lineHigh'.tr()]),
                   value: _tactics.defensiveLine,
                   onChanged: (v) => setState(() => _tactics.defensiveLine = v),
                 ),
@@ -215,15 +218,15 @@ class _TacticsScreenState extends State<TacticsScreen> {
             child: Column(
               children: [
                 _ToggleRow(
-                  title: 'Ofsayt Taktiği',
-                  subtitle: 'Riskli ama etkili',
+                  title: 'tactics.offsideTacticTitle'.tr(),
+                  subtitle: 'tactics.offsideTacticSubtitle'.tr(),
                   value: _tactics.offsideTrap,
                   onChanged: (v) => setState(() => _tactics.offsideTrap = v),
                 ),
                 const Divider(color: AppColors.cardBorder, height: 24),
                 _ToggleRow(
-                  title: 'Zaman Geçirme',
-                  subtitle: 'Son dakikalarda topu tut',
+                  title: 'tactics.timeWastingTitle'.tr(),
+                  subtitle: 'tactics.timeWastingSubtitle'.tr(),
                   value: _tactics.timeWasting,
                   onChanged: (v) => setState(() => _tactics.timeWasting = v),
                 ),
@@ -232,31 +235,31 @@ class _TacticsScreenState extends State<TacticsScreen> {
           ),
           const SizedBox(height: 16),
           _SectionCard(
-            title: 'DURAN TOPLAR',
+            title: 'tactics.setPiecesTitle'.tr(),
             child: Row(
               children: [
                 Expanded(
                   child: _SetPieceSlot(
-                    label: 'SERBEST VURUŞ',
+                    label: 'tactics.freeKickLabel'.tr(),
                     player: playerById(_tactics.freeKickTakerId.isEmpty ? squad.first.id : _tactics.freeKickTakerId),
-                    onTap: () => _pickSetPieceTaker(squad, 'Serbest Vuruşçu Seç', _tactics.freeKickTakerId,
+                    onTap: () => _pickSetPieceTaker(squad, 'tactics.pickFreeKickTaker'.tr(), _tactics.freeKickTakerId,
                         (id) => setState(() => _tactics.freeKickTakerId = id)),
                   ),
                 ),
                 Expanded(
                   child: _SetPieceSlot(
-                    label: 'KÖŞE',
+                    label: 'tactics.cornerLabel'.tr(),
                     player: playerById(_tactics.cornerTakerId.isEmpty ? squad.first.id : _tactics.cornerTakerId),
                     onTap: () => _pickSetPieceTaker(
-                        squad, 'Köşe Vuruşçusu Seç', _tactics.cornerTakerId, (id) => setState(() => _tactics.cornerTakerId = id)),
+                        squad, 'tactics.pickCornerTaker'.tr(), _tactics.cornerTakerId, (id) => setState(() => _tactics.cornerTakerId = id)),
                   ),
                 ),
                 Expanded(
                   child: _SetPieceSlot(
-                    label: 'PENALTI',
+                    label: 'tactics.penaltyLabel'.tr(),
                     player: playerById(_tactics.penaltyTakerId.isEmpty ? squad.first.id : _tactics.penaltyTakerId),
                     onTap: () => _pickSetPieceTaker(
-                        squad, 'Penaltı Atıcısı Seç', _tactics.penaltyTakerId, (id) => setState(() => _tactics.penaltyTakerId = id)),
+                        squad, 'tactics.pickPenaltyTaker'.tr(), _tactics.penaltyTakerId, (id) => setState(() => _tactics.penaltyTakerId = id)),
                   ),
                 ),
               ],
@@ -266,7 +269,7 @@ class _TacticsScreenState extends State<TacticsScreen> {
           GoldButton(
             isLoading: _isSaving,
             onPressed: _isSaving ? null : _saveTactics,
-            label: 'TAKTİĞİ KAYDET',
+            label: 'tactics.saveButton'.tr(),
           ),
         ],
       ),

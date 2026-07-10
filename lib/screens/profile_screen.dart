@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -40,7 +41,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final newEmail = _emailController.text.trim();
     if (newEmail.isEmpty || !newEmail.contains('@')) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Geçerli bir e-posta adresi girin')),
+        SnackBar(content: Text('profile.invalidEmail'.tr())),
       );
       return;
     }
@@ -50,7 +51,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       await _authService.updateEmail(newEmail);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Onay için yeni adresine bir e-posta gönderildi.')),
+        SnackBar(content: Text('profile.emailUpdateSent'.tr())),
       );
     } catch (error) {
       if (!mounted) return;
@@ -66,13 +67,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final newPassword = _passwordController.text;
     if (newPassword.length < 6) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Şifre en az 6 karakter olmalı')),
+        SnackBar(content: Text('profile.passwordTooShort'.tr())),
       );
       return;
     }
     if (newPassword != _confirmPasswordController.text) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Şifreler eşleşmiyor')),
+        SnackBar(content: Text('profile.passwordsMismatch'.tr())),
       );
       return;
     }
@@ -84,7 +85,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _passwordController.clear();
       _confirmPasswordController.clear();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Şifre başarıyla güncellendi.')),
+        SnackBar(content: Text('profile.passwordUpdated'.tr())),
       );
     } catch (error) {
       if (!mounted) return;
@@ -102,7 +103,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final leagueTitles = profile?.leagueTitles ?? 0;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Profilim')),
+      appBar: AppBar(title: Text('profile.title'.tr())),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -120,7 +121,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text('$leagueTitles', style: Theme.of(context).textTheme.headlineMedium),
-                          const Text('Lig Şampiyonluğu', style: TextStyle(color: Colors.grey)),
+                          Text('profile.leagueTitlesLabel'.tr(), style: const TextStyle(color: Colors.grey)),
                         ],
                       ),
                     ],
@@ -136,12 +137,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('E-posta Adresi', style: Theme.of(context).textTheme.titleMedium),
+                  Text('profile.emailAddressTitle'.tr(), style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(height: 12),
                   TextField(
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
-                    decoration: const InputDecoration(labelText: 'E-posta'),
+                    decoration: InputDecoration(labelText: 'auth.email'.tr()),
                   ),
                   const SizedBox(height: 12),
                   SizedBox(
@@ -150,7 +151,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       onPressed: _isUpdatingEmail ? null : _updateEmail,
                       child: _isUpdatingEmail
                           ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                          : const Text('E-postayı Güncelle'),
+                          : Text('profile.updateEmailButton'.tr()),
                     ),
                   ),
                 ],
@@ -164,18 +165,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Şifre Değiştir', style: Theme.of(context).textTheme.titleMedium),
+                  Text('profile.changePasswordTitle'.tr(), style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(height: 12),
                   TextField(
                     controller: _passwordController,
                     obscureText: true,
-                    decoration: const InputDecoration(labelText: 'Yeni Şifre'),
+                    decoration: InputDecoration(labelText: 'profile.newPasswordLabel'.tr()),
                   ),
                   const SizedBox(height: 12),
                   TextField(
                     controller: _confirmPasswordController,
                     obscureText: true,
-                    decoration: const InputDecoration(labelText: 'Yeni Şifre (Tekrar)'),
+                    decoration: InputDecoration(labelText: 'profile.confirmNewPasswordLabel'.tr()),
                   ),
                   const SizedBox(height: 12),
                   SizedBox(
@@ -184,7 +185,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       onPressed: _isUpdatingPassword ? null : _updatePassword,
                       child: _isUpdatingPassword
                           ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                          : const Text('Şifreyi Güncelle'),
+                          : Text('profile.updatePasswordButton'.tr()),
                     ),
                   ),
                 ],

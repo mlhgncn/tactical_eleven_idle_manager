@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:provider/provider.dart';
@@ -58,7 +59,7 @@ class _MarketScreenState extends State<MarketScreen> {
           );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Elmas bakiyene eklendi!'), backgroundColor: AppColors.green),
+          SnackBar(content: Text('market.diamondsAddedSuccess'.tr()), backgroundColor: AppColors.green),
         );
         setState(() => _purchasingProductId = null);
       }
@@ -66,7 +67,7 @@ class _MarketScreenState extends State<MarketScreen> {
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Satın alma doğrulanamadı: ${error.toString().replaceAll('Exception: ', '')}')),
+          SnackBar(content: Text('market.purchaseVerificationFailed'.tr(namedArgs: {'error': error.toString().replaceAll('Exception: ', '')}))),
         );
         setState(() => _purchasingProductId = null);
       }
@@ -78,7 +79,7 @@ class _MarketScreenState extends State<MarketScreen> {
     final storeProduct = _storeProducts[product.productId];
     if (storeProduct == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Bu ürün şu anda satın alınamıyor.')),
+        SnackBar(content: Text('market.productUnavailable'.tr())),
       );
       return;
     }
@@ -114,7 +115,7 @@ class _MarketScreenState extends State<MarketScreen> {
     return showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: Text('${pack.name} Açıldı!'),
+        title: Text('market.packOpenedTitle'.tr(namedArgs: {'name': pack.name})),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -126,7 +127,13 @@ class _MarketScreenState extends State<MarketScreen> {
                   children: [
                     const Icon(Icons.emoji_events, color: AppColors.goldLight, size: 20),
                     const SizedBox(width: 8),
-                    Expanded(child: Text('${player.name} (${player.position}) — Güç: ${player.currentAbility}')),
+                    Expanded(
+                      child: Text('market.playerPowerLine'.tr(namedArgs: {
+                        'name': player.name,
+                        'position': player.position,
+                        'ability': player.currentAbility.toString(),
+                      })),
+                    ),
                   ],
                 ),
               ),
@@ -135,7 +142,7 @@ class _MarketScreenState extends State<MarketScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Harika!'),
+            child: Text('market.great'.tr()),
           ),
         ],
       ),
@@ -156,7 +163,7 @@ class _MarketScreenState extends State<MarketScreen> {
     final products = provider.diamondProducts;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Market')),
+      appBar: AppBar(title: Text('dashboard.market'.tr())),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -171,17 +178,17 @@ class _MarketScreenState extends State<MarketScreen> {
               children: [
                 const Icon(Icons.diamond, color: AppColors.blue, size: 28),
                 const SizedBox(width: 12),
-                Text('$diamonds Elmas', style: Theme.of(context).textTheme.titleLarge),
+                Text('market.diamondsBalance'.tr(namedArgs: {'count': diamonds.toString()}), style: Theme.of(context).textTheme.titleLarge),
               ],
             ),
           ),
           const SizedBox(height: 24),
-          Text('Oyuncu Paketleri', style: Theme.of(context).textTheme.titleMedium),
+          Text('market.playerPacksTitle'.tr(), style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
           if (packs.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 16),
-              child: Text('Paketler yükleniyor...', style: TextStyle(color: AppColors.textMuted)),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Text('market.packsLoading'.tr(), style: const TextStyle(color: AppColors.textMuted)),
             )
           else
             for (final pack in packs) _PackCard(
@@ -191,14 +198,14 @@ class _MarketScreenState extends State<MarketScreen> {
               onOpen: () => _openPack(pack),
             ),
           const SizedBox(height: 24),
-          Text('Elmas Satın Al', style: Theme.of(context).textTheme.titleMedium),
+          Text('market.buyDiamondsTitle'.tr(), style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
           if (!_isStoreAvailable && !_isLoadingStore)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 16),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
               child: Text(
-                'Bu cihazda satın alma şu anda kullanılamıyor.',
-                style: TextStyle(color: AppColors.textMuted),
+                'market.purchaseUnavailable'.tr(),
+                style: const TextStyle(color: AppColors.textMuted),
               ),
             )
           else if (_isLoadingStore)

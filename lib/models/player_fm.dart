@@ -98,8 +98,11 @@
     return currentAbility * 250 + (potentialAbility - currentAbility) * 100 + age * 10;
   }
 
+  // Rescaled /40 to match the club-budget economy - see
+  // supabase/migrations/20260710145357_rebalance_club_economy_lower_budgets.sql
+  // and sign_free_agent's mirrored formula, kept in sync with this one.
   int get marketValue {
-    return currentAbility * 15000 + potentialAbility * 5000 + age * 100;
+    return (currentAbility * 15000 + potentialAbility * 5000 + age * 100) ~/ 40;
   }
 
   double get starRating {

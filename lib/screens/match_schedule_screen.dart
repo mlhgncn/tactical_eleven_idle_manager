@@ -1,13 +1,14 @@
 import 'dart:async';
 
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../models/match_fixture.dart';
 import '../providers/game_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/club_badge.dart';
+import 'match_detail_screen.dart';
 
 class MatchScheduleScreen extends StatefulWidget {
   const MatchScheduleScreen({super.key});
@@ -60,9 +61,9 @@ class _MatchScheduleScreenState extends State<MatchScheduleScreen> {
               labelColor: AppColors.goldLight,
               unselectedLabelColor: AppColors.navInactive,
               indicatorColor: AppColors.goldLight,
-              tabs: const [
-                Tab(text: 'Takvim'),
-                Tab(text: 'Sonuçlar'),
+              tabs: [
+                Tab(text: 'navigation.calendar'.tr()),
+                Tab(text: 'matchSchedule.tabResults'.tr()),
               ],
             ),
           ),
@@ -73,10 +74,10 @@ class _MatchScheduleScreenState extends State<MatchScheduleScreen> {
                   onRefresh: () => context.read<GameProvider>().refreshGameState(),
                   child: fixtures.isEmpty
                     ? ListView(
-                        children: const [
+                        children: [
                           Padding(
-                            padding: EdgeInsets.only(top: 80),
-                            child: Center(child: Text('Henüz fikstür oluşturulmadı.')),
+                            padding: const EdgeInsets.only(top: 80),
+                            child: Center(child: Text('matchSchedule.noFixturesYet'.tr())),
                           ),
                         ],
                       )
@@ -86,14 +87,20 @@ class _MatchScheduleScreenState extends State<MatchScheduleScreen> {
                         itemBuilder: (context, index) {
                           final fixture = fixtures[index];
                           final isPlayed = fixture.status == 'Tamamlandı';
-                          final homeAwayLabel = fixture.isHome ? 'Ev' : 'Deplasman';
+                          final homeAwayLabel = fixture.isHome ? 'matchSchedule.homeShort'.tr() : 'matchSchedule.awayShort'.tr();
                           final homeAwayColor = fixture.isHome ? AppColors.green : AppColors.blue;
                           final dateLabel = DateFormat('dd.MM.yyyy HH:mm', 'tr_TR')
                               .format(fixture.kickoff.toLocal());
 
                           return Card(
                             margin: const EdgeInsets.only(bottom: 12),
-                            child: Padding(
+                            child: InkWell(
+                              onTap: isPlayed
+                                  ? () => Navigator.of(context).push(
+                                        MaterialPageRoute(builder: (_) => MatchDetailScreen(fixture: fixture)),
+                                      )
+                                  : null,
+                              child: Padding(
                               padding: const EdgeInsets.all(12),
                               child: ListTile(
                                 contentPadding: EdgeInsets.zero,
@@ -107,6 +114,9 @@ class _MatchScheduleScreenState extends State<MatchScheduleScreen> {
                                 subtitle: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
+                                    if (fixture.opponentUsername != null)
+                                      Text('@${fixture.opponentUsername}',
+                                          style: const TextStyle(color: AppColors.textMuted, fontSize: 11.5)),
                                     const SizedBox(height: 4),
                                     Row(
                                       children: [
@@ -129,7 +139,7 @@ class _MatchScheduleScreenState extends State<MatchScheduleScreen> {
                                           ),
                                         ),
                                         const SizedBox(width: 10),
-                                        Text('Hafta ${fixture.week}', style: const TextStyle(color: AppColors.textMuted)),
+                                        Text('matchSchedule.weekLabel'.tr(namedArgs: {'week': fixture.week.toString()}), style: const TextStyle(color: AppColors.textMuted)),
                                       ],
                                     ),
                                     const SizedBox(height: 8),
@@ -158,6 +168,7 @@ class _MatchScheduleScreenState extends State<MatchScheduleScreen> {
                                   side: BorderSide.none,
                                 ),
                               ),
+                              ),
                             ),
                           );
                         },
@@ -167,10 +178,10 @@ class _MatchScheduleScreenState extends State<MatchScheduleScreen> {
                   onRefresh: () => context.read<GameProvider>().refreshGameState(),
                   child: playedFixtures.isEmpty
                     ? ListView(
-                        children: const [
+                        children: [
                           Padding(
-                            padding: EdgeInsets.only(top: 80),
-                            child: Center(child: Text('Geçmiş maç yok.')),
+                            padding: const EdgeInsets.only(top: 80),
+                            child: Center(child: Text('matchSchedule.noPastMatches'.tr())),
                           ),
                         ],
                       )
@@ -202,20 +213,23 @@ class _ResultCard extends StatelessWidget {
     final String resultLabel;
     if (ownScore > opponentScore) {
       resultColor = AppColors.green;
-      resultLabel = 'Galibiyet';
+      resultLabel = 'matchSchedule.resultWin'.tr();
     } else if (ownScore < opponentScore) {
       resultColor = AppColors.red;
-      resultLabel = 'Mağlubiyet';
+      resultLabel = 'matchSchedule.resultLoss'.tr();
     } else {
       resultColor = AppColors.gold;
-      resultLabel = 'Beraberlik';
+      resultLabel = 'matchSchedule.resultDraw'.tr();
     }
     final dateLabel = DateFormat('dd.MM.yyyy', 'tr_TR').format(fixture.kickoff.toLocal());
-    final homeAwayLabel = fixture.isHome ? 'Ev sahibi' : 'Deplasman';
+    final homeAwayLabel = fixture.isHome ? 'matchSchedule.homeFull'.tr() : 'matchSchedule.awayShort'.tr();
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => MatchDetailScreen(fixture: fixture)),
+        ),
         contentPadding: const EdgeInsets.all(16),
         leading: ClubBadge(
           clubName: fixture.opponentName,
@@ -229,8 +243,10 @@ class _ResultCard extends StatelessWidget {
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (fixture.opponentUsername != null)
+              Text('@${fixture.opponentUsername}', style: const TextStyle(color: AppColors.textMuted, fontSize: 11.5)),
             const SizedBox(height: 8),
-            Text('$homeAwayLabel · Hafta ${fixture.week} · $dateLabel'),
+            Text('$homeAwayLabel · ${'matchSchedule.weekLabel'.tr(namedArgs: {'week': fixture.week.toString()})} · $dateLabel'),
           ],
         ),
         trailing: Chip(

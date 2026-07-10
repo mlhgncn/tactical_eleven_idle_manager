@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -5,6 +6,7 @@ import '../models/player_fm.dart';
 import '../providers/game_provider.dart';
 import '../widgets/player_card.dart';
 import '../widgets/themed_button.dart';
+import '../widgets/timed_progress_bar.dart';
 
 class PlayerDetailScreen extends StatefulWidget {
   const PlayerDetailScreen({super.key, required this.player});
@@ -54,15 +56,15 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                 children: [
                   Text(player.name, style: Theme.of(context).textTheme.titleLarge),
                   const SizedBox(height: 8),
-                  Text('${player.position} • Yaş: ${player.age}'),
+                  Text('playerDetail.positionAge'.tr(namedArgs: {'position': player.position, 'age': player.age.toString()})),
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 12,
                     runSpacing: 6,
                     children: [
-                      Text('CA: ${player.currentAbility}'),
-                      Text('PA: ${player.potentialAbility}'),
-                      Text('Başlangıç: ${isStarter ? 'Evet' : 'Yedek'}'),
+                      Text('playerDetail.caLabel'.tr(namedArgs: {'value': player.currentAbility.toString()})),
+                      Text('playerDetail.paLabel'.tr(namedArgs: {'value': player.potentialAbility.toString()})),
+                      Text('playerDetail.starterLabel'.tr(namedArgs: {'value': isStarter ? 'playerDetail.yes'.tr() : 'squad.benchLabel'.tr()})),
                     ],
                   ),
                   const SizedBox(height: 12),
@@ -70,16 +72,16 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                     spacing: 12,
                     runSpacing: 6,
                     children: [
-                      Text('Moral: ${player.morale}'),
-                      Text('Fitness: ${player.fitness}'),
-                      Text('Form: ${player.formRating.toStringAsFixed(2)}'),
+                      Text('playerDetail.moraleLabel'.tr(namedArgs: {'value': player.morale.toString()})),
+                      Text('playerDetail.fitnessLabel'.tr(namedArgs: {'value': player.fitness.toString()})),
+                      Text('playerDetail.formLabel'.tr(namedArgs: {'value': player.formRating.toStringAsFixed(2)})),
                     ],
                   ),
                   const SizedBox(height: 12),
-                  Text('Maaş: ${player.salaryLabel}'),
-                  Text('Piyasa Değeri: ${player.marketValueLabel}'),
+                  Text('playerDetail.salaryLabel'.tr(namedArgs: {'value': player.salaryLabel})),
+                  Text('playerDetail.marketValueLabel'.tr(namedArgs: {'value': player.marketValueLabel})),
                   const SizedBox(height: 8),
-                  Text('Sakatlık: ${player.hasActiveInjury ? player.injuryDisplayLabel : 'yok'}'),
+                  Text('playerDetail.injuryLabel'.tr(namedArgs: {'value': player.hasActiveInjury ? player.injuryDisplayLabel : 'playerDetail.none'.tr()})),
                 ],
               ),
             ),
@@ -91,23 +93,24 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Gelişim', style: Theme.of(context).textTheme.titleMedium),
+                  Text('playerDetail.developmentTitle'.tr(), style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(height: 12),
                   if (player.isDeveloping) ...[
-                    Text(
-                      'Gelişim sürüyor. Tamamlanma: ${_formatRemaining(player.developmentCompletesAt!)}',
+                    TimedProgressBar(
+                      completesAt: player.developmentCompletesAt!,
+                      totalDuration: const Duration(hours: 2),
                     ),
                     const SizedBox(height: 8),
-                    const Text(
-                      'Uygulamadan çıksan bile süre sunucuda ilerlemeye devam eder.',
-                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    Text(
+                      'playerDetail.devProgressNote'.tr(),
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
                     ),
                   ] else if (player.currentAbility >= player.potentialAbility) ...[
-                    const Text('Bu oyuncu potansiyeline ulaştı, artık gelişim uygulanamaz.'),
+                    Text('playerDetail.devMaxed'.tr()),
                   ] else ...[
-                    const Text(
-                      'Bir gelişim seansı 2 saat sürer ve gücü %1-%3 arasında rastgele artırır.',
-                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    Text(
+                      'playerDetail.devDescription'.tr(),
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
                     ),
                     const SizedBox(height: 12),
                     GoldButton(
@@ -118,7 +121,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                             await provider.startPlayerDevelopment(playerId: player.id);
                             if (!mounted) return;
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Gelişim başlatıldı (2 saat)')),
+                              SnackBar(content: Text('playerDetail.devStarted'.tr())),
                             );
                           } catch (error) {
                             if (!mounted) return;
@@ -131,7 +134,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                             }
                           }
                         },
-                      label: 'Gelişimi başlat',
+                      label: 'playerDetail.startDevelopmentButton'.tr(),
                     ),
                   ],
                 ],
@@ -143,15 +146,6 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
         ],
       ),
     );
-  }
-
-  String _formatRemaining(DateTime completesAt) {
-    final remaining = completesAt.difference(DateTime.now());
-    if (remaining.isNegative) return 'birazdan';
-    final hours = remaining.inHours;
-    final minutes = remaining.inMinutes % 60;
-    if (hours > 0) return '$hours sa $minutes dk';
-    return '$minutes dk';
   }
 
   Widget _buildTransferCard(BuildContext context, GameProvider provider, PlayerFM player) {
@@ -169,10 +163,10 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Gelen Teklifler', style: Theme.of(context).textTheme.titleMedium),
+                  Text('transferMarket.incomingOffers'.tr(), style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(height: 12),
                   for (final offer in pendingOffers) ...[
-                    Text('${offer.fromClubName}: ${offer.offerAmount} GP'),
+                    Text('playerDetail.offerLine'.tr(namedArgs: {'club': offer.fromClubName, 'amount': offer.offerAmount.toString()})),
                     const SizedBox(height: 8),
                     Row(
                       children: [
@@ -183,7 +177,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                                 await provider.respondToTransferOffer(offerId: offer.id, accept: true);
                                 if (!mounted) return;
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Teklif kabul edildi')),
+                                  SnackBar(content: Text('transferMarket.offerAccepted'.tr())),
                                 );
                               } catch (error) {
                                 if (!mounted) return;
@@ -192,7 +186,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                                 );
                               }
                             },
-                            label: 'Kabul Et',
+                            label: 'transferOffer.accept'.tr(),
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -203,7 +197,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                                 await provider.respondToTransferOffer(offerId: offer.id, accept: false);
                                 if (!mounted) return;
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Teklif reddedildi')),
+                                  SnackBar(content: Text('transferMarket.offerRejected'.tr())),
                                 );
                               } catch (error) {
                                 if (!mounted) return;
@@ -212,7 +206,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                                 );
                               }
                             },
-                            label: 'Reddet',
+                            label: 'transferOffer.reject'.tr(),
                           ),
                         ),
                       ],
@@ -231,11 +225,11 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Transfer Pazarı', style: Theme.of(context).textTheme.titleMedium),
+              Text('transferMarket.title'.tr(), style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 12),
-              Text('İstenen fiyat: ${activeListing.askingPrice} GP'),
+              Text('playerDetail.askingPriceLine'.tr(namedArgs: {'price': activeListing.askingPrice.toString()})),
               const SizedBox(height: 4),
-              const Text('Başka kulüpler bu oyuncu için teklif verebilir.'),
+              Text('playerDetail.otherClubsCanOffer'.tr()),
               const SizedBox(height: 12),
               GlassButton(
                 isLoading: isWithdrawing,
@@ -247,7 +241,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                           await provider.withdrawTransferListing(playerId: player.id);
                           if (!mounted) return;
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Oyuncu transfer pazarından kaldırıldı')),
+                            SnackBar(content: Text('playerDetail.removedFromMarket'.tr())),
                           );
                         } catch (error) {
                           if (!mounted) return;
@@ -258,7 +252,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                           if (mounted) setState(() => isWithdrawing = false);
                         }
                       },
-                label: 'Listeden Kaldır',
+                label: 'playerDetail.removeFromListingButton'.tr(),
               ),
             ],
           ),
@@ -274,12 +268,12 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Transfer Pazarı', style: Theme.of(context).textTheme.titleMedium),
+            Text('transferMarket.title'.tr(), style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 12),
             TextField(
               controller: _askingPriceController,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'İstenen fiyat (GP)'),
+              decoration: InputDecoration(labelText: 'playerDetail.askingPriceFieldLabel'.tr()),
             ),
             const SizedBox(height: 12),
             GlassButton(
@@ -290,7 +284,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                       final askingPrice = int.tryParse(_askingPriceController.text.trim());
                       if (askingPrice == null || askingPrice <= 0) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Geçerli bir fiyat girin')),
+                          SnackBar(content: Text('playerDetail.enterValidPrice'.tr())),
                         );
                         return;
                       }
@@ -302,7 +296,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                         );
                         if (!mounted) return;
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Oyuncu transfer pazarına çıkarıldı')),
+                          SnackBar(content: Text('playerDetail.listedOnMarket'.tr())),
                         );
                       } catch (error) {
                         if (!mounted) return;
@@ -313,7 +307,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                         if (mounted) setState(() => isListing = false);
                       }
                     },
-              label: 'Transfere Çıkar',
+              label: 'playerDetail.listForTransferButton'.tr(),
             ),
           ],
         ),

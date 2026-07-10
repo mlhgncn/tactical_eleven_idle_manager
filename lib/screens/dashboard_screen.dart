@@ -1,5 +1,5 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../models/match_fixture.dart';
@@ -28,7 +28,7 @@ class DashboardScreen extends StatelessWidget {
     final provider = context.watch<GameProvider>();
     final club = provider.activeClub;
     if (club == null) {
-      return const Center(child: Text('Kulüp bulunamadı.'));
+      return Center(child: Text('dashboard.clubNotFound'.tr()));
     }
 
     final nextFixture = provider.fixtures
@@ -48,7 +48,7 @@ class DashboardScreen extends StatelessWidget {
         : standings.indexOf(myStanding) + 1;
 
     final recentForm = _recentForm(provider, club.id);
-    final leagueName = (provider.seasonState?['league'] as Map?)?['name'] as String? ?? 'Lig';
+    final leagueName = (provider.seasonState?['league'] as Map?)?['name'] as String? ?? 'dashboard.defaultLeagueName'.tr();
     final pendingOffers = provider.pendingIncomingOfferCount;
 
     return RefreshIndicator(
@@ -64,14 +64,14 @@ class DashboardScreen extends StatelessWidget {
             child: _card(
               child: Row(
                 children: [
-                  const Text('FORM', style: TextStyle(color: AppColors.textMuted, fontWeight: FontWeight.bold, fontSize: 11, letterSpacing: 1)),
+                  Text('dashboard.formLabel'.tr(), style: const TextStyle(color: AppColors.textMuted, fontWeight: FontWeight.bold, fontSize: 11, letterSpacing: 1)),
                   const SizedBox(width: 12),
                   Expanded(child: FormStrip(results: recentForm, size: 26)),
                   if (myPosition != null)
                     Column(
                       children: [
                         Text('$myPosition.', style: const TextStyle(color: AppColors.goldLight, fontWeight: FontWeight.bold, fontSize: 22)),
-                        const Text('SIRA', style: TextStyle(color: AppColors.textMuted, fontSize: 9.5)),
+                        Text('dashboard.positionLabel'.tr(), style: const TextStyle(color: AppColors.textMuted, fontSize: 9.5)),
                       ],
                     ),
                 ],
@@ -91,37 +91,37 @@ class DashboardScreen extends StatelessWidget {
                 _QuickAction(
                   icon: Icons.groups,
                   color: AppColors.gold,
-                  title: 'Kadro',
-                  subtitle: '${provider.squadPlayers.length} oyuncu',
+                  title: 'navigation.squad'.tr(),
+                  subtitle: 'dashboard.playerCount'.tr(namedArgs: {'count': provider.squadPlayers.length.toString()}),
                   onTap: () => _push(context, const SquadScreen()),
                 ),
                 _QuickAction(
                   icon: Icons.rule,
                   color: AppColors.blue,
-                  title: 'Taktik',
-                  subtitle: provider.tactics?.formation.name.toUpperCase() ?? 'Ayarla',
+                  title: 'navigation.tactics'.tr(),
+                  subtitle: provider.tactics?.formation.name.toUpperCase() ?? 'dashboard.setUp'.tr(),
                   onTap: () => _push(context, const TacticsScreen()),
                 ),
                 _QuickAction(
                   icon: Icons.swap_horiz,
                   color: AppColors.green,
-                  title: 'Transfer',
-                  subtitle: '$pendingOffers teklif',
+                  title: 'navigation.transfer'.tr(),
+                  subtitle: 'dashboard.offerCount'.tr(namedArgs: {'count': pendingOffers.toString()}),
                   badge: pendingOffers > 0 ? pendingOffers : null,
                   onTap: () => _push(context, const TransferMarketScreen()),
                 ),
                 _QuickAction(
                   icon: Icons.calendar_month,
                   color: AppColors.red,
-                  title: 'Takvim',
-                  subtitle: '${provider.fixtures.length} maç',
-                  onTap: () => _push(context, const MatchScheduleScreen(), title: 'Takvim'),
+                  title: 'navigation.calendar'.tr(),
+                  subtitle: 'dashboard.matchCount'.tr(namedArgs: {'count': provider.fixtures.length.toString()}),
+                  onTap: () => _push(context, const MatchScheduleScreen(), title: 'navigation.calendar'.tr()),
                 ),
                 _QuickAction(
                   icon: Icons.diamond,
                   color: AppColors.blue,
-                  title: 'Market',
-                  subtitle: '${provider.diamonds} 💎',
+                  title: 'dashboard.market'.tr(),
+                  subtitle: 'dashboard.diamondCount'.tr(namedArgs: {'count': provider.diamonds.toString()}),
                   onTap: () => _push(context, const MarketScreen()),
                 ),
               ],
@@ -136,19 +136,19 @@ class DashboardScreen extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('$leagueName · Puan Durumu',
+                      Text('$leagueName · ${'navigation.table'.tr()}',
                           style: const TextStyle(color: AppColors.textMuted, fontWeight: FontWeight.bold, fontSize: 10.5, letterSpacing: 1)),
                       GestureDetector(
-                        onTap: () => _push(context, const LeagueTableScreen(), title: 'Puan Durumu'),
-                        child: const Text('Tamamı ›', style: TextStyle(color: AppColors.goldLight, fontWeight: FontWeight.bold, fontSize: 11.5)),
+                        onTap: () => _push(context, const LeagueTableScreen(), title: 'navigation.table'.tr()),
+                        child: Text('dashboard.seeAll'.tr(), style: const TextStyle(color: AppColors.goldLight, fontWeight: FontWeight.bold, fontSize: 11.5)),
                       ),
                     ],
                   ),
                   const SizedBox(height: 8),
                   if (standings.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 12),
-                      child: Text('Henüz puan durumu yok.', style: TextStyle(color: AppColors.textMuted)),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      child: Text('dashboard.noStandingsYet'.tr(), style: const TextStyle(color: AppColors.textMuted)),
                     )
                   else
                     ...standings.take(3).map((row) {
@@ -207,11 +207,11 @@ class DashboardScreen extends StatelessWidget {
   }
 
   static List<FormResult> _recentForm(GameProvider provider, String clubId) {
-    final recent = provider.results.take(5).toList().reversed;
-    return recent.map((result) {
-      final isHome = result.homeTeamId == clubId;
-      final myScore = isHome ? result.homeScore : result.awayScore;
-      final oppScore = isHome ? result.awayScore : result.homeScore;
+    final played = provider.fixtures.where((f) => f.status == 'Tamamlandı').toList()
+      ..sort((a, b) => b.kickoff.compareTo(a.kickoff));
+    return played.take(5).toList().reversed.map((f) {
+      final myScore = f.isHome ? f.homeScore : f.awayScore;
+      final oppScore = f.isHome ? f.awayScore : f.homeScore;
       if (myScore > oppScore) return FormResult.win;
       if (myScore < oppScore) return FormResult.loss;
       return FormResult.draw;
@@ -251,7 +251,7 @@ class _Hero extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(club.name as String, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: AppColors.textPrimary)),
-                    const Text('Teknik Direktör', style: TextStyle(fontSize: 11.5, color: AppColors.textMuted)),
+                    Text('dashboard.manager'.tr(), style: const TextStyle(fontSize: 11.5, color: AppColors.textMuted)),
                   ],
                 ),
               ),
@@ -301,9 +301,9 @@ class _MatchCard extends StatelessWidget {
   Widget build(BuildContext context) {
     if (nextFixture == null) {
       return DashboardScreen._card(
-        child: const Padding(
-          padding: EdgeInsets.symmetric(vertical: 20),
-          child: Center(child: Text('Yaklaşan maç yok.', style: TextStyle(color: AppColors.textMuted))),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 20),
+          child: Center(child: Text('dashboard.noUpcomingMatch'.tr(), style: const TextStyle(color: AppColors.textMuted))),
         ),
       );
     }
@@ -335,12 +335,12 @@ class _MatchCard extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('SONRAKI MAÇ · HAFTA ${f.week}',
+                    Text('dashboard.nextMatchWeek'.tr(namedArgs: {'week': f.week.toString()}),
                         style: const TextStyle(fontSize: 10.5, letterSpacing: 1.4, fontWeight: FontWeight.bold, color: AppColors.goldLight)),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
                       decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.35), borderRadius: BorderRadius.circular(99), border: Border.all(color: Colors.white24)),
-                      child: Text(f.isHome ? 'EV SAHİBİ' : 'DEPLASMAN', style: const TextStyle(fontSize: 10.5, color: AppColors.textMuted, fontWeight: FontWeight.bold)),
+                      child: Text(f.isHome ? 'dashboard.home'.tr() : 'dashboard.away'.tr(), style: const TextStyle(fontSize: 10.5, color: AppColors.textMuted, fontWeight: FontWeight.bold)),
                     ),
                   ],
                 ),
@@ -351,9 +351,9 @@ class _MatchCard extends StatelessWidget {
                     Expanded(
                       child: Column(
                         children: [
-                          ClubBadge(clubName: f.isHome ? 'Sen' : f.opponentName, kind: f.isHome ? ClubBadgeKind.home : ClubBadgeKind.away, size: 52),
+                          ClubBadge(clubName: f.isHome ? 'dashboard.you'.tr() : f.opponentName, kind: f.isHome ? ClubBadgeKind.home : ClubBadgeKind.away, size: 52),
                           const SizedBox(height: 6),
-                          Text(f.isHome ? 'Sen' : f.opponentName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5, color: AppColors.textPrimary)),
+                          Text(f.isHome ? 'dashboard.you'.tr() : f.opponentName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5, color: AppColors.textPrimary)),
                         ],
                       ),
                     ),
@@ -372,37 +372,21 @@ class _MatchCard extends StatelessWidget {
                     Expanded(
                       child: Column(
                         children: [
-                          ClubBadge(clubName: f.isHome ? f.opponentName : 'Sen', kind: f.isHome ? ClubBadgeKind.away : ClubBadgeKind.home, size: 52),
+                          ClubBadge(clubName: f.isHome ? f.opponentName : 'dashboard.you'.tr(), kind: f.isHome ? ClubBadgeKind.away : ClubBadgeKind.home, size: 52),
                           const SizedBox(height: 6),
-                          Text(f.isHome ? f.opponentName : 'Sen', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5, color: AppColors.textPrimary)),
+                          Text(f.isHome ? f.opponentName : 'dashboard.you'.tr(), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5, color: AppColors.textPrimary)),
                         ],
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      flex: 3,
-                      child: GoldButton(
-                        height: 44,
-                        onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const TacticsScreen())),
-                        label: 'KADROYU KUR',
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      flex: 2,
-                      child: GlassButton(
-                        height: 44,
-                        onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                          builder: (_) => Scaffold(appBar: AppBar(title: const Text('Takvim')), body: const MatchScheduleScreen()),
-                        )),
-                        label: 'Takvim',
-                      ),
-                    ),
-                  ],
+                GoldButton(
+                  height: 44,
+                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => Scaffold(appBar: AppBar(title: Text('navigation.calendar'.tr())), body: const MatchScheduleScreen()),
+                  )),
+                  label: 'navigation.calendar'.tr(),
                 ),
               ],
             ),

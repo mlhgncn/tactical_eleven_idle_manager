@@ -401,15 +401,9 @@ class GameProvider extends ChangeNotifier {
           final homeId = r['home_club_id'] as String?;
           final awayId = r['away_club_id'] as String?;
           final isHome = homeId == activeClub.id;
-          final opponentName = isHome
-              ? (r['away_club'] is Map
-                      ? (r['away_club']['name'] as String?)
-                      : null) ??
-                  'Rakip'
-              : (r['home_club'] is Map
-                      ? (r['home_club']['name'] as String?)
-                      : null) ??
-                  'Rakip';
+          final opponentClub = isHome ? r['away_club'] : r['home_club'];
+          final opponentName = (opponentClub is Map ? opponentClub['name'] as String? : null) ?? 'Rakip';
+          final opponentUsername = opponentClub is Map ? opponentClub['username'] as String? : null;
           final kickoff = DateTime.tryParse(r['match_date'] as String? ?? '') ??
               now.add(const Duration(days: 3));
           final opponentClubId = isHome ? awayId : homeId;
@@ -419,6 +413,7 @@ class GameProvider extends ChangeNotifier {
           return MatchFixture(
             id: r['id'] as String? ?? UniqueKey().toString(),
             opponentName: opponentName,
+            opponentUsername: opponentUsername,
             kickoff: kickoff,
             isHome: isHome,
             status:

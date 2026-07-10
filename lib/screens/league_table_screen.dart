@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -50,13 +51,17 @@ class LeagueTableScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    seasonState['name']?.toString() ?? 'Sezon',
+                    seasonState['name']?.toString() ?? 'leagueTable.seasonFallback'.tr(),
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
                   const SizedBox(height: 8),
-                  Text('Hafta: ${seasonState['current_week'] ?? 1}'),
+                  Text('leagueTable.weekLabel'.tr(namedArgs: {'week': (seasonState['current_week'] ?? 1).toString()})),
                   Text(
-                    'Durum: ${seasonState['is_completed'] == true ? 'Tamamlandı' : 'Devam ediyor'}',
+                    'leagueTable.statusLabel'.tr(namedArgs: {
+                      'status': seasonState['is_completed'] == true
+                          ? 'leagueTable.statusCompleted'.tr()
+                          : 'leagueTable.statusOngoing'.tr(),
+                    }),
                   ),
                   if ((seasonState['league'] as Map<String, dynamic>?)?['invitation_code'] != null) ...[
                     const SizedBox(height: 12),
@@ -67,7 +72,7 @@ class LeagueTableScreen extends StatelessWidget {
                         onTap: () {
                           Clipboard.setData(ClipboardData(text: code));
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Davet kodu kopyalandı.')),
+                            SnackBar(content: Text('leagueTable.inviteCodeCopied'.tr())),
                           );
                         },
                         child: Container(
@@ -80,7 +85,7 @@ class LeagueTableScreen extends StatelessWidget {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Text('Davet Kodu: ', style: TextStyle(color: AppColors.textMuted)),
+                              Text('leagueTable.inviteCodeLabel'.tr(), style: const TextStyle(color: AppColors.textMuted)),
                               Text(
                                 code,
                                 style: const TextStyle(
@@ -104,10 +109,10 @@ class LeagueTableScreen extends StatelessWidget {
           const SizedBox(height: 16),
         ],
         if (sortedStandings.isEmpty)
-          const Card(
+          Card(
             child: Padding(
-              padding: EdgeInsets.all(24),
-              child: Text('Henüz puan durumu yok.'),
+              padding: const EdgeInsets.all(24),
+              child: Text('leagueTable.noStandingsYet'.tr()),
             ),
           )
         else
@@ -118,16 +123,17 @@ class LeagueTableScreen extends StatelessWidget {
                 headingRowColor: WidgetStateProperty.resolveWith(
                   (states) => AppColors.cardBottom,
                 ),
-                columns: const [
-                  DataColumn(label: Text('#')),
-                  DataColumn(label: Text('Takım')),
-                  DataColumn(label: Text('G')),
-                  DataColumn(label: Text('B')),
-                  DataColumn(label: Text('M')),
-                  DataColumn(label: Text('A+')),
-                  DataColumn(label: Text('A-')),
-                  DataColumn(label: Text('Av.')),
-                  DataColumn(label: Text('P')),
+                columns: [
+                  const DataColumn(label: Text('#')),
+                  DataColumn(label: Text('leagueTable.teamLabel'.tr())),
+                  DataColumn(label: Text('leagueTable.columnPlayed'.tr())),
+                  DataColumn(label: Text('leagueTable.columnWon'.tr())),
+                  DataColumn(label: Text('leagueTable.columnDraw'.tr())),
+                  DataColumn(label: Text('leagueTable.columnLost'.tr())),
+                  DataColumn(label: Text('leagueTable.columnGoalsFor'.tr())),
+                  DataColumn(label: Text('leagueTable.columnGoalsAgainst'.tr())),
+                  DataColumn(label: Text('leagueTable.columnGoalDiff'.tr())),
+                  DataColumn(label: Text('leagueTable.columnPoints'.tr())),
                 ],
                 rows: sortedStandings.asMap().entries.map((entry) {
                   final position = entry.key + 1;
@@ -136,6 +142,7 @@ class LeagueTableScreen extends StatelessWidget {
                       <String, dynamic>{};
                   final teamId = club['id'] as String?;
                   final isActiveClub = teamId != null && teamId == activeClubId;
+                  final played = (row['played'] as num?)?.toInt() ?? 0;
                   final wins = (row['wins'] as num?)?.toInt() ?? 0;
                   final draws = (row['draws'] as num?)?.toInt() ?? 0;
                   final losses = (row['losses'] as num?)?.toInt() ?? 0;
@@ -143,6 +150,7 @@ class LeagueTableScreen extends StatelessWidget {
                   final goalsAgainst = (row['goals_against'] as num?)?.toInt() ?? 0;
                   final goalDifference = goalsFor - goalsAgainst;
                   final points = (row['points'] as num?)?.toInt() ?? 0;
+                  final username = club['username']?.toString();
 
                   return DataRow(
                     color: WidgetStateProperty.resolveWith(
@@ -158,21 +166,33 @@ class LeagueTableScreen extends StatelessWidget {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             ClubBadge(
-                              clubName: club['name']?.toString() ?? 'Takım',
+                              clubName: club['name']?.toString() ?? 'leagueTable.teamLabel'.tr(),
                               kind: isActiveClub ? ClubBadgeKind.home : ClubBadgeKind.neutral,
                               size: 24,
                             ),
                             const SizedBox(width: 8),
-                            Text(
-                              club['name']?.toString() ?? 'Takım',
-                              style: TextStyle(
-                                color: isActiveClub ? AppColors.goldLight : AppColors.textPrimary,
-                                fontWeight: isActiveClub ? FontWeight.bold : FontWeight.normal,
-                              ),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  club['name']?.toString() ?? 'leagueTable.teamLabel'.tr(),
+                                  style: TextStyle(
+                                    color: isActiveClub ? AppColors.goldLight : AppColors.textPrimary,
+                                    fontWeight: isActiveClub ? FontWeight.bold : FontWeight.normal,
+                                  ),
+                                ),
+                                if (username != null)
+                                  Text(
+                                    '@$username',
+                                    style: const TextStyle(color: AppColors.textMuted, fontSize: 10.5),
+                                  ),
+                              ],
                             ),
                           ],
                         ),
                       ),
+                      DataCell(Text('$played', style: const TextStyle(color: AppColors.textMuted))),
                       DataCell(Text('$wins', style: const TextStyle(color: AppColors.textMuted))),
                       DataCell(Text('$draws', style: const TextStyle(color: AppColors.textMuted))),
                       DataCell(Text('$losses', style: const TextStyle(color: AppColors.textMuted))),

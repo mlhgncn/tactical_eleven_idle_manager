@@ -43,7 +43,7 @@ class _FakeAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<dynamic> signUp(String email, String password) async {
+  Future<dynamic> signUp(String email, String password, {String? username}) async {
     _currentUserId = 'test-user-1';
     return _FakeAuthResponse(
       user: _FakeUser(id: currentUserId!),
@@ -306,6 +306,8 @@ class _FakeGameRepository implements GameRepository {
   @override
   Future<List<Map<String, dynamic>>> loadLeagueStandings(String seasonId) async => <Map<String, dynamic>>[];
   @override
+  Future<List<Map<String, dynamic>>> loadMatchEvents(String matchId) async => <Map<String, dynamic>>[];
+  @override
   Future<List<FinancialTransaction>> loadFinancialTransactions(String clubId) async => <FinancialTransaction>[];
 
   @override
@@ -438,9 +440,10 @@ void main() {
 
     final textFields = find.byType(TextFormField);
     expect(textFields, findsWidgets);
-    
-    await tester.enterText(textFields.at(0), 'test@example.com');
-    await tester.enterText(textFields.at(1), 'password123');
+
+    await tester.enterText(textFields.at(0), 'testuser');
+    await tester.enterText(textFields.at(1), 'test@example.com');
+    await tester.enterText(textFields.at(2), 'password123');
     await tester.pumpAndSettle(const Duration(milliseconds: 300));
 
     await tester.tap(find.widgetWithText(GoldButton, 'Kayıt Ol'));

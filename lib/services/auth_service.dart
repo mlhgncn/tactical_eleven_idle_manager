@@ -11,8 +11,12 @@ class AuthService implements AuthRepository {
     return _supabase.auth.signInWithPassword(email: email, password: password);
   }
 
-  Future<dynamic> signUp(String email, String password) {
-    return _supabase.auth.signUp(email: email, password: password);
+  Future<dynamic> signUp(String email, String password, {String? username}) {
+    return _supabase.auth.signUp(
+      email: email,
+      password: password,
+      data: username == null || username.isEmpty ? null : {'username': username},
+    );
   }
 
   Future<void> signOut() {

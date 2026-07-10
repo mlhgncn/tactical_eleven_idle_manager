@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import '../models/transfer_offer.dart';
 
@@ -31,13 +32,13 @@ class TransferOfferCard extends StatelessWidget {
   String _statusLabel() {
     switch (offer.status) {
       case 'accepted':
-        return 'Kabul Edildi';
+        return 'transferOffer.accepted'.tr();
       case 'rejected':
-        return 'Reddedildi';
+        return 'transferOffer.rejected'.tr();
       case 'withdrawn':
-        return 'Geri Çekildi';
+        return 'transferOffer.withdrawn'.tr();
       default:
-        return 'Bekliyor';
+        return 'transferOffer.pending'.tr();
     }
   }
 
@@ -70,7 +71,9 @@ class TransferOfferCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 6),
-          Text(isIncoming ? 'Teklif veren: $counterpartLabel' : 'Hedef kulüp: $counterpartLabel'),
+          Text(isIncoming
+              ? 'transferOffer.fromLabel'.tr(namedArgs: {'name': counterpartLabel})
+              : 'transferOffer.toLabel'.tr(namedArgs: {'name': counterpartLabel})),
           const SizedBox(height: 6),
           Text('${offer.offerAmount} GP', style: theme.textTheme.bodyLarge),
           if (offer.isPending) ...[
@@ -81,14 +84,14 @@ class TransferOfferCard extends StatelessWidget {
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () => onRespond!(true),
-                      child: const Text('Kabul Et'),
+                      child: Text('transferOffer.accept'.tr()),
                     ),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: OutlinedButton(
                       onPressed: () => onRespond!(false),
-                      child: const Text('Reddet'),
+                      child: Text('transferOffer.reject'.tr()),
                     ),
                   ),
                 ],
@@ -96,7 +99,7 @@ class TransferOfferCard extends StatelessWidget {
             else if (!isIncoming && onWithdraw != null)
               OutlinedButton(
                 onPressed: onWithdraw,
-                child: const Text('Teklifi Geri Çek'),
+                child: Text('transferOffer.withdrawAction'.tr()),
               ),
           ],
         ],

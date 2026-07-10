@@ -340,6 +340,22 @@ class SupabaseRepository implements GameRepository {
     });
   }
 
+  /// club_id -> username for every club in [clubIds] that's owned by a real
+  /// user with a username set. profiles' RLS only lets a user read their own
+  /// row, so a plain embedded select (clubs -> profiles) would return null
+  /// for everyone else's club; this SECURITY DEFINER RPC is the narrow,
+  /// safe way to resolve just the public username for a set of clubs.
+  Future<Map<String, String>> _clubOwnerUsernames(Iterable<String> clubIds) async {
+    final ids = clubIds.toSet().toList();
+    if (ids.isEmpty) return const {};
+    final data = await _client.rpc('get_club_owner_usernames', params: {'p_club_ids': ids});
+    if (data is! List<dynamic>) return const {};
+    return {
+      for (final row in data.cast<Map<String, dynamic>>())
+        if (row['username'] != null) row['club_id'] as String: row['username'] as String,
+    };
+  }
+
   Future<List<Map<String, dynamic>>> loadFixturesForClub(String clubId) async {
     final data = await _client
         .from('matches')
@@ -349,8 +365,44 @@ class SupabaseRepository implements GameRepository {
         .order('match_date', ascending: true);
 
     if (data is! List<dynamic>) return <Map<String, dynamic>>[];
+    final fixtures = data.cast<Map<String, dynamic>>();
 
+    final usernames = await _clubOwnerUsernames(fixtures.expand(
+      (f) => [f['home_club_id'] as String, f['away_club_id'] as String],
+    ));
+    if (usernames.isNotEmpty) {
+      for (final f in fixtures) {
+        final homeClub = f['home_club'] as Map<String, dynamic>?;
+        if (homeClub != null) homeClub['username'] = usernames[f['home_club_id']];
+        final awayClub = f['away_club'] as Map<String, dynamic>?;
+        if (awayClub != null) awayClub['username'] = usernames[f['away_club_id']];
+      }
+    }
+
+    return fixtures;
+  }
+
+  Future<List<Map<String, dynamic>>> loadMatchEvents(String matchId) async {
+    final data = await _client
+        .from('match_events')
+        .select('id,minute,event_type,club_id,player_id,assist_player_id,description')
+        .eq('match_id', matchId)
+        .order('minute', ascending: true);
+
+    if (data is! List<dynamic>) return <Map<String, dynamic>>[];
     return data.cast<Map<String, dynamic>>();
+  }
+
+  Future<void> _attachOwnerUsernames(List<Map<String, dynamic>> standingsRows) async {
+    final clubIds = standingsRows
+        .map((row) => (row['club'] as Map?)?['id'] as String?)
+        .whereType<String>();
+    final usernames = await _clubOwnerUsernames(clubIds);
+    if (usernames.isEmpty) return;
+    for (final row in standingsRows) {
+      final club = row['club'] as Map<String, dynamic>?;
+      if (club != null) club['username'] = usernames[club['id']];
+    }
   }
 
   Future<Map<String, dynamic>?> loadCurrentSeasonState(String clubId) async {
@@ -385,7 +437,9 @@ class SupabaseRepository implements GameRepository {
         .order('goals_for', ascending: false);
 
     if (standingsResponse is List<dynamic>) {
-      season['standings'] = standingsResponse.cast<Map<String, dynamic>>();
+      final rows = standingsResponse.cast<Map<String, dynamic>>();
+      await _attachOwnerUsernames(rows);
+      season['standings'] = rows;
     }
 
     return season;
@@ -403,7 +457,9 @@ class SupabaseRepository implements GameRepository {
         .order('goals_for', ascending: false);
 
     if (data is! List<dynamic>) return <Map<String, dynamic>>[];
-    return data.cast<Map<String, dynamic>>();
+    final rows = data.cast<Map<String, dynamic>>();
+    await _attachOwnerUsernames(rows);
+    return rows;
   }
 
   Future<TransferMarketItem?> listPlayerForTransfer({required String playerId, required int askingPrice}) async {

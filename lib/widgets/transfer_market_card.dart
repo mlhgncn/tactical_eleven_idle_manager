@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import '../models/transfer_market_item.dart';
 
@@ -18,24 +19,24 @@ class TransferMarketCard extends StatelessWidget {
     final amount = await showDialog<int>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: Text('${item.playerName} için teklif'),
+        title: Text('transferMarket.offerDialogTitle'.tr(namedArgs: {'playerName': item.playerName})),
         content: TextField(
           controller: controller,
           keyboardType: TextInputType.number,
-          decoration: const InputDecoration(labelText: 'Teklif tutarı (GP)'),
+          decoration: InputDecoration(labelText: 'transferMarket.offerAmountLabel'.tr()),
           autofocus: true,
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Vazgeç'),
+            child: Text('common.cancel'.tr()),
           ),
           TextButton(
             onPressed: () {
               final value = int.tryParse(controller.text.trim());
               Navigator.of(dialogContext).pop(value);
             },
-            child: const Text('Teklif Ver'),
+            child: Text('transferMarket.submitOffer'.tr()),
           ),
         ],
       ),
@@ -69,22 +70,22 @@ class TransferMarketCard extends StatelessWidget {
         children: [
           Text('${item.playerName} (${item.playerPosition})', style: theme.textTheme.titleMedium),
           const SizedBox(height: 12),
-          Text('Satıcı Kulüp: ${item.sellerClubDisplayName}', style: theme.textTheme.bodyLarge),
+          Text('transferMarket.sellerClub'.tr(namedArgs: {'name': item.sellerClubDisplayName}), style: theme.textTheme.bodyLarge),
           if (isOwnPlayer)
-            const Padding(
-              padding: EdgeInsets.only(top: 4.0),
+            Padding(
+              padding: const EdgeInsets.only(top: 4.0),
               child: Chip(
                 visualDensity: VisualDensity.compact,
-                label: Text('Senin kulübün'),
+                label: Text('transferMarket.yourClub'.tr()),
               ),
             ),
           const SizedBox(height: 10),
-          Text('İstenen Fiyat: ${item.askingPrice} GP', style: theme.textTheme.bodyLarge),
+          Text('transferMarket.askingPrice'.tr(namedArgs: {'price': item.askingPrice.toString()}), style: theme.textTheme.bodyLarge),
           const SizedBox(height: 16),
           if (!isOwnPlayer)
             ElevatedButton(
               onPressed: onMakeOffer == null ? null : () => _showOfferDialog(context),
-              child: const Text('Teklif Yap'),
+              child: Text('transferMarket.makeOffer'.tr()),
             ),
         ],
       ),

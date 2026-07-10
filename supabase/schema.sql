@@ -517,6 +517,11 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
+-- SECURITY DEFINER, called by the auto_resolve_matches cron edge function
+-- using the service role (no end-user JWT / auth.uid()) - must NOT gate on
+-- auth.uid(), see supabase/migrations/20260710142613_fix_standings_update_service_role_auth_check.sql.
+-- EXECUTE is revoked from PUBLIC/authenticated/anon below so end users can't
+-- call this non-idempotent function directly to inflate their own stats.
 CREATE OR REPLACE FUNCTION public.update_standings_after_match(p_match_id UUID)
 RETURNS void AS $$
 DECLARE
@@ -524,10 +529,6 @@ DECLARE
   home_row public.league_standings%ROWTYPE;
   away_row public.league_standings%ROWTYPE;
 BEGIN
-  IF auth.uid() IS NULL THEN
-    RAISE EXCEPTION 'Unauthenticated user cannot update standings';
-  END IF;
-
   SELECT * INTO match_row FROM public.matches WHERE id = p_match_id;
   IF NOT FOUND THEN
     RETURN;
@@ -571,8 +572,22 @@ BEGIN
       points = points + CASE WHEN match_row.away_score > match_row.home_score THEN 3 WHEN match_row.home_score = match_row.away_score THEN 1 ELSE 0 END,
       updated_at = now()
   WHERE season_id = match_row.season_id AND club_id = match_row.away_club_id;
+
+  WITH ranked AS (
+    SELECT id, ROW_NUMBER() OVER (
+      ORDER BY points DESC, goal_difference DESC, goals_for DESC
+    ) AS rn
+    FROM public.league_standings
+    WHERE season_id = match_row.season_id
+  )
+  UPDATE public.league_standings ls
+  SET position = ranked.rn
+  FROM ranked
+  WHERE ls.id = ranked.id;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+REVOKE EXECUTE ON FUNCTION public.update_standings_after_match(uuid) FROM PUBLIC, authenticated, anon;
 
 -- place_transfer_bid / accept_transfer_offer / release_expired_transfer_bids
 -- (the old auction-style bidding RPCs) are gone - the transfer market is

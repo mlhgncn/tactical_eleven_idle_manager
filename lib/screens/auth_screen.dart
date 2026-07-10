@@ -23,6 +23,7 @@ class _AuthScreenState extends State<AuthScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _usernameController = TextEditingController();
   bool _isLoading = false;
   bool _isLoginMode = true;
 
@@ -94,6 +95,17 @@ class _AuthScreenState extends State<AuthScreen> {
     return null;
   }
 
+  String? _validateUsername(String? value) {
+    if (_isLoginMode) return null;
+    if (value == null || value.trim().isEmpty) {
+      return 'auth.username_required'.tr();
+    }
+    if (value.trim().length < 3) {
+      return 'auth.username_short'.tr();
+    }
+    return null;
+  }
+
   Future<void> _submit() async {
     print('[AUTH] _submit called, validating form');
     if (!(_formKey.currentState?.validate() ?? false)) {
@@ -103,6 +115,7 @@ class _AuthScreenState extends State<AuthScreen> {
 
     final email = _emailController.text.trim();
     final password = _passwordController.text;
+    final username = _usernameController.text.trim();
     print('[AUTH] Form is valid, setting loading state');
     setState(() => _isLoading = true);
 
@@ -110,7 +123,7 @@ class _AuthScreenState extends State<AuthScreen> {
       print('[AUTH] Starting auth flow. Mode: ${_isLoginMode ? 'login' : 'signup'}');
       final response = _isLoginMode
           ? await widget._authRepository.signIn(email, password)
-          : await widget._authRepository.signUp(email, password);
+          : await widget._authRepository.signUp(email, password, username: username);
 
       print('[AUTH] Got response. User: ${response.user}, Session: ${response.session}');
       
@@ -169,6 +182,7 @@ class _AuthScreenState extends State<AuthScreen> {
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _usernameController.dispose();
     super.dispose();
   }
 
@@ -220,6 +234,22 @@ class _AuthScreenState extends State<AuthScreen> {
                       key: _formKey,
                       child: Column(
                         children: [
+                          if (!_isLoginMode) ...[
+                            TextFormField(
+                              controller: _usernameController,
+                              autocorrect: false,
+                              style: const TextStyle(color: Colors.white),
+                              decoration: InputDecoration(
+                                labelText: 'auth.username'.tr(),
+                                labelStyle: const TextStyle(color: Colors.white70),
+                                prefixIcon: const Icon(Icons.person_outline, color: Colors.white70),
+                                filled: true,
+                                fillColor: Colors.black.withValues(alpha: 0.35),
+                              ),
+                              validator: _validateUsername,
+                            ),
+                            const SizedBox(height: 16),
+                          ],
                           TextFormField(
                             controller: _emailController,
                             keyboardType: TextInputType.emailAddress,

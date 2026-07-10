@@ -1,20 +1,20 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/game_provider.dart';
 import '../widgets/async_state_builder.dart';
 
-const _typeLabels = {
-  'match_income': 'Maç Geliri',
-  'upgrade_sponsor': 'Sponsor Yükseltmesi',
-  'upgrade_club': 'Kulüp Geliştirme',
-  'transfer_revenue': 'Transfer Geliri',
-  'transfer_cost': 'Transfer Gideri',
-  'offline_income': 'Çevrimdışı Gelir',
-  'sign_free_agent': 'Serbest Oyuncu Transferi',
-  'ad_reward': 'Reklam Ödülü',
-};
+Map<String, String> get _typeLabels => {
+      'match_income': 'finance.txMatchIncome'.tr(),
+      'upgrade_sponsor': 'finance.txUpgradeSponsor'.tr(),
+      'upgrade_club': 'finance.clubDevelopmentButton'.tr(),
+      'transfer_revenue': 'finance.txTransferRevenue'.tr(),
+      'transfer_cost': 'finance.txTransferCost'.tr(),
+      'offline_income': 'finance.txOfflineIncome'.tr(),
+      'sign_free_agent': 'finance.txSignFreeAgent'.tr(),
+      'ad_reward': 'finance.txAdReward'.tr(),
+    };
 
 class FinancialTransactionsScreen extends StatelessWidget {
   const FinancialTransactionsScreen({super.key});
@@ -31,12 +31,12 @@ class FinancialTransactionsScreen extends StatelessWidget {
     final errorMessage = provider.transactionsErrorMessage;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Bütçe Hareketleri')),
+      appBar: AppBar(title: Text('finance.budgetTransactionsButton'.tr())),
       body: AsyncStateBuilder(
         isLoading: isLoading,
         errorMessage: errorMessage,
         isEmpty: items.isEmpty,
-        emptyBuilder: () => const Center(child: Text('Henüz bütçe hareketi yok.')),
+        emptyBuilder: () => Center(child: Text('finance.noTransactionsYet'.tr())),
         child: ListView.separated(
           padding: const EdgeInsets.all(16),
           itemCount: items.length,

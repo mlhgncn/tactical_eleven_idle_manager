@@ -61,6 +61,7 @@ const DEFAULT_TACTIC: TacticSnapshot = {
 
 export interface PlayerRow {
   id: string;
+  name: string;
   club_id: string | null;
   position: string;
   current_ability: number;
@@ -405,7 +406,7 @@ export async function resolveMatch(
 
   const { data: playerRows, error: playerError } = await supabase
     .from('players')
-    .select('id,club_id,position,current_ability,age,injury_proneness,fitness,morale,finishing,passing,tackling,composure,determination,injury_duration_weeks,is_suspended,injury_type')
+    .select('id,name,club_id,position,current_ability,age,injury_proneness,fitness,morale,finishing,passing,tackling,composure,determination,injury_duration_weeks,is_suspended,injury_type')
     .in('club_id', clubIds);
   if (playerError) throw new Error(`Oyuncu verileri alınamadı: ${playerError.message}`);
 
@@ -465,7 +466,7 @@ export async function resolveMatch(
     const assist = scorer ? choosePlayer(homePlayers.filter((player) => player.id !== scorer.id)) : null;
     timelineEvents.push(createEvent(
       matchRow.id, randomBetween(1, 90), 'goal', matchRow.home_club_id, scorer?.id ?? null, assist?.id ?? null,
-      scorer ? `${scorer.id} gol attı${assist ? `, asist: ${assist.id}` : ''}` : 'Ev sahibi takım gol attı.',
+      scorer ? `${scorer.name} gol attı${assist ? `, asist: ${assist.name}` : ''}` : 'Ev sahibi takım gol attı.',
     ));
   }
 
@@ -474,7 +475,7 @@ export async function resolveMatch(
     const assist = scorer ? choosePlayer(awayPlayers.filter((player) => player.id !== scorer.id)) : null;
     timelineEvents.push(createEvent(
       matchRow.id, randomBetween(1, 90), 'goal', matchRow.away_club_id, scorer?.id ?? null, assist?.id ?? null,
-      scorer ? `${scorer.id} gol attı${assist ? `, asist: ${assist.id}` : ''}` : 'Deplasman takımı gol attı.',
+      scorer ? `${scorer.name} gol attı${assist ? `, asist: ${assist.name}` : ''}` : 'Deplasman takımı gol attı.',
     ));
   }
 
@@ -486,7 +487,7 @@ export async function resolveMatch(
       timelineEvents.push(createEvent(
         matchRow.id, randomBetween(10, 85), 'penalty',
         side === 'home' ? matchRow.home_club_id : matchRow.away_club_id, player.id, null,
-        `${player.id} penaltı kazandı veya kullandı.`,
+        `${player.name} penaltı kazandı veya kullandı.`,
       ));
     }
   }
@@ -504,7 +505,7 @@ export async function resolveMatch(
         timelineEvents.push(createEvent(
           matchRow.id, randomBetween(10, 85), cardType,
           side === 'home' ? matchRow.home_club_id : matchRow.away_club_id, player.id, null,
-          `${player.id} ${cardType === 'red_card' ? 'kırmızı kart gördü' : 'sarı kart gördü'}.`,
+          `${player.name} ${cardType === 'red_card' ? 'kırmızı kart gördü' : 'sarı kart gördü'}.`,
         ));
       }
     }
@@ -525,7 +526,7 @@ export async function resolveMatch(
 
     timelineEvents.push(createEvent(
       matchRow.id, randomBetween(10, 75), 'injury', player.club_id, player.id, null,
-      `${player.id} ${injury.injuryType} yaşadı.`,
+      `${player.name} ${injury.injuryType} yaşadı.`,
     ));
   }
 
@@ -539,7 +540,7 @@ export async function resolveMatch(
       timelineEvents.push(createEvent(
         matchRow.id, randomBetween(55, 90), 'substitution',
         side === 'home' ? matchRow.home_club_id : matchRow.away_club_id, fromPlayer.id, toPlayer.id,
-        `${fromPlayer.id} yerine ${toPlayer.id} oyuna girdi.`,
+        `${fromPlayer.name} yerine ${toPlayer.name} oyuna girdi.`,
       ));
     }
   }
@@ -582,7 +583,8 @@ export async function resolveMatch(
     }
   }
 
-  await supabase.rpc('update_standings_after_match', { p_match_id: matchRow.id });
+  const { error: standingsError } = await supabase.rpc('update_standings_after_match', { p_match_id: matchRow.id });
+  if (standingsError) throw new Error(`Puan durumu güncellenirken hata oluştu: ${standingsError.message}`);
 
   return {
     matchId: matchRow.id,

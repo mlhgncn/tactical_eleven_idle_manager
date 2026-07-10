@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -38,7 +39,7 @@ class _TransferMarketScreenState extends State<TransferMarketScreen> {
               scrollDirection: Axis.horizontal,
               children: [
                 ChoiceChip(
-                  label: const Text('Tümü'),
+                  label: Text('transferMarket.allPositions'.tr()),
                   selected: _positionFilter == null,
                   onSelected: (_) => setState(() => _positionFilter = null),
                 ),
@@ -56,7 +57,7 @@ class _TransferMarketScreenState extends State<TransferMarketScreen> {
           ),
           Row(
             children: [
-              const Text('Güç:', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+              Text('transferMarket.abilityLabel'.tr(), style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
               Expanded(
                 child: RangeSlider(
                   min: 0,
@@ -83,12 +84,12 @@ class _TransferMarketScreenState extends State<TransferMarketScreen> {
 
     if (activeClub == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Transfer Pazarı')),
-        body: const Center(
+        appBar: AppBar(title: Text('transferMarket.title'.tr())),
+        body: Center(
           child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 24),
+            padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Text(
-              'Transfer pazarına erişmek için önce bir kulüp seçmeli veya oluşturmalısınız.',
+              'transferMarket.noClubMessage'.tr(),
               textAlign: TextAlign.center,
             ),
           ),
@@ -110,12 +111,16 @@ class _TransferMarketScreenState extends State<TransferMarketScreen> {
       length: 3,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Transfer Pazarı'),
+          title: Text('transferMarket.title'.tr()),
           bottom: TabBar(
             tabs: [
-              const Tab(text: 'Listelenen'),
-              const Tab(text: 'Serbest Oyuncular'),
-              Tab(text: pendingIncomingCount > 0 ? 'Teklifler ($pendingIncomingCount)' : 'Teklifler'),
+              Tab(text: 'transferMarket.tabListed'.tr()),
+              Tab(text: 'transferMarket.tabFreeAgents'.tr()),
+              Tab(
+                text: pendingIncomingCount > 0
+                    ? 'transferMarket.tabOffersWithCount'.tr(namedArgs: {'count': pendingIncomingCount.toString()})
+                    : 'transferMarket.tabOffers'.tr(),
+              ),
             ],
           ),
         ),
@@ -131,10 +136,10 @@ class _TransferMarketScreenState extends State<TransferMarketScreen> {
                           onRefresh: () => context.read<GameProvider>().refreshGameState(),
                           child: listings.isEmpty
                               ? ListView(
-                                  children: const [
+                                  children: [
                                     Padding(
-                                      padding: EdgeInsets.only(top: 80),
-                                      child: Center(child: Text('Filtreye uyan listelenen oyuncu yok.')),
+                                      padding: const EdgeInsets.only(top: 80),
+                                      child: Center(child: Text('transferMarket.noListedMatch'.tr())),
                                     ),
                                   ],
                                 )
@@ -153,7 +158,7 @@ class _TransferMarketScreenState extends State<TransferMarketScreen> {
                                               );
                                           if (!context.mounted) return;
                                           ScaffoldMessenger.of(context).showSnackBar(
-                                            const SnackBar(content: Text('Teklif gönderildi')),
+                                            SnackBar(content: Text('transferMarket.offerSent'.tr())),
                                           );
                                         } catch (error) {
                                           if (!context.mounted) return;
@@ -177,10 +182,10 @@ class _TransferMarketScreenState extends State<TransferMarketScreen> {
                           onRefresh: () => context.read<GameProvider>().refreshGameState(),
                           child: freeAgents.isEmpty
                               ? ListView(
-                                  children: const [
+                                  children: [
                                     Padding(
-                                      padding: EdgeInsets.only(top: 80),
-                                      child: Center(child: Text('Filtreye uyan serbest oyuncu yok.')),
+                                      padding: const EdgeInsets.only(top: 80),
+                                      child: Center(child: Text('transferMarket.noFreeAgentMatch'.tr())),
                                     ),
                                   ],
                                 )
@@ -195,7 +200,7 @@ class _TransferMarketScreenState extends State<TransferMarketScreen> {
                                           await context.read<GameProvider>().signFreeAgent(playerId: player.id);
                                           if (!context.mounted) return;
                                           ScaffoldMessenger.of(context).showSnackBar(
-                                            SnackBar(content: Text('${player.name} kadroya katıldı')),
+                                            SnackBar(content: Text('transferMarket.playerJoinedSquad'.tr(namedArgs: {'name': player.name}))),
                                           );
                                         } catch (error) {
                                           if (!context.mounted) return;
@@ -215,10 +220,10 @@ class _TransferMarketScreenState extends State<TransferMarketScreen> {
                     onRefresh: () => context.read<GameProvider>().refreshGameState(),
                     child: (incoming.isEmpty && outgoing.isEmpty)
                         ? ListView(
-                            children: const [
+                            children: [
                               Padding(
-                                padding: EdgeInsets.only(top: 80),
-                                child: Center(child: Text('Henüz bir teklif yok.')),
+                                padding: const EdgeInsets.only(top: 80),
+                                child: Center(child: Text('transferMarket.noOffersYet'.tr())),
                               ),
                             ],
                           )
@@ -226,9 +231,9 @@ class _TransferMarketScreenState extends State<TransferMarketScreen> {
                             padding: const EdgeInsets.only(top: 12, bottom: 24),
                             children: [
                               if (incoming.isNotEmpty) ...[
-                                const Padding(
-                                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                  child: Text('Gelen Teklifler', style: TextStyle(fontWeight: FontWeight.bold)),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                  child: Text('transferMarket.incomingOffers'.tr(), style: const TextStyle(fontWeight: FontWeight.bold)),
                                 ),
                                 for (final offer in incoming)
                                   TransferOfferCard(
@@ -242,7 +247,7 @@ class _TransferMarketScreenState extends State<TransferMarketScreen> {
                                             );
                                         if (!context.mounted) return;
                                         ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(content: Text(accept ? 'Teklif kabul edildi' : 'Teklif reddedildi')),
+                                          SnackBar(content: Text(accept ? 'transferMarket.offerAccepted'.tr() : 'transferMarket.offerRejected'.tr())),
                                         );
                                       } catch (error) {
                                         if (!context.mounted) return;
@@ -254,9 +259,9 @@ class _TransferMarketScreenState extends State<TransferMarketScreen> {
                                   ),
                               ],
                               if (outgoing.isNotEmpty) ...[
-                                const Padding(
-                                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                  child: Text('Gönderdiğim Teklifler', style: TextStyle(fontWeight: FontWeight.bold)),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                  child: Text('transferMarket.outgoingOffers'.tr(), style: const TextStyle(fontWeight: FontWeight.bold)),
                                 ),
                                 for (final offer in outgoing)
                                   TransferOfferCard(
@@ -267,7 +272,7 @@ class _TransferMarketScreenState extends State<TransferMarketScreen> {
                                         await context.read<GameProvider>().withdrawTransferOffer(offerId: offer.id);
                                         if (!context.mounted) return;
                                         ScaffoldMessenger.of(context).showSnackBar(
-                                          const SnackBar(content: Text('Teklif geri çekildi')),
+                                          SnackBar(content: Text('transferMarket.offerWithdrawn'.tr())),
                                         );
                                       } catch (error) {
                                         if (!context.mounted) return;

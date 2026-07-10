@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 
 import '../theme/app_assets.dart';
@@ -21,7 +22,7 @@ class FormStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (results.isEmpty) {
-      return Text('Henüz maç oynanmadı', style: Theme.of(context).textTheme.bodySmall);
+      return Text('match.noFormYet'.tr(), style: Theme.of(context).textTheme.bodySmall);
     }
     return Row(
       mainAxisSize: MainAxisSize.min,

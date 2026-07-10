@@ -25,6 +25,7 @@ abstract class GameRepository {
   Future<Map<String, dynamic>?> awardAdReward({required String rewardType, int? amount});
   Future<List<TransferMarketItem>> loadTransferMarket();
   Future<List<Map<String, dynamic>>> loadFixturesForClub(String clubId);
+  Future<List<Map<String, dynamic>>> loadMatchEvents(String matchId);
   Future<Map<String, dynamic>?> loadCurrentSeasonState(String clubId);
   Future<List<Map<String, dynamic>>> loadLeagueStandings(String seasonId);
   Future<List<FinancialTransaction>> loadFinancialTransactions(String clubId);

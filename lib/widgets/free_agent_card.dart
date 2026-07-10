@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import '../models/player_fm.dart';
 
@@ -33,17 +34,21 @@ class FreeAgentCard extends StatelessWidget {
               Expanded(
                 child: Text('${player.name} (${player.position})', style: theme.textTheme.titleMedium),
               ),
-              const Chip(visualDensity: VisualDensity.compact, label: Text('Serbest')),
+              Chip(visualDensity: VisualDensity.compact, label: Text('transferMarket.freeAgentChip'.tr())),
             ],
           ),
           const SizedBox(height: 8),
-          Text('Yaş: ${player.age} · Güç: ${player.currentAbility} · Potansiyel: ${player.potentialAbility}'),
+          Text('transferMarket.ageAbilityPotential'.tr(namedArgs: {
+            'age': player.age.toString(),
+            'ability': player.currentAbility.toString(),
+            'potential': player.potentialAbility.toString(),
+          })),
           const SizedBox(height: 10),
-          Text('İmza Bedeli: ${player.signingCost} GP', style: theme.textTheme.bodyLarge),
+          Text('transferMarket.signingCost'.tr(namedArgs: {'cost': player.signingCost.toString()}), style: theme.textTheme.bodyLarge),
           const SizedBox(height: 16),
           ElevatedButton(
             onPressed: onSign,
-            child: const Text('Satın Al'),
+            child: Text('transferMarket.signPlayer'.tr()),
           ),
         ],
       ),

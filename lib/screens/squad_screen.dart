@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -6,6 +7,7 @@ import '../models/tactics.dart';
 import '../providers/game_provider.dart';
 import '../theme/app_assets.dart';
 import '../theme/app_theme.dart';
+import '../widgets/timed_progress_bar.dart';
 import 'player_detail_screen.dart';
 
 class _FormationSlot {
@@ -130,6 +132,22 @@ String _initialsOf(String name) {
 
 String _firstNameOf(String name) => name.trim().split(RegExp(r'\s+')).first;
 
+const _positionGroupOrder = ['GK', 'DEF', 'MID', 'FOR'];
+const _positionMismatchPenalties = [0.0, 0.15, 0.30, 0.50];
+
+/// A player's contribution when placed in [slotGroup] (GK/DEF/MID/FOR),
+/// scaled down the further [slotGroup] is from the player's own position
+/// group - full ability in their own group, increasingly weaker the more
+/// out-of-position they are (e.g. a DEF playing FOR is 2 groups away).
+int effectiveAbilityInSlot(PlayerFM player, String slotGroup) {
+  final ownIndex = _positionGroupOrder.indexOf(player.positionGroup);
+  final slotIndex = _positionGroupOrder.indexOf(slotGroup);
+  if (ownIndex < 0 || slotIndex < 0) return player.currentAbility;
+  final distance = (ownIndex - slotIndex).abs().clamp(0, _positionMismatchPenalties.length - 1);
+  final penalty = _positionMismatchPenalties[distance];
+  return (player.currentAbility * (1 - penalty)).round();
+}
+
 class SquadScreen extends StatelessWidget {
   const SquadScreen({super.key});
 
@@ -143,7 +161,7 @@ class SquadScreen extends StatelessWidget {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
     if (squad.isEmpty) {
-      return const Scaffold(body: Center(child: Text('Kadro yüklenemedi.')));
+      return Scaffold(body: Center(child: Text('squad.loadFailed'.tr())));
     }
 
     final formation = tactics?.formation ?? Formation.f442;
@@ -154,12 +172,16 @@ class SquadScreen extends StatelessWidget {
       ..sort((a, b) => b.currentAbility.compareTo(a.currentAbility));
 
     final ratedStarters = starters.whereType<PlayerFM>().toList();
+    final effectiveAbilities = <String, int>{
+      for (var i = 0; i < slots.length; i++)
+        if (starters[i] != null) starters[i]!.id: effectiveAbilityInSlot(starters[i]!, slots[i].group),
+    };
     final avgPower = ratedStarters.isEmpty
         ? 0
-        : (ratedStarters.map((p) => p.currentAbility).reduce((a, b) => a + b) / ratedStarters.length).round();
+        : (ratedStarters.map((p) => effectiveAbilities[p.id]!).reduce((a, b) => a + b) / ratedStarters.length).round();
     final topRatedId = ratedStarters.isEmpty
         ? null
-        : ratedStarters.reduce((a, b) => a.currentAbility >= b.currentAbility ? a : b).id;
+        : ratedStarters.reduce((a, b) => effectiveAbilities[a.id]! >= effectiveAbilities[b.id]! ? a : b).id;
 
     return Scaffold(
       appBar: AppBar(
@@ -167,8 +189,8 @@ class SquadScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('Kadro', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 19)),
-            Text('İlk 11 · Ortalama güç $avgPower', style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
+            Text('squad.title'.tr(), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 19)),
+            Text('squad.avgPowerSubtitle'.tr(namedArgs: {'power': avgPower.toString()}), style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
           ],
         ),
         actions: [
@@ -203,11 +225,11 @@ class SquadScreen extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('YEDEK KULÜBESİ',
-                    style: TextStyle(color: AppColors.textMuted, fontWeight: FontWeight.bold, fontSize: 12, letterSpacing: 1)),
+                Text('squad.benchSectionTitle'.tr(),
+                    style: const TextStyle(color: AppColors.textMuted, fontWeight: FontWeight.bold, fontSize: 12, letterSpacing: 1)),
                 GestureDetector(
                   onTap: () => _showFullBench(context, provider, starters, bench),
-                  child: const Text('Tümü ›', style: TextStyle(color: AppColors.goldLight, fontWeight: FontWeight.bold)),
+                  child: Text('squad.seeAllBench'.tr(), style: const TextStyle(color: AppColors.goldLight, fontWeight: FontWeight.bold)),
                 ),
               ],
             ),
@@ -215,7 +237,7 @@ class SquadScreen extends StatelessWidget {
             SizedBox(
               height: 92,
               child: bench.isEmpty
-                  ? const Center(child: Text('Yedek oyuncu yok.', style: TextStyle(color: AppColors.textMuted)))
+                  ? Center(child: Text('squad.noBenchPlayers'.tr(), style: const TextStyle(color: AppColors.textMuted)))
                   : ListView.separated(
                       scrollDirection: Axis.horizontal,
                       itemCount: bench.length,
@@ -226,6 +248,35 @@ class SquadScreen extends StatelessWidget {
                       ),
                     ),
             ),
+            if (squad.any((p) => p.isDeveloping)) ...[
+              const SizedBox(height: 24),
+              Text('squad.developmentInProgress'.tr(),
+                  style: const TextStyle(color: AppColors.textMuted, fontWeight: FontWeight.bold, fontSize: 12, letterSpacing: 1)),
+              const SizedBox(height: 12),
+              ...squad.where((p) => p.isDeveloping).map((player) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(14),
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => PlayerDetailScreen(player: player)),
+                      ),
+                      child: Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [AppColors.cardTop, AppColors.cardBottom]),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: AppColors.cardBorder),
+                        ),
+                        child: TimedProgressBar(
+                          completesAt: player.developmentCompletesAt!,
+                          totalDuration: const Duration(hours: 2),
+                          label: '${player.name} · ${player.position}',
+                        ),
+                      ),
+                    ),
+                  )),
+            ],
           ],
         ),
       ),
@@ -252,7 +303,7 @@ class SquadScreen extends StatelessWidget {
     provider.saveTactics(updated).catchError((error) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Formasyon kaydedilemedi: $error')),
+          SnackBar(content: Text('squad.formationSaveFailed'.tr(namedArgs: {'error': error.toString()}))),
         );
       }
     });
@@ -271,13 +322,13 @@ class SquadScreen extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text('Yedek Kulübesi', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
+                Text('squad.benchSheetTitle'.tr(), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
                 const SizedBox(height: 12),
                 Flexible(
                   child: bench.isEmpty
-                      ? const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 24),
-                          child: Center(child: Text('Yedek oyuncu yok.', style: TextStyle(color: AppColors.textMuted))),
+                      ? Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 24),
+                          child: Center(child: Text('squad.noBenchPlayers'.tr(), style: const TextStyle(color: AppColors.textMuted))),
                         )
                       : ListView.separated(
                           shrinkWrap: true,
@@ -298,7 +349,7 @@ class SquadScreen extends StatelessWidget {
                               trailing: player.hasActiveInjury
                                   ? null
                                   : IconButton(
-                                      tooltip: 'İlk 11\'e al',
+                                      tooltip: 'squad.addToStartingXI'.tr(),
                                       icon: const Icon(Icons.swap_horiz, color: AppColors.goldLight),
                                       onPressed: () {
                                         Navigator.pop(context);
@@ -325,7 +376,7 @@ class SquadScreen extends StatelessWidget {
     if (benchPlayer.hasActiveInjury) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('${benchPlayer.name} kadroya alınamaz: ${benchPlayer.injuryDisplayLabel}'),
+          content: Text('squad.cannotAddToLineup'.tr(namedArgs: {'name': benchPlayer.name, 'reason': benchPlayer.injuryDisplayLabel})),
         ),
       );
       return;
@@ -342,7 +393,7 @@ class SquadScreen extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text('${_firstNameOf(benchPlayer.name)} kimin yerine oynasın?',
+                Text('squad.replaceWhoQuestion'.tr(namedArgs: {'name': _firstNameOf(benchPlayer.name)}),
                     style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                 const SizedBox(height: 12),
                 Flexible(
@@ -401,7 +452,7 @@ class SquadScreen extends StatelessWidget {
     provider.saveTactics(updated).catchError((error) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Kadro değişikliği kaydedilemedi: $error')),
+          SnackBar(content: Text('squad.lineupSaveFailed'.tr(namedArgs: {'error': error.toString()}))),
         );
       }
     });
@@ -484,6 +535,7 @@ class _Pitch extends StatelessWidget {
                       height: 72,
                       child: _PlayerToken(
                         player: starters[i]!,
+                        slotGroup: slots[i].group,
                         isGoalkeeper: slots[i].group == 'GK',
                         isTopRated: starters[i]!.id == topRatedId,
                         isCaptain: starters[i]!.id == captainId,
@@ -523,6 +575,7 @@ class _PitchMarkingsPainter extends CustomPainter {
 class _PlayerToken extends StatelessWidget {
   const _PlayerToken({
     required this.player,
+    required this.slotGroup,
     required this.isGoalkeeper,
     required this.isTopRated,
     required this.isCaptain,
@@ -530,6 +583,7 @@ class _PlayerToken extends StatelessWidget {
   });
 
   final PlayerFM player;
+  final String slotGroup;
   final bool isGoalkeeper;
   final bool isTopRated;
   final bool isCaptain;
@@ -537,8 +591,12 @@ class _PlayerToken extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isOutOfPosition = player.positionGroup != slotGroup;
+    final effectiveAbility = effectiveAbilityInSlot(player, slotGroup);
     final circleColor = isGoalkeeper ? AppColors.green : (isTopRated ? AppColors.gold : AppColors.cardTop);
     final textColor = isGoalkeeper || isTopRated ? AppColors.goldOnGoldText : Colors.white;
+    final badgeColor = isOutOfPosition ? AppColors.red : AppColors.gold;
+    final badgeTextColor = isOutOfPosition ? Colors.white : AppColors.goldOnGoldText;
 
     return GestureDetector(
       onTap: onTap,
@@ -570,16 +628,26 @@ class _PlayerToken extends StatelessWidget {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
                     decoration: BoxDecoration(
-                      color: AppColors.gold,
+                      color: badgeColor,
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(color: AppColors.background, width: 1.5),
                     ),
                     child: Text(
-                      '${player.currentAbility}',
-                      style: const TextStyle(color: AppColors.goldOnGoldText, fontWeight: FontWeight.bold, fontSize: 10),
+                      '$effectiveAbility',
+                      style: TextStyle(color: badgeTextColor, fontWeight: FontWeight.bold, fontSize: 10),
                     ),
                   ),
                 ),
+                if (isOutOfPosition)
+                  Positioned(
+                    bottom: -4,
+                    right: -6,
+                    child: Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: const BoxDecoration(color: AppColors.red, shape: BoxShape.circle),
+                      child: const Icon(Icons.priority_high, size: 9, color: Colors.white),
+                    ),
+                  ),
                 if (isCaptain)
                   Positioned(
                     bottom: -4,
@@ -587,7 +655,7 @@ class _PlayerToken extends StatelessWidget {
                     child: Container(
                       padding: const EdgeInsets.all(2),
                       decoration: const BoxDecoration(color: AppColors.blue, shape: BoxShape.circle),
-                      child: const Text('K', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.white)),
+                      child: Text('squad.captainBadge'.tr(), style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.white)),
                     ),
                   ),
               ],

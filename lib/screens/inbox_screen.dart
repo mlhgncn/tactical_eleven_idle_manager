@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -19,10 +20,10 @@ class InboxScreen extends StatelessWidget {
       onRefresh: () => context.read<GameProvider>().refreshGameState(),
       child: messages.isEmpty
           ? ListView(
-              children: const [
+              children: [
                 Padding(
-                  padding: EdgeInsets.only(top: 80),
-                  child: Center(child: Text('Gelen kutunuz boş.')),
+                  padding: const EdgeInsets.only(top: 80),
+                  child: Center(child: Text('inbox.empty'.tr())),
                 ),
               ],
             )
@@ -49,14 +50,14 @@ class InboxScreen extends StatelessWidget {
                               } catch (error) {
                                 if (context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('Mesaj işaretlenemedi: $error')),
+                                    SnackBar(content: Text('inbox.markFailed'.tr(namedArgs: {'error': error.toString()}))),
                                   );
                                 }
                                 return;
                               }
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Mesaj okundu olarak işaretlendi.')),
+                                  SnackBar(content: Text('inbox.markedAsRead'.tr())),
                                 );
                               }
                             },

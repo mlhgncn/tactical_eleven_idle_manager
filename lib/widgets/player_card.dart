@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 
 import '../models/player_fm.dart';
@@ -70,7 +71,7 @@ class PlayerCard extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    'GÜÇ',
+                    'playerCard.power'.tr(),
                     style: TextStyle(
                       color: AppColors.goldOnGoldText,
                       fontWeight: FontWeight.bold,
@@ -155,21 +156,21 @@ class PlayerCard extends StatelessWidget {
             top: 0.745,
             w: 0.28,
             h: 0.16,
-            child: _statBox('HIZ', player.determination, width),
+            child: _statBox('playerCard.speed'.tr(), player.determination, width),
           ),
           at(
             left: 0.36,
             top: 0.745,
             w: 0.28,
             h: 0.16,
-            child: _statBox('ŞUT', player.finishing, width),
+            child: _statBox('playerCard.shot'.tr(), player.finishing, width),
           ),
           at(
             left: 0.65,
             top: 0.745,
             w: 0.28,
             h: 0.16,
-            child: _statBox('PAS', player.passing, width),
+            child: _statBox('playerCard.pass'.tr(), player.passing, width),
           ),
         ],
       ),

@@ -1,20 +1,12 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/game_provider.dart';
+import '../widgets/timed_progress_bar.dart';
 
 class DevelopmentScreen extends StatelessWidget {
   const DevelopmentScreen({super.key});
-
-  String _formatRemaining(DateTime completesAt) {
-    final remaining = completesAt.difference(DateTime.now());
-    if (remaining.isNegative) return 'birazdan';
-    final days = remaining.inDays;
-    final hours = remaining.inHours % 24;
-    if (days > 0) return '$days gün $hours sa';
-    final minutes = remaining.inMinutes % 60;
-    return '$hours sa $minutes dk';
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,13 +19,18 @@ class DevelopmentScreen extends StatelessWidget {
 
     final isUpgrading = club.isDevelopmentUpgrading;
     final upgradingLabel = switch (club.developmentUpgradeType) {
-      'stadium' => 'Stadyum genişletme',
-      'facility' => 'Tesis yükseltmesi',
-      _ => 'Bilet fiyatı güncellemesi',
+      'stadium' => 'development.upgradeStadium'.tr(),
+      'facility' => 'development.upgradeFacility'.tr(),
+      _ => 'development.upgradeTicketPrice'.tr(),
     };
     final stadiumMaxed = club.stadiumCapacity >= 100000;
     final facilityMaxed = club.trainingFacilityLevel >= 10;
     final ticketMaxed = club.ticketPriceLevel >= 10;
+    final upgradingDurationDays = switch (club.developmentUpgradeType) {
+      'stadium' => (1 + ((club.stadiumCapacity - 15000) ~/ 10000)).clamp(1, 14),
+      'facility' => 2 * club.trainingFacilityLevel - 1,
+      _ => 2 * club.ticketPriceLevel - 1,
+    };
 
     Future<void> startUpgrade(String upgradeType, int targetValue, String startedMessage) async {
       try {
@@ -56,7 +53,7 @@ class DevelopmentScreen extends StatelessWidget {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Kulüp Geliştirme')),
+      appBar: AppBar(title: Text('finance.clubDevelopmentButton'.tr())),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -70,13 +67,16 @@ class DevelopmentScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('İnşaat sürüyor: $upgradingLabel', style: Theme.of(context).textTheme.titleMedium),
+                      Text('development.constructionOngoing'.tr(namedArgs: {'label': upgradingLabel}), style: Theme.of(context).textTheme.titleMedium),
+                      const SizedBox(height: 12),
+                      TimedProgressBar(
+                        completesAt: club.developmentCompletesAt!,
+                        totalDuration: Duration(days: upgradingDurationDays),
+                      ),
                       const SizedBox(height: 8),
-                      Text('Tamamlanmasına kalan süre: ${_formatRemaining(club.developmentCompletesAt!)}'),
-                      const SizedBox(height: 4),
-                      const Text(
-                        'Uygulama kapalıyken de süre ilerler.',
-                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                      Text(
+                        'development.progressesOffline'.tr(),
+                        style: const TextStyle(fontSize: 12, color: Colors.grey),
                       ),
                     ],
                   ),
@@ -86,11 +86,11 @@ class DevelopmentScreen extends StatelessWidget {
             ],
             Card(
               child: ListTile(
-                title: const Text('Stadyum Kapasitesi'),
-                subtitle: Text(stadiumMaxed ? '${club.stadiumCapacity} (maksimum)' : '${club.stadiumCapacity}'),
+                title: Text('finance.stadiumCapacity'.tr()),
+                subtitle: Text(stadiumMaxed ? 'development.valueMax'.tr(namedArgs: {'value': club.stadiumCapacity.toString()}) : '${club.stadiumCapacity}'),
                 trailing: Builder(builder: (ctx) {
                   if (stadiumMaxed) {
-                    return const Chip(label: Text('MAX'));
+                    return Chip(label: Text('development.maxChip'.tr()));
                   }
                   const increment = 2500;
                   final newCapacity = club.stadiumCapacity + increment;
@@ -99,8 +99,8 @@ class DevelopmentScreen extends StatelessWidget {
                   return ElevatedButton(
                     onPressed: provider.isBusy || isUpgrading
                         ? null
-                        : () => startUpgrade('stadium', newCapacity, 'Stadyum genişletme başlatıldı.'),
-                    child: Text('Başlat ($cost GP, $durationDays gün)'),
+                        : () => startUpgrade('stadium', newCapacity, 'development.stadiumUpgradeStarted'.tr()),
+                    child: Text('development.startButton'.tr(namedArgs: {'cost': cost.toString(), 'days': durationDays.toString()})),
                   );
                 }),
               ),
@@ -108,11 +108,11 @@ class DevelopmentScreen extends StatelessWidget {
             const SizedBox(height: 12),
             Card(
               child: ListTile(
-                title: const Text('Tesis Seviyesi'),
-                subtitle: Text(facilityMaxed ? '${club.trainingFacilityLevel} (maksimum)' : '${club.trainingFacilityLevel}'),
+                title: Text('finance.facilityLevel'.tr()),
+                subtitle: Text(facilityMaxed ? 'development.valueMax'.tr(namedArgs: {'value': club.trainingFacilityLevel.toString()}) : '${club.trainingFacilityLevel}'),
                 trailing: Builder(builder: (ctx) {
                   if (facilityMaxed) {
-                    return const Chip(label: Text('MAX'));
+                    return Chip(label: Text('development.maxChip'.tr()));
                   }
                   final newLevel = club.trainingFacilityLevel + 1;
                   final cost = newLevel * 15000;
@@ -120,8 +120,8 @@ class DevelopmentScreen extends StatelessWidget {
                   return ElevatedButton(
                     onPressed: provider.isBusy || isUpgrading
                         ? null
-                        : () => startUpgrade('facility', newLevel, 'Tesis yükseltmesi başlatıldı.'),
-                    child: Text('Başlat ($cost GP, $durationDays gün)'),
+                        : () => startUpgrade('facility', newLevel, 'development.facilityUpgradeStarted'.tr()),
+                    child: Text('development.startButton'.tr(namedArgs: {'cost': cost.toString(), 'days': durationDays.toString()})),
                   );
                 }),
               ),
@@ -129,13 +129,13 @@ class DevelopmentScreen extends StatelessWidget {
             const SizedBox(height: 12),
             Card(
               child: ListTile(
-                title: const Text('Bilet Fiyatı'),
+                title: Text('finance.ticketPrice'.tr()),
                 subtitle: Text(ticketMaxed
-                    ? '${club.ticketPrice} GP (maksimum)'
-                    : '${club.ticketPrice} GP (seviye ${club.ticketPriceLevel}/10)'),
+                    ? 'development.ticketPriceMax'.tr(namedArgs: {'price': club.ticketPrice.toString()})
+                    : 'development.ticketPriceLeveled'.tr(namedArgs: {'price': club.ticketPrice.toString(), 'level': club.ticketPriceLevel.toString()})),
                 trailing: Builder(builder: (ctx) {
                   if (ticketMaxed) {
-                    return const Chip(label: Text('MAX'));
+                    return Chip(label: Text('development.maxChip'.tr()));
                   }
                   final newLevel = club.ticketPriceLevel + 1;
                   final newPrice = 20 + (newLevel - 1) * 8;
@@ -144,14 +144,14 @@ class DevelopmentScreen extends StatelessWidget {
                   return ElevatedButton(
                     onPressed: provider.isBusy || isUpgrading
                         ? null
-                        : () => startUpgrade('ticket_price', newLevel, 'Bilet fiyatı güncellemesi başlatıldı ($newPrice GP\'ye).'),
-                    child: Text('Başlat ($cost GP, $durationDays gün)'),
+                        : () => startUpgrade('ticket_price', newLevel, 'development.ticketPriceUpgradeStarted'.tr(namedArgs: {'price': newPrice.toString()})),
+                    child: Text('development.startButton'.tr(namedArgs: {'cost': cost.toString(), 'days': durationDays.toString()})),
                   );
                 }),
               ),
             ),
             const SizedBox(height: 24),
-            Text('Bütçe: ${club.budget} GP', style: Theme.of(context).textTheme.headlineSmall),
+            Text('development.budgetLabel'.tr(namedArgs: {'amount': club.budget.toString()}), style: Theme.of(context).textTheme.headlineSmall),
             if (provider.isBusy) ...[
               const SizedBox(height: 16),
               const Center(child: CircularProgressIndicator()),
