@@ -8,6 +8,8 @@ import '../models/transfer_offer.dart';
 import '../models/transfer_history_entry.dart';
 import '../models/tactics.dart';
 import '../models/financial_transaction.dart';
+import '../models/player_pack.dart';
+import '../models/diamond_product.dart';
 
 abstract class GameRepository {
   String? get currentUserId;
@@ -40,6 +42,14 @@ abstract class GameRepository {
   Future<void> withdrawTransferOffer({required String offerId});
   Future<List<TransferOffer>> loadIncomingTransferOffers(String clubId);
   Future<List<TransferOffer>> loadOutgoingTransferOffers(String clubId);
+  Future<List<PlayerPack>> loadPlayerPacks();
+  Future<List<PlayerFM>> openPlayerPack({required String packId});
+  Future<List<DiamondProduct>> loadDiamondProducts();
+  Future<Map<String, dynamic>> verifyIapPurchase({
+    required String receiptData,
+    required String productId,
+    required String transactionId,
+  });
   Future<bool> markMessageAsRead(String messageId);
   Future<ClubInfo?> startClubDevelopment({
     required String clubId,

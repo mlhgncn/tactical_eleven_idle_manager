@@ -9,6 +9,7 @@ import '../theme/app_theme.dart';
 import '../widgets/club_badge.dart';
 import '../widgets/form_strip.dart';
 import '../widgets/themed_button.dart';
+import 'market_screen.dart';
 import 'match_schedule_screen.dart';
 import 'squad_screen.dart';
 import 'tactics_screen.dart';
@@ -115,6 +116,13 @@ class DashboardScreen extends StatelessWidget {
                   title: 'Takvim',
                   subtitle: '${provider.fixtures.length} maç',
                   onTap: () => _push(context, const MatchScheduleScreen(), title: 'Takvim'),
+                ),
+                _QuickAction(
+                  icon: Icons.diamond,
+                  color: AppColors.blue,
+                  title: 'Market',
+                  subtitle: '${provider.diamonds} 💎',
+                  onTap: () => _push(context, const MarketScreen()),
                 ),
               ],
             ),

@@ -11,6 +11,8 @@ import '../models/tactics.dart';
 import '../models/transfer_market_item.dart';
 import '../models/transfer_offer.dart';
 import '../models/transfer_history_entry.dart';
+import '../models/player_pack.dart';
+import '../models/diamond_product.dart';
 import '../repositories/match_preview_repository.dart';
 import '../repositories/repository_interface.dart';
 import '../repositories/supabase_repository.dart';
@@ -57,6 +59,9 @@ class GameProvider extends ChangeNotifier {
   List<TransferOffer> get incomingTransferOffers => List.unmodifiable(_incomingTransferOffers);
   List<TransferOffer> get outgoingTransferOffers => List.unmodifiable(_outgoingTransferOffers);
   int get pendingIncomingOfferCount => _incomingTransferOffers.where((o) => o.isPending).length;
+  List<PlayerPack> get playerPacks => List.unmodifiable(_playerPacks);
+  List<DiamondProduct> get diamondProducts => List.unmodifiable(_diamondProducts);
+  int get diamonds => _profile?.diamonds ?? 0;
   Tactics? get tactics => _tactics;
 
   bool get isSupabaseReady => _isSupabaseReady;
@@ -75,6 +80,8 @@ class GameProvider extends ChangeNotifier {
   List<PlayerFM> _freeAgents = <PlayerFM>[];
   List<TransferOffer> _incomingTransferOffers = <TransferOffer>[];
   List<TransferOffer> _outgoingTransferOffers = <TransferOffer>[];
+  List<PlayerPack> _playerPacks = <PlayerPack>[];
+  List<DiamondProduct> _diamondProducts = <DiamondProduct>[];
   List<Map<String, dynamic>> _standings = <Map<String, dynamic>>[];
   Map<String, dynamic>? _seasonState;
   Tactics? _tactics;
@@ -212,6 +219,7 @@ class GameProvider extends ChangeNotifier {
         _loadTransferOffers(),
         _loadFixturesAndResults(),
         _loadFinancialTransactions(),
+        _loadMarketCatalog(),
       ]);
     } catch (error) {
       debugPrint('GameProvider refresh failed: $error');
@@ -324,6 +332,15 @@ class GameProvider extends ChangeNotifier {
     ]);
     _incomingTransferOffers = results[0];
     _outgoingTransferOffers = results[1];
+  }
+
+  Future<void> _loadMarketCatalog() async {
+    final results = await Future.wait([
+      _repository.loadPlayerPacks(),
+      _repository.loadDiamondProducts(),
+    ]);
+    _playerPacks = results[0] as List<PlayerPack>;
+    _diamondProducts = results[1] as List<DiamondProduct>;
   }
 
   Future<void> _loadFixturesAndResults() async {
@@ -738,6 +755,42 @@ class GameProvider extends ChangeNotifier {
     } finally {
       _setBusy(false);
     }
+  }
+
+  /// [packId]'ye karşılık gelen oyuncu paketini elmasla açar; oluşan
+  /// oyuncuları döndürür (paket açılış ekranında göstermek için).
+  Future<List<PlayerFM>> openPlayerPack({required String packId}) async {
+    if (_activeClub == null) throw Exception('Aktif kulüp bulunamadı.');
+    if (_isBusy) return <PlayerFM>[];
+
+    _setBusy(true);
+    try {
+      final newPlayers = await _repository.openPlayerPack(packId: packId);
+      try {
+        AnalyticsService.instance.logEvent('open_player_pack', parameters: {'pack_id': packId});
+      } catch (_) {}
+      await refreshGameState();
+      return newPlayers;
+    } finally {
+      _setBusy(false);
+    }
+  }
+
+  /// StoreKit satın alımı tamamlandıktan sonra makbuzu sunucuda doğrular
+  /// ve elmas bakiyesini günceller. Asla client tarafında elmas eklemez -
+  /// bakiye yalnızca Apple'dan gerçekten doğrulanmış bir işlemden sonra artar.
+  Future<void> creditDiamondsFromPurchase({
+    required String receiptData,
+    required String productId,
+    required String transactionId,
+  }) async {
+    await _repository.verifyIapPurchase(
+      receiptData: receiptData,
+      productId: productId,
+      transactionId: transactionId,
+    );
+    await _loadUserProfile();
+    notifyListeners();
   }
 
   /// Bilet fiyatını günceller. Anında uygulanır (inşaat gerektirmez).

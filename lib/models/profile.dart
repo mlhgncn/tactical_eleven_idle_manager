@@ -6,6 +6,7 @@ class Profile {
   final String language;
   final String? fcmToken;
   final int leagueTitles;
+  final int diamonds;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -17,6 +18,7 @@ class Profile {
     required this.language,
     this.fcmToken,
     this.leagueTitles = 0,
+    this.diamonds = 0,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -30,6 +32,7 @@ class Profile {
       language: map['language'] as String? ?? 'tr',
       fcmToken: map['fcm_token'] as String?,
       leagueTitles: (map['league_titles'] as num?)?.toInt() ?? 0,
+      diamonds: (map['diamonds'] as num?)?.toInt() ?? 0,
       createdAt: DateTime.parse(map['created_at'] as String),
       updatedAt: DateTime.parse(map['updated_at'] as String),
     );

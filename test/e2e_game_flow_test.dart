@@ -13,6 +13,8 @@ import 'package:tactical_eleven_idle_manager/models/transfer_history_entry.dart'
 import 'package:tactical_eleven_idle_manager/models/tactics.dart';
 import 'package:tactical_eleven_idle_manager/models/match_result.dart';
 import 'package:tactical_eleven_idle_manager/models/financial_transaction.dart';
+import 'package:tactical_eleven_idle_manager/models/player_pack.dart';
+import 'package:tactical_eleven_idle_manager/models/diamond_product.dart';
 import 'package:tactical_eleven_idle_manager/providers/game_provider.dart';
 import 'package:tactical_eleven_idle_manager/repositories/repository_interface.dart';
 import 'package:tactical_eleven_idle_manager/screens/auth_screen.dart';
@@ -240,6 +242,23 @@ class _FakeGameRepository implements GameRepository {
 
   @override
   Future<List<TransferOffer>> loadOutgoingTransferOffers(String clubId) async => <TransferOffer>[];
+
+  @override
+  Future<List<PlayerPack>> loadPlayerPacks() async => <PlayerPack>[];
+
+  @override
+  Future<List<PlayerFM>> openPlayerPack({required String packId}) async => <PlayerFM>[];
+
+  @override
+  Future<List<DiamondProduct>> loadDiamondProducts() async => <DiamondProduct>[];
+
+  @override
+  Future<Map<String, dynamic>> verifyIapPurchase({
+    required String receiptData,
+    required String productId,
+    required String transactionId,
+  }) async =>
+      <String, dynamic>{'success': true, 'diamondsCredited': 0};
 
   @override
   Future<bool> markMessageAsRead(String messageId) async => true;

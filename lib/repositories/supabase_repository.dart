@@ -15,6 +15,8 @@ import '../models/transfer_offer.dart';
 import '../models/transfer_history_entry.dart';
 import '../models/financial_transaction.dart';
 import '../models/tactics.dart';
+import '../models/player_pack.dart';
+import '../models/diamond_product.dart';
 import 'repository_interface.dart';
 
 class SupabaseRepository implements GameRepository {
@@ -99,7 +101,7 @@ class SupabaseRepository implements GameRepository {
       final response = await _client
           .from('profiles')
           .select(
-              'id,full_name,avatar_url,email,language,fcm_token,league_titles,created_at,updated_at')
+              'id,full_name,avatar_url,email,language,fcm_token,league_titles,diamonds,created_at,updated_at')
           .eq('id', userId)
           .maybeSingle();
 
@@ -232,6 +234,55 @@ class SupabaseRepository implements GameRepository {
       if (updated == null) return null;
       return ClubInfo.fromMap(updated as Map<String, dynamic>);
     });
+  }
+
+  Future<List<PlayerPack>> loadPlayerPacks() async {
+    final data = await _client
+        .from('player_packs')
+        .select('id,name,diamond_cost,guaranteed_min_ability,random_min_ability,random_max_ability,random_slot_count')
+        .order('sort_order', ascending: true);
+
+    if (data is! List<dynamic>) return <PlayerPack>[];
+    return data.cast<Map<String, dynamic>>().map(PlayerPack.fromMap).toList();
+  }
+
+  Future<List<PlayerFM>> openPlayerPack({required String packId}) async {
+    return _wrap(() async {
+      final data = await _client.rpc('open_player_pack', params: {'p_pack_id': packId});
+      if (data is! List<dynamic>) return <PlayerFM>[];
+      return data.cast<Map<String, dynamic>>().map(PlayerFM.fromMap).toList();
+    });
+  }
+
+  Future<List<DiamondProduct>> loadDiamondProducts() async {
+    final data = await _client
+        .from('diamond_products')
+        .select('product_id,diamonds,label,bonus_note')
+        .order('sort_order', ascending: true);
+
+    if (data is! List<dynamic>) return <DiamondProduct>[];
+    return data.cast<Map<String, dynamic>>().map(DiamondProduct.fromMap).toList();
+  }
+
+  Future<Map<String, dynamic>> verifyIapPurchase({
+    required String receiptData,
+    required String productId,
+    required String transactionId,
+  }) async {
+    final response = await _client.functions.invoke('verify_iap_purchase', body: {
+      'receiptData': receiptData,
+      'productId': productId,
+      'transactionId': transactionId,
+    });
+
+    final data = response.data;
+    if (data is Map<String, dynamic>) {
+      if (data['error'] != null) {
+        throw AppException(data['error'].toString());
+      }
+      return data;
+    }
+    throw AppException('Satın alma doğrulanamadı.');
   }
 
   Future<TransferOffer?> makeTransferOffer({required String playerId, required int offerAmount}) async {
