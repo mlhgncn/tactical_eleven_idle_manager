@@ -37,6 +37,14 @@
   "clubSetup": {
     "title": "Start Managing",
     "description": "You don't have a club yet. Start a brand new league that begins right away, or join a friend's league with their invitation code.",
+    "chooseTheme": "Choose League Theme",
+    "themes": {
+      "turkey": "Turkey",
+      "england": "England",
+      "spain": "Spain",
+      "germany": "Germany",
+      "italy": "Italy"
+    },
     "createLeague": "Create League",
     "or": "or",
     "joinLeague": "Join League",

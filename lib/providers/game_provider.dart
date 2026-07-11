@@ -489,13 +489,13 @@ class GameProvider extends ChangeNotifier {
     );
   }
 
-  Future<void> createLeagueAndJoin() async {
+  Future<void> createLeagueAndJoin({String theme = 'turkey'}) async {
     try {
-      final club = await _repository.createLeagueAndJoin();
+      final club = await _repository.createLeagueAndJoin(theme: theme);
       if (club != null) {
         _activeClub = club;
         try {
-          AnalyticsService.instance.logEvent('create_league');
+          AnalyticsService.instance.logEvent('create_league', parameters: {'theme': theme});
         } catch (_) {}
         await refreshGameState();
         return;

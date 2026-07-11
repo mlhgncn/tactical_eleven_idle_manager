@@ -116,7 +116,7 @@ class _FakeGameRepository implements GameRepository {
   Future<Profile?> updateUsername(String username) async => loadProfile();
 
   @override
-  Future<ClubInfo?> createLeagueAndJoin() async {
+  Future<ClubInfo?> createLeagueAndJoin({String theme = 'turkey'}) async {
     final club = ClubInfo(
       id: 'club-created',
       name: 'Zero Account FC',

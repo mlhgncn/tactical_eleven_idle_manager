@@ -16,7 +16,7 @@ abstract class GameRepository {
   Future<ClubInfo?> loadActiveClub();
   Future<Profile?> loadProfile();
   Future<Profile?> updateUsername(String username);
-  Future<ClubInfo?> createLeagueAndJoin();
+  Future<ClubInfo?> createLeagueAndJoin({String theme = 'turkey'});
   Future<ClubInfo?> joinLeagueWithCode(String invitationCode);
   Future<void> leaveCurrentClub();
   Future<List<PlayerFM>> loadSquadPlayers(String clubId);

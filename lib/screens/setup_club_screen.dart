@@ -14,15 +14,18 @@ class SetupClubScreen extends StatefulWidget {
 }
 
 class _SetupClubScreenState extends State<SetupClubScreen> {
+  static const _themes = ['turkey', 'england', 'spain', 'germany', 'italy'];
+
   final _invitationCodeController = TextEditingController();
   bool _isLoading = false;
   bool _showJoinField = false;
+  String _selectedTheme = 'turkey';
 
   Future<void> _createLeague() async {
     setState(() => _isLoading = true);
 
     try {
-      await context.read<GameProvider>().createLeagueAndJoin();
+      await context.read<GameProvider>().createLeagueAndJoin(theme: _selectedTheme);
       _navigateToRoot();
     } catch (error) {
       if (!mounted) return;
@@ -82,6 +85,28 @@ class _SetupClubScreenState extends State<SetupClubScreen> {
                     Text(
                       'clubSetup.description'.tr(),
                       style: theme.textTheme.bodyLarge,
+                    ),
+                    const SizedBox(height: 24),
+                    Text('clubSetup.chooseTheme'.tr(), style: theme.textTheme.titleMedium),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: _themes.map((t) {
+                        final selected = t == _selectedTheme;
+                        return ChoiceChip(
+                          label: Text('clubSetup.themes.$t'.tr()),
+                          selected: selected,
+                          onSelected: (_) => setState(() => _selectedTheme = t),
+                          selectedColor: AppColors.gold,
+                          backgroundColor: AppColors.cardTop,
+                          labelStyle: TextStyle(
+                            color: selected ? AppColors.goldOnGoldText : AppColors.textPrimary,
+                            fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+                          ),
+                          side: BorderSide(color: AppColors.cardBorder),
+                        );
+                      }).toList(),
                     ),
                     const SizedBox(height: 24),
                     GoldButton(

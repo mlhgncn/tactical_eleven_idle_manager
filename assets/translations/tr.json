@@ -37,6 +37,14 @@
   "clubSetup": {
     "title": "Menajerliğe Başla",
     "description": "Henüz bir kulübünüz yok. Hemen başlayan yeni bir lig kurun ya da bir arkadaşınızın davet koduyla ligine katılın.",
+    "chooseTheme": "Lig Teması Seç",
+    "themes": {
+      "turkey": "Türkiye",
+      "england": "İngiltere",
+      "spain": "İspanya",
+      "germany": "Almanya",
+      "italy": "İtalya"
+    },
     "createLeague": "Lig Oluştur",
     "or": "veya",
     "joinLeague": "Lige Katıl",
