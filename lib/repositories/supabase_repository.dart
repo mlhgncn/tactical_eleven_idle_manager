@@ -7,6 +7,7 @@ import '../services/error_reporting_service.dart';
 
 import '../models/club_info.dart';
 import '../models/inbox_message.dart';
+import '../models/league_club_option.dart';
 import '../models/match_result.dart';
 import '../models/player_fm.dart';
 import '../models/profile.dart';
@@ -66,9 +67,17 @@ class SupabaseRepository implements GameRepository {
     });
   }
 
-  Future<ClubInfo?> createLeagueAndJoin({String theme = 'turkey'}) async {
+  Future<List<LeagueClubOption>> previewLeagueTheme(String theme) async {
     return _wrap(() async {
-      final response = await _client.rpc('create_league_and_join', params: {'p_theme': theme}).single();
+      final data = await _client.rpc('preview_league_theme', params: {'p_theme': theme});
+      if (data is! List<dynamic>) return <LeagueClubOption>[];
+      return data.cast<Map<String, dynamic>>().map(LeagueClubOption.fromMap).toList();
+    });
+  }
+
+  Future<ClubInfo?> selectClubForLeague(String clubId) async {
+    return _wrap(() async {
+      final response = await _client.rpc('select_club_for_league', params: {'p_club_id': clubId}).single();
 
       if (response == null) return null;
       return ClubInfo.fromMap(response as Map<String, dynamic>);

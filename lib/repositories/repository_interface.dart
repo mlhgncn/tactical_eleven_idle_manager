@@ -1,5 +1,6 @@
 import '../models/club_info.dart';
 import '../models/inbox_message.dart';
+import '../models/league_club_option.dart';
 import '../models/match_result.dart';
 import '../models/player_fm.dart';
 import '../models/profile.dart';
@@ -16,7 +17,8 @@ abstract class GameRepository {
   Future<ClubInfo?> loadActiveClub();
   Future<Profile?> loadProfile();
   Future<Profile?> updateUsername(String username);
-  Future<ClubInfo?> createLeagueAndJoin({String theme = 'turkey'});
+  Future<List<LeagueClubOption>> previewLeagueTheme(String theme);
+  Future<ClubInfo?> selectClubForLeague(String clubId);
   Future<ClubInfo?> joinLeagueWithCode(String invitationCode);
   Future<void> leaveCurrentClub();
   Future<List<PlayerFM>> loadSquadPlayers(String clubId);

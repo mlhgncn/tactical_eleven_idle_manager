@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tactical_eleven_idle_manager/models/club_info.dart';
 import 'package:tactical_eleven_idle_manager/models/inbox_message.dart';
+import 'package:tactical_eleven_idle_manager/models/league_club_option.dart';
 import 'package:tactical_eleven_idle_manager/models/player_fm.dart';
 import 'package:tactical_eleven_idle_manager/models/profile.dart';
 import 'package:tactical_eleven_idle_manager/models/transfer_market_item.dart';
@@ -116,9 +117,16 @@ class _FakeGameRepository implements GameRepository {
   Future<Profile?> updateUsername(String username) async => loadProfile();
 
   @override
-  Future<ClubInfo?> createLeagueAndJoin({String theme = 'turkey'}) async {
+  Future<List<LeagueClubOption>> previewLeagueTheme(String theme) async {
+    return [
+      LeagueClubOption(clubId: 'club-created', clubName: 'Zero Account FC', quality: 50, isPremiumLocked: false),
+    ];
+  }
+
+  @override
+  Future<ClubInfo?> selectClubForLeague(String clubId) async {
     final club = ClubInfo(
-      id: 'club-created',
+      id: clubId,
       name: 'Zero Account FC',
       budget: 10000,
       stadiumCapacity: 5000,
@@ -461,6 +469,12 @@ void main() {
     expect(find.text('Menajerliğe Başla'), findsOneWidget);
 
     await tester.tap(find.widgetWithText(GoldButton, 'Lig Oluştur'));
+    await tester.pumpAndSettle(const Duration(seconds: 1));
+
+    expect(find.text('Zero Account FC'), findsOneWidget);
+    await tester.tap(find.text('Zero Account FC'));
+    await tester.pumpAndSettle(const Duration(milliseconds: 300));
+    await tester.tap(find.text('Onayla'));
     await tester.pumpAndSettle(const Duration(seconds: 1));
 
     expect(gameProvider.activeClub, isNotNull);

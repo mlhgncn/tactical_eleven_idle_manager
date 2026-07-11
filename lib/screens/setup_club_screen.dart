@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../providers/game_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/themed_button.dart';
+import 'league_club_picker_screen.dart';
 
 class SetupClubScreen extends StatefulWidget {
   SetupClubScreen({super.key});
@@ -25,8 +26,13 @@ class _SetupClubScreenState extends State<SetupClubScreen> {
     setState(() => _isLoading = true);
 
     try {
-      await context.read<GameProvider>().createLeagueAndJoin(theme: _selectedTheme);
-      _navigateToRoot();
+      final options = await context.read<GameProvider>().previewLeagueTheme(_selectedTheme);
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      final joined = await Navigator.of(context).push<bool>(
+        MaterialPageRoute(builder: (_) => LeagueClubPickerScreen(options: options)),
+      );
+      if (joined == true) _navigateToRoot();
     } catch (error) {
       if (!mounted) return;
       setState(() => _isLoading = false);

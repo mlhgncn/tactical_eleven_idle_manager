@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/club_info.dart';
 import '../models/inbox_message.dart';
+import '../models/league_club_option.dart';
 import '../models/match_fixture.dart';
 import '../models/match_result.dart';
 import '../models/player_fm.dart';
@@ -489,19 +490,27 @@ class GameProvider extends ChangeNotifier {
     );
   }
 
-  Future<void> createLeagueAndJoin({String theme = 'turkey'}) async {
+  Future<List<LeagueClubOption>> previewLeagueTheme(String theme) async {
     try {
-      final club = await _repository.createLeagueAndJoin(theme: theme);
+      return await _repository.previewLeagueTheme(theme);
+    } catch (error) {
+      throw Exception(_formatClubActionError(error));
+    }
+  }
+
+  Future<void> selectClubForLeague(String clubId) async {
+    try {
+      final club = await _repository.selectClubForLeague(clubId);
       if (club != null) {
         _activeClub = club;
         try {
-          AnalyticsService.instance.logEvent('create_league', parameters: {'theme': theme});
+          AnalyticsService.instance.logEvent('select_club', parameters: {'club_id': clubId});
         } catch (_) {}
         await refreshGameState();
         return;
       }
 
-      throw Exception('Lig oluşturulamadı.');
+      throw Exception('Kulüp seçilemedi.');
     } catch (error) {
       throw Exception(_formatClubActionError(error));
     }
