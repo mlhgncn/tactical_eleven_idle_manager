@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/club_info.dart';
 import '../models/inbox_message.dart';
 import '../models/league_club_option.dart';
+import '../models/opponent_scout_report.dart';
 import '../models/match_fixture.dart';
 import '../models/match_result.dart';
 import '../models/player_fm.dart';
@@ -100,7 +101,6 @@ class GameProvider extends ChangeNotifier {
   bool _isSyncing = false;
 
   // Realtime / helper fields
-  final Map<String, String> _fixtureOpponentClubIds = {};
   bool _useDebugFixtures = false;
   dynamic? _supabase;
   dynamic? _transferChannel;
@@ -438,13 +438,11 @@ class GameProvider extends ChangeNotifier {
           final kickoff = DateTime.tryParse(r['match_date'] as String? ?? '') ??
               now.add(const Duration(days: 3));
           final opponentClubId = isHome ? awayId : homeId;
-          if (opponentClubId != null) {
-            _fixtureOpponentClubIds[r['id'] as String? ?? UniqueKey().toString()] = opponentClubId;
-          }
           return MatchFixture(
             id: r['id'] as String? ?? UniqueKey().toString(),
             opponentName: opponentName,
             opponentUsername: opponentUsername,
+            opponentClubId: opponentClubId,
             kickoff: kickoff,
             isHome: isHome,
             status:
@@ -493,6 +491,14 @@ class GameProvider extends ChangeNotifier {
   Future<List<LeagueClubOption>> previewLeagueTheme(String theme) async {
     try {
       return await _repository.previewLeagueTheme(theme);
+    } catch (error) {
+      throw Exception(_formatClubActionError(error));
+    }
+  }
+
+  Future<OpponentScoutReport> scoutOpponent(String matchId) async {
+    try {
+      return await _repository.scoutOpponent(matchId);
     } catch (error) {
       throw Exception(_formatClubActionError(error));
     }

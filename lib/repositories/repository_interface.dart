@@ -2,6 +2,7 @@ import '../models/club_info.dart';
 import '../models/inbox_message.dart';
 import '../models/league_club_option.dart';
 import '../models/match_result.dart';
+import '../models/opponent_scout_report.dart';
 import '../models/player_fm.dart';
 import '../models/profile.dart';
 import '../models/transfer_market_item.dart';
@@ -68,6 +69,7 @@ abstract class GameRepository {
   Future<void> updateNotificationPreference(bool enabled);
   Future<bool?> loadNotificationPreference();
   Future<MatchResult?> playNextFixture();
+  Future<OpponentScoutReport> scoutOpponent(String matchId);
   // Admin actions
   Future<bool> isAdmin();
   Future<List<Map<String, dynamic>>> adminListUsers();

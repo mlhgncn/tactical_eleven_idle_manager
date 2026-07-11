@@ -2,6 +2,8 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'dart:async';
+
 import '../models/match_fixture.dart';
 import '../providers/game_provider.dart';
 import '../theme/app_assets.dart';
@@ -11,6 +13,7 @@ import '../widgets/form_strip.dart';
 import '../widgets/themed_button.dart';
 import 'market_screen.dart';
 import 'match_schedule_screen.dart';
+import 'opponent_scout_screen.dart';
 import 'squad_screen.dart';
 import 'transfer_market_screen.dart';
 import 'league_table_screen.dart';
@@ -284,13 +287,60 @@ class _Pill extends StatelessWidget {
   }
 }
 
-class _MatchCard extends StatelessWidget {
+class _MatchCard extends StatefulWidget {
   const _MatchCard({required this.nextFixture, required this.myPosition});
   final MatchFixture? nextFixture;
   final int? myPosition;
 
   @override
+  State<_MatchCard> createState() => _MatchCardState();
+}
+
+class _MatchCardState extends State<_MatchCard> {
+  Timer? _timer;
+  bool _isScouting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  bool _isWithinScoutWindow(MatchFixture f) {
+    final remaining = f.kickoff.difference(DateTime.now());
+    return remaining <= const Duration(minutes: 15) && remaining > Duration.zero;
+  }
+
+  Future<void> _scoutOpponent(BuildContext context, MatchFixture f) async {
+    if (f.opponentClubId == null) return;
+    setState(() => _isScouting = true);
+    try {
+      final report = await context.read<GameProvider>().scoutOpponent(f.id);
+      if (!context.mounted) return;
+      Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => OpponentScoutScreen(opponentName: f.opponentName, report: report),
+      ));
+    } catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString().replaceAll('Exception: ', ''))),
+      );
+    } finally {
+      if (mounted) setState(() => _isScouting = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final nextFixture = widget.nextFixture;
     if (nextFixture == null) {
       return DashboardScreen._card(
         child: Padding(
@@ -380,6 +430,15 @@ class _MatchCard extends StatelessWidget {
                   )),
                   label: 'navigation.calendar'.tr(),
                 ),
+                if (_isWithinScoutWindow(f) && f.opponentClubId != null) ...[
+                  const SizedBox(height: 10),
+                  GlassButton(
+                    height: 44,
+                    isLoading: _isScouting,
+                    onPressed: _isScouting ? null : () => _scoutOpponent(context, f),
+                    label: 'dashboard.scoutOpponent'.tr(),
+                  ),
+                ],
               ],
             ),
           ),

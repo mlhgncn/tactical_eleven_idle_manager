@@ -9,6 +9,7 @@ import '../models/club_info.dart';
 import '../models/inbox_message.dart';
 import '../models/league_club_option.dart';
 import '../models/match_result.dart';
+import '../models/opponent_scout_report.dart';
 import '../models/player_fm.dart';
 import '../models/profile.dart';
 import '../models/transfer_market_item.dart';
@@ -877,6 +878,14 @@ class SupabaseRepository implements GameRepository {
       }
 
       return MatchResult.fromMap(Map<String, dynamic>.from(result as Map<String, dynamic>));
+    });
+  }
+
+  @override
+  Future<OpponentScoutReport> scoutOpponent(String matchId) async {
+    return _wrap(() async {
+      final data = await _client.rpc('scout_opponent', params: {'p_match_id': matchId});
+      return OpponentScoutReport.fromMap(Map<String, dynamic>.from(data as Map<String, dynamic>));
     });
   }
 }

@@ -243,7 +243,25 @@
     "nextMatchWeek": "NEXT MATCH · WEEK {week}",
     "home": "HOME",
     "away": "AWAY",
-    "you": "You"
+    "you": "You",
+    "scoutOpponent": "Scout Opponent"
+  },
+  "opponentScout": {
+    "tacticsTitle": "Opponent Tactics",
+    "noTactics": "Opponent hasn't set a tactic yet.",
+    "formationLabel": "Formation",
+    "mentalityLabel": "Mentality",
+    "pressLabel": "Press",
+    "tempoLabel": "Tempo",
+    "defensiveLineLabel": "Defensive Line",
+    "offsideTrapChip": "Offside Trap",
+    "timeWastingChip": "Time Wasting",
+    "startingElevenTitle": "Starting XI",
+    "benchTitle": "Bench",
+    "squadTitle": "Squad",
+    "playerSubtitle": "Age: {age} • Power: {ability}",
+    "injuredChip": "Injured",
+    "suspendedChip": "Suspended"
   },
   "finance": {
     "activeClubNotFound": "Active club not found.",

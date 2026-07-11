@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tactical_eleven_idle_manager/models/club_info.dart';
 import 'package:tactical_eleven_idle_manager/models/inbox_message.dart';
 import 'package:tactical_eleven_idle_manager/models/league_club_option.dart';
+import 'package:tactical_eleven_idle_manager/models/opponent_scout_report.dart';
 import 'package:tactical_eleven_idle_manager/models/player_fm.dart';
 import 'package:tactical_eleven_idle_manager/models/profile.dart';
 import 'package:tactical_eleven_idle_manager/models/transfer_market_item.dart';
@@ -368,6 +369,11 @@ class _FakeGameRepository implements GameRepository {
       commentary: const ['Maç başladı.', 'Gol!', 'Maç sona erdi.'],
       events: const [],
     );
+  }
+
+  @override
+  Future<OpponentScoutReport> scoutOpponent(String matchId) async {
+    return OpponentScoutReport(clubId: 'opponent-club-1', players: const [], tactics: null);
   }
 
   // Admin RPC stubs to satisfy GameRepository interface for widget tests

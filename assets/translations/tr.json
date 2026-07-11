@@ -243,7 +243,25 @@
     "nextMatchWeek": "SONRAKI MAÇ · HAFTA {week}",
     "home": "EV SAHİBİ",
     "away": "DEPLASMAN",
-    "you": "Sen"
+    "you": "Sen",
+    "scoutOpponent": "Rakibi İncele"
+  },
+  "opponentScout": {
+    "tacticsTitle": "Rakip Taktiği",
+    "noTactics": "Rakip henüz taktik belirlememiş.",
+    "formationLabel": "Diziliş",
+    "mentalityLabel": "Mentalite",
+    "pressLabel": "Pres",
+    "tempoLabel": "Tempo",
+    "defensiveLineLabel": "Savunma Hattı",
+    "offsideTrapChip": "Ofsayt Tuzağı",
+    "timeWastingChip": "Zaman Geçirme",
+    "startingElevenTitle": "İlk 11",
+    "benchTitle": "Yedekler",
+    "squadTitle": "Kadro",
+    "playerSubtitle": "Yaş: {age} • Güç: {ability}",
+    "injuredChip": "Sakat",
+    "suspendedChip": "Cezalı"
   },
   "finance": {
     "activeClubNotFound": "Aktif kulüp bulunamadı.",
