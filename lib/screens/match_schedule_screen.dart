@@ -43,8 +43,8 @@ class _MatchScheduleScreenState extends State<MatchScheduleScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<GameProvider>();
-    final fixtures = provider.fixtures;
-    final playedFixtures = fixtures.where((f) => f.status == 'Tamamlandı').toList().reversed.toList();
+    final fixtures = provider.fixtures.where((f) => f.status != 'Tamamlandı').toList();
+    final playedFixtures = provider.fixtures.where((f) => f.status == 'Tamamlandı').toList().reversed.toList();
 
     if (provider.isLoading) {
       return const Center(child: CircularProgressIndicator());
