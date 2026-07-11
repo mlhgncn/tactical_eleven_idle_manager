@@ -161,6 +161,11 @@ class _FakeGameRepository implements GameRepository {
   }
 
   @override
+  Future<void> deleteAccount() async {
+    _activeClub = null;
+  }
+
+  @override
   Future<List<PlayerFM>> loadSquadPlayers(String clubId) async {
     return List<PlayerFM>.generate(
       11,

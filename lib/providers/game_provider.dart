@@ -565,6 +565,30 @@ class GameProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> deleteAccount() async {
+    try {
+      await _repository.deleteAccount();
+    } catch (error) {
+      throw Exception(_formatClubActionError(error));
+    }
+
+    _activeClub = null;
+    _profile = null;
+    _squadPlayers = <PlayerFM>[];
+    _fixtures = <MatchFixture>[];
+    _results = <MatchResult>[];
+    _transferMarketItems = <TransferMarketItem>[];
+    _freeAgents = <PlayerFM>[];
+    _incomingTransferOffers = <TransferOffer>[];
+    _outgoingTransferOffers = <TransferOffer>[];
+    _standings = <Map<String, dynamic>>[];
+    _seasonState = null;
+    _tactics = null;
+    _financialTransactions = <FinancialTransaction>[];
+    _transferHistory = <TransferHistoryEntry>[];
+    notifyListeners();
+  }
+
   String _formatClubActionError(Object error) {
     final message = error.toString();
     if (message.startsWith('Exception: ')) {

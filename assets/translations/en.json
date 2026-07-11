@@ -32,7 +32,11 @@
     "leave_team_confirm_title": "Are you sure you want to leave your team?",
     "leave_team_confirm_body": "Your current club will be taken from you and made available for someone else to take over. This action cannot be undone; you'll need to create a new league or join one with an invitation code.",
     "leave_team_cancel": "Cancel",
-    "leave_team_confirm_action": "Yes, Leave"
+    "leave_team_confirm_action": "Yes, Leave",
+    "delete_account": "Delete Account",
+    "delete_account_confirm_title": "Are you sure you want to permanently delete your account?",
+    "delete_account_confirm_body": "This action cannot be undone. Your profile, diamond balance, and purchase history will be permanently deleted. Your club will revert to bot control. Do you want to continue?",
+    "delete_account_confirm_action": "Yes, Delete My Account"
   },
   "clubSetup": {
     "title": "Start Managing",

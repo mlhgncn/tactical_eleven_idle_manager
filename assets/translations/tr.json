@@ -32,7 +32,11 @@
     "leave_team_confirm_title": "Takımı bırakmak istediğine emin misin?",
     "leave_team_confirm_body": "Mevcut kulübün elinden alınacak ve başkası tarafından devralınabilir hale gelecek. Bu işlem geri alınamaz; yeniden lig oluşturman ya da bir davet koduyla katılman gerekecek.",
     "leave_team_cancel": "Vazgeç",
-    "leave_team_confirm_action": "Evet, Bırak"
+    "leave_team_confirm_action": "Evet, Bırak",
+    "delete_account": "Hesabı Sil",
+    "delete_account_confirm_title": "Hesabını kalıcı olarak silmek istediğine emin misin?",
+    "delete_account_confirm_body": "Bu işlem geri alınamaz. Profilin, elmas bakiyen ve satın alma geçmişin kalıcı olarak silinecek. Kulübün bot kontrolüne devredilecek. Devam etmek istiyor musun?",
+    "delete_account_confirm_action": "Evet, Hesabımı Sil"
   },
   "clubSetup": {
     "title": "Menajerliğe Başla",

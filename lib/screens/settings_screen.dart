@@ -31,6 +31,7 @@ class _SettingsBodyState extends State<_SettingsBody> {
   bool _notificationsEnabled = true;
   bool _loading = true;
   bool _isLeaving = false;
+  bool _isDeletingAccount = false;
 
   @override
   void initState() {
@@ -116,6 +117,15 @@ class _SettingsBodyState extends State<_SettingsBody> {
           icon: const Icon(Icons.logout),
           label: Text('navigation.logout_tooltip'.tr()),
         ),
+        const SizedBox(height: 24),
+        OutlinedButton.icon(
+          style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
+          onPressed: _isDeletingAccount ? null : () => _confirmDeleteAccount(context),
+          icon: _isDeletingAccount
+              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+              : const Icon(Icons.delete_forever),
+          label: Text('settings.delete_account'.tr()),
+        ),
       ],
     );
   }
@@ -155,6 +165,45 @@ class _SettingsBodyState extends State<_SettingsBody> {
       }
     } finally {
       if (mounted) setState(() => _isLeaving = false);
+    }
+  }
+
+  Future<void> _confirmDeleteAccount(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('settings.delete_account_confirm_title'.tr()),
+        content: Text('settings.delete_account_confirm_body'.tr()),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text('settings.leave_team_cancel'.tr()),
+          ),
+          TextButton(
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text('settings.delete_account_confirm_action'.tr()),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !context.mounted) return;
+
+    setState(() => _isDeletingAccount = true);
+    try {
+      await context.read<GameProvider>().deleteAccount();
+      await AuthService().signOut();
+      if (!context.mounted) return;
+      Navigator.of(context).pushNamedAndRemoveUntil('/auth', (route) => false);
+    } catch (error) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error.toString().replaceAll('Exception: ', ''))),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isDeletingAccount = false);
     }
   }
 }

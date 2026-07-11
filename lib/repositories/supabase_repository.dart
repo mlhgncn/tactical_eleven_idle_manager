@@ -102,6 +102,12 @@ class SupabaseRepository implements GameRepository {
     });
   }
 
+  Future<void> deleteAccount() async {
+    return _wrap(() async {
+      await _client.rpc('delete_own_account');
+    });
+  }
+
   Future<Profile?> loadProfile() async {
     return _wrap(() async {
       final userId = currentUserId;
