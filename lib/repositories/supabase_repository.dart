@@ -266,7 +266,8 @@ class SupabaseRepository implements GameRepository {
     return _wrap(() async {
       final data = await _client
           .from('transfer_market')
-          .select('id,player_id,asking_price,players(name,position,age,current_ability,club:clubs(id,name))');
+          .select(
+              'id,player_id,asking_price,players(name,position,age,current_ability,potential_ability,morale,fitness,finishing,passing,tackling,composure,determination,consistency,injury_proneness,form_rating,injury_type,injury_duration_weeks,is_suspended,club:clubs(id,name))');
 
       if (data is! List<dynamic>) {
         return <TransferMarketItem>[];

@@ -6,12 +6,14 @@ class TransferMarketCard extends StatelessWidget {
   final TransferMarketItem item;
   final String? activeClubId;
   final Future<void> Function(int offerAmount)? onMakeOffer;
+  final VoidCallback? onTap;
 
   const TransferMarketCard({
     super.key,
     required this.item,
     this.activeClubId,
     this.onMakeOffer,
+    this.onTap,
   });
 
   Future<void> _showOfferDialog(BuildContext context) async {
@@ -53,7 +55,6 @@ class TransferMarketCard extends StatelessWidget {
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: theme.cardColor,
         borderRadius: BorderRadius.circular(20),
@@ -65,29 +66,40 @@ class TransferMarketCard extends StatelessWidget {
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('${item.playerName} (${item.playerPosition})', style: theme.textTheme.titleMedium),
-          const SizedBox(height: 12),
-          Text('transferMarket.sellerClub'.tr(namedArgs: {'name': item.sellerClubDisplayName}), style: theme.textTheme.bodyLarge),
-          if (isOwnPlayer)
-            Padding(
-              padding: const EdgeInsets.only(top: 4.0),
-              child: Chip(
-                visualDensity: VisualDensity.compact,
-                label: Text('transferMarket.yourClub'.tr()),
-              ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(20),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('${item.playerName} (${item.playerPosition})', style: theme.textTheme.titleMedium),
+                const SizedBox(height: 12),
+                Text('transferMarket.sellerClub'.tr(namedArgs: {'name': item.sellerClubDisplayName}), style: theme.textTheme.bodyLarge),
+                if (isOwnPlayer)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4.0),
+                    child: Chip(
+                      visualDensity: VisualDensity.compact,
+                      label: Text('transferMarket.yourClub'.tr()),
+                    ),
+                  ),
+                const SizedBox(height: 10),
+                Text('transferMarket.askingPrice'.tr(namedArgs: {'price': item.askingPrice.toString()}), style: theme.textTheme.bodyLarge),
+                const SizedBox(height: 16),
+                if (!isOwnPlayer)
+                  ElevatedButton(
+                    onPressed: onMakeOffer == null ? null : () => _showOfferDialog(context),
+                    child: Text('transferMarket.makeOffer'.tr()),
+                  ),
+              ],
             ),
-          const SizedBox(height: 10),
-          Text('transferMarket.askingPrice'.tr(namedArgs: {'price': item.askingPrice.toString()}), style: theme.textTheme.bodyLarge),
-          const SizedBox(height: 16),
-          if (!isOwnPlayer)
-            ElevatedButton(
-              onPressed: onMakeOffer == null ? null : () => _showOfferDialog(context),
-              child: Text('transferMarket.makeOffer'.tr()),
-            ),
-        ],
+          ),
+        ),
       ),
     );
   }

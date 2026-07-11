@@ -7,6 +7,7 @@ import '../theme/app_theme.dart';
 import '../widgets/free_agent_card.dart';
 import '../widgets/transfer_market_card.dart';
 import '../widgets/transfer_offer_card.dart';
+import 'player_stats_screen.dart';
 
 const _positions = ['GK', 'CB', 'LB', 'RB', 'CDM', 'CM', 'CAM', 'LM', 'RM', 'ST', 'LW', 'RW'];
 
@@ -150,6 +151,11 @@ class _TransferMarketScreenState extends State<TransferMarketScreen> {
                                     return TransferMarketCard(
                                       item: item,
                                       activeClubId: activeClub.id,
+                                      onTap: () {
+                                        Navigator.of(context).push(
+                                          MaterialPageRoute(builder: (_) => PlayerStatsScreen.fromListing(item)),
+                                        );
+                                      },
                                       onMakeOffer: (amount) async {
                                         try {
                                           await context.read<GameProvider>().makeTransferOffer(
@@ -195,6 +201,11 @@ class _TransferMarketScreenState extends State<TransferMarketScreen> {
                                     final player = freeAgents[index];
                                     return FreeAgentCard(
                                       player: player,
+                                      onTap: () {
+                                        Navigator.of(context).push(
+                                          MaterialPageRoute(builder: (_) => PlayerStatsScreen(player: player)),
+                                        );
+                                      },
                                       onSign: () async {
                                         try {
                                           await context.read<GameProvider>().signFreeAgent(playerId: player.id);

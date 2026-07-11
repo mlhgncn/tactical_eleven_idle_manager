@@ -313,7 +313,9 @@
     "playerPacksTitle": "Player Packs",
     "packsLoading": "Loading packs...",
     "buyDiamondsTitle": "Buy Diamonds",
-    "purchaseUnavailable": "Purchases are currently unavailable on this device."
+    "purchaseUnavailable": "Purchases are currently unavailable on this device.",
+    "packGuaranteedLine": "1 guaranteed player: {ability}+ power",
+    "packRandomLine": "{count} random players: {min}-{max} power"
   },
   "development": {
     "upgradeStadium": "Stadium expansion",
@@ -358,7 +360,14 @@
     "askingPriceFieldLabel": "Asking price (GP)",
     "enterValidPrice": "Enter a valid price",
     "listedOnMarket": "Player listed on the transfer market",
-    "listForTransferButton": "List for Transfer"
+    "listForTransferButton": "List for Transfer",
+    "attributesTitle": "Attributes",
+    "attrFinishing": "Finishing",
+    "attrPassing": "Passing",
+    "attrTackling": "Tackling",
+    "attrComposure": "Composure",
+    "attrDetermination": "Determination",
+    "attrConsistency": "Consistency"
   },
   "sponsor": {
     "upgradeStartedSuccess": "✓ Sponsor upgrade started!",

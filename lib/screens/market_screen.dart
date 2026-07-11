@@ -253,8 +253,36 @@ class _PackCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(pack.name, style: Theme.of(context).textTheme.titleMedium),
-                  const SizedBox(height: 4),
-                  Text(pack.contentsDescription, style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      const Icon(Icons.verified, size: 14, color: AppColors.gold),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          'market.packGuaranteedLine'.tr(namedArgs: {'ability': pack.guaranteedMinAbility.toString()}),
+                          style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Row(
+                    children: [
+                      const Icon(Icons.shuffle, size: 14, color: AppColors.textMuted),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          'market.packRandomLine'.tr(namedArgs: {
+                            'count': pack.randomSlotCount.toString(),
+                            'min': pack.randomMinAbility.toString(),
+                            'max': pack.randomMaxAbility.toString(),
+                          }),
+                          style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),

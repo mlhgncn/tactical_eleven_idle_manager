@@ -17,9 +17,6 @@ class PlayerPack {
     required this.randomSlotCount,
   });
 
-  String get contentsDescription =>
-      '1x $guaranteedMinAbility+ güç, ${randomSlotCount}x $randomMinAbility-$randomMaxAbility güç';
-
   factory PlayerPack.fromMap(Map<String, dynamic> map) {
     return PlayerPack(
       id: map['id'] as String,

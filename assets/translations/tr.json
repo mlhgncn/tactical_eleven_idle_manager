@@ -313,7 +313,9 @@
     "playerPacksTitle": "Oyuncu Paketleri",
     "packsLoading": "Paketler yükleniyor...",
     "buyDiamondsTitle": "Elmas Satın Al",
-    "purchaseUnavailable": "Bu cihazda satın alma şu anda kullanılamıyor."
+    "purchaseUnavailable": "Bu cihazda satın alma şu anda kullanılamıyor.",
+    "packGuaranteedLine": "1 garantili oyuncu: {ability}+ güç",
+    "packRandomLine": "{count} rastgele oyuncu: {min}-{max} güç"
   },
   "development": {
     "upgradeStadium": "Stadyum genişletme",
@@ -358,7 +360,14 @@
     "askingPriceFieldLabel": "İstenen fiyat (GP)",
     "enterValidPrice": "Geçerli bir fiyat girin",
     "listedOnMarket": "Oyuncu transfer pazarına çıkarıldı",
-    "listForTransferButton": "Transfere Çıkar"
+    "listForTransferButton": "Transfere Çıkar",
+    "attributesTitle": "Özellikler",
+    "attrFinishing": "Bitiricilik",
+    "attrPassing": "Pas",
+    "attrTackling": "Top Kapma",
+    "attrComposure": "Soğukkanlılık",
+    "attrDetermination": "Kararlılık",
+    "attrConsistency": "İstikrar"
   },
   "sponsor": {
     "upgradeStartedSuccess": "✓ Sponsor yükseltmesi başlatıldı!",
