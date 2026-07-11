@@ -378,6 +378,9 @@
   "profile": {
     "title": "My Profile",
     "leagueTitlesLabel": "League Titles",
+    "usernameTitle": "Username",
+    "updateUsernameButton": "Update Username",
+    "usernameUpdated": "Username updated.",
     "invalidEmail": "Enter a valid email address",
     "emailUpdateSent": "A confirmation email has been sent to your new address.",
     "passwordTooShort": "Password must be at least 6 characters",

@@ -120,6 +120,13 @@ class LeagueTableScreen extends StatelessWidget {
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: DataTable(
+                columnSpacing: 14,
+                horizontalMargin: 10,
+                headingRowHeight: 40,
+                dataRowMinHeight: 44,
+                dataRowMaxHeight: 56,
+                headingTextStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textMuted),
+                dataTextStyle: const TextStyle(fontSize: 12.5),
                 headingRowColor: WidgetStateProperty.resolveWith(
                   (states) => AppColors.cardBottom,
                 ),
@@ -171,23 +178,30 @@ class LeagueTableScreen extends StatelessWidget {
                               size: 24,
                             ),
                             const SizedBox(width: 8),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  club['name']?.toString() ?? 'leagueTable.teamLabel'.tr(),
-                                  style: TextStyle(
-                                    color: isActiveClub ? AppColors.goldLight : AppColors.textPrimary,
-                                    fontWeight: isActiveClub ? FontWeight.bold : FontWeight.normal,
-                                  ),
-                                ),
-                                if (username != null)
+                            ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 110),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
                                   Text(
-                                    '@$username',
-                                    style: const TextStyle(color: AppColors.textMuted, fontSize: 10.5),
+                                    club['name']?.toString() ?? 'leagueTable.teamLabel'.tr(),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: isActiveClub ? AppColors.goldLight : AppColors.textPrimary,
+                                      fontWeight: isActiveClub ? FontWeight.bold : FontWeight.normal,
+                                    ),
                                   ),
-                              ],
+                                  if (username != null)
+                                    Text(
+                                      '@$username',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(color: AppColors.textMuted, fontSize: 10.5),
+                                    ),
+                                ],
+                              ),
                             ),
                           ],
                         ),

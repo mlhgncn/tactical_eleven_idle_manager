@@ -12,7 +12,6 @@ import '../widgets/themed_button.dart';
 import 'market_screen.dart';
 import 'match_schedule_screen.dart';
 import 'squad_screen.dart';
-import 'tactics_screen.dart';
 import 'transfer_market_screen.dart';
 import 'league_table_screen.dart';
 
@@ -94,13 +93,6 @@ class DashboardScreen extends StatelessWidget {
                   title: 'navigation.squad'.tr(),
                   subtitle: 'dashboard.playerCount'.tr(namedArgs: {'count': provider.squadPlayers.length.toString()}),
                   onTap: () => _push(context, const SquadScreen()),
-                ),
-                _QuickAction(
-                  icon: Icons.rule,
-                  color: AppColors.blue,
-                  title: 'navigation.tactics'.tr(),
-                  subtitle: provider.tactics?.formation.name.toUpperCase() ?? 'dashboard.setUp'.tr(),
-                  onTap: () => _push(context, const TacticsScreen()),
                 ),
                 _QuickAction(
                   icon: Icons.swap_horiz,

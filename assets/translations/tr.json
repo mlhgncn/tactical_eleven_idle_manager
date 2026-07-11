@@ -378,6 +378,9 @@
   "profile": {
     "title": "Profilim",
     "leagueTitlesLabel": "Lig Şampiyonluğu",
+    "usernameTitle": "Kullanıcı Adı",
+    "updateUsernameButton": "Kullanıcı Adını Güncelle",
+    "usernameUpdated": "Kullanıcı adı güncellendi.",
     "invalidEmail": "Geçerli bir e-posta adresi girin",
     "emailUpdateSent": "Onay için yeni adresine bir e-posta gönderildi.",
     "passwordTooShort": "Şifre en az 6 karakter olmalı",

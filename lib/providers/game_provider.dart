@@ -238,6 +238,14 @@ class GameProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> updateUsername(String username) async {
+    final updated = await _repository.updateUsername(username);
+    if (updated != null) {
+      _profile = updated;
+      notifyListeners();
+    }
+  }
+
   Future<void> _loadActiveClub() async {
     _activeClub = await _repository.loadActiveClub();
   }

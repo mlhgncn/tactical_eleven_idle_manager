@@ -17,8 +17,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  final _usernameController = TextEditingController();
   bool _isUpdatingEmail = false;
   bool _isUpdatingPassword = false;
+  bool _isUpdatingUsername = false;
+  bool _usernamePrefilled = false;
 
   @override
   void initState() {
@@ -34,7 +37,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
+    _usernameController.dispose();
     super.dispose();
+  }
+
+  Future<void> _updateUsername() async {
+    final newUsername = _usernameController.text.trim();
+    if (newUsername.length < 3) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('auth.username_short'.tr())),
+      );
+      return;
+    }
+
+    setState(() => _isUpdatingUsername = true);
+    try {
+      await context.read<GameProvider>().updateUsername(newUsername);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('profile.usernameUpdated'.tr())),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString().replaceAll('Exception: ', ''))),
+      );
+    } finally {
+      if (mounted) setState(() => _isUpdatingUsername = false);
+    }
   }
 
   Future<void> _updateEmail() async {
@@ -102,6 +132,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final profile = context.watch<GameProvider>().profile;
     final leagueTitles = profile?.leagueTitles ?? 0;
 
+    if (!_usernamePrefilled && profile?.username != null) {
+      _usernameController.text = profile!.username!;
+      _usernamePrefilled = true;
+    }
+
     return Scaffold(
       appBar: AppBar(title: Text('profile.title'.tr())),
       body: ListView(
@@ -125,6 +160,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ],
                       ),
                     ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('profile.usernameTitle'.tr(), style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _usernameController,
+                    autocorrect: false,
+                    decoration: InputDecoration(labelText: 'auth.username'.tr()),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: _isUpdatingUsername ? null : _updateUsername,
+                      child: _isUpdatingUsername
+                          ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                          : Text('profile.updateUsernameButton'.tr()),
+                    ),
                   ),
                 ],
               ),

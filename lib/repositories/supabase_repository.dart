@@ -101,11 +101,28 @@ class SupabaseRepository implements GameRepository {
       final response = await _client
           .from('profiles')
           .select(
-              'id,full_name,avatar_url,email,language,fcm_token,league_titles,diamonds,created_at,updated_at')
+              'id,full_name,avatar_url,email,language,fcm_token,username,league_titles,diamonds,created_at,updated_at')
           .eq('id', userId)
           .maybeSingle();
 
       if (response == null) return null;
+      return Profile.fromMap(response as Map<String, dynamic>);
+    });
+  }
+
+  Future<Profile?> updateUsername(String username) async {
+    return _wrap(() async {
+      final userId = currentUserId;
+      if (userId == null) return null;
+
+      final response = await _client
+          .from('profiles')
+          .update({'username': username})
+          .eq('id', userId)
+          .select(
+              'id,full_name,avatar_url,email,language,fcm_token,username,league_titles,diamonds,created_at,updated_at')
+          .single();
+
       return Profile.fromMap(response as Map<String, dynamic>);
     });
   }
@@ -124,14 +141,16 @@ class SupabaseRepository implements GameRepository {
   }
 
   Future<PlayerFM?> startPlayerDevelopment({required String playerId}) async {
-    final response = await _client.rpc('start_player_development', params: {
-      'p_player_id': playerId,
-    }).select(
-      'id,club_id,name,position,age,current_ability,potential_ability,morale,fitness,finishing,passing,tackling,composure,determination,consistency,injury_proneness,form_rating,injury_type,injury_duration_weeks,is_suspended,development_completes_at',
-    ).single();
+    return _wrap(() async {
+      final response = await _client.rpc('start_player_development', params: {
+        'p_player_id': playerId,
+      }).select(
+        'id,club_id,name,position,age,current_ability,potential_ability,morale,fitness,finishing,passing,tackling,composure,determination,consistency,injury_proneness,form_rating,injury_type,injury_duration_weeks,is_suspended,development_completes_at',
+      ).single();
 
-    if (response == null) return null;
-    return PlayerFM.fromMap(response as Map<String, dynamic>);
+      if (response == null) return null;
+      return PlayerFM.fromMap(response as Map<String, dynamic>);
+    });
   }
 
   Future<List<PlayerFM>> loadSquadPlayers(String clubId) async {
@@ -199,30 +218,34 @@ class SupabaseRepository implements GameRepository {
   }
 
   Future<List<TransferMarketItem>> loadTransferMarket() async {
-    final data = await _client
-        .from('transfer_market')
-        .select('id,player_id,asking_price,players(name,position,age,current_ability,club:clubs(id,name))');
+    return _wrap(() async {
+      final data = await _client
+          .from('transfer_market')
+          .select('id,player_id,asking_price,players(name,position,age,current_ability,club:clubs(id,name))');
 
-    if (data is! List<dynamic>) {
-      return <TransferMarketItem>[];
-    }
+      if (data is! List<dynamic>) {
+        return <TransferMarketItem>[];
+      }
 
-    return data
-        .cast<Map<String, dynamic>>()
-        .map(TransferMarketItem.fromMap)
-        .toList();
+      return data
+          .cast<Map<String, dynamic>>()
+          .map(TransferMarketItem.fromMap)
+          .toList();
+    });
   }
 
   Future<List<PlayerFM>> loadFreeAgents() async {
-    final data = await _client
-        .from('players')
-        .select(
-            'id,club_id,name,position,age,current_ability,potential_ability,morale,fitness,finishing,passing,tackling,composure,determination,consistency,injury_proneness,injury_type,injury_duration_weeks,is_suspended')
-        .filter('club_id', 'is', null)
-        .order('current_ability', ascending: false);
+    return _wrap(() async {
+      final data = await _client
+          .from('players')
+          .select(
+              'id,club_id,name,position,age,current_ability,potential_ability,morale,fitness,finishing,passing,tackling,composure,determination,consistency,injury_proneness,injury_type,injury_duration_weeks,is_suspended')
+          .filter('club_id', 'is', null)
+          .order('current_ability', ascending: false);
 
-    if (data is! List<dynamic>) return <PlayerFM>[];
-    return data.cast<Map<String, dynamic>>().map(PlayerFM.fromMap).toList();
+      if (data is! List<dynamic>) return <PlayerFM>[];
+      return data.cast<Map<String, dynamic>>().map(PlayerFM.fromMap).toList();
+    });
   }
 
   Future<ClubInfo?> signFreeAgent({required String playerId}) async {
