@@ -33,6 +33,7 @@ interface ClubTactic {
   time_wasting: boolean | null;
   free_kick_taker_id: string | null;
   corner_taker_id: string | null;
+  starting_eleven_ids: string[] | null;
 }
 
 interface TacticSnapshot {
@@ -45,6 +46,7 @@ interface TacticSnapshot {
   timeWasting: boolean;
   freeKickTakerId: string | null;
   cornerTakerId: string | null;
+  startingElevenIds: string[] | null;
 }
 
 const DEFAULT_TACTIC: TacticSnapshot = {
@@ -57,6 +59,7 @@ const DEFAULT_TACTIC: TacticSnapshot = {
   timeWasting: false,
   freeKickTakerId: null,
   cornerTakerId: null,
+  startingElevenIds: null,
 };
 
 export interface PlayerRow {
@@ -87,6 +90,75 @@ function positionGroup(position: string | null): PositionGroup {
   if (['CB', 'LB', 'RB', 'WB', 'LWB', 'RWB', 'FB'].some((p) => upper.startsWith(p))) return 'DEF';
   if (['CM', 'CDM', 'CAM', 'LM', 'RM', 'DM', 'AM'].some((p) => upper.startsWith(p))) return 'MID';
   return 'FOR';
+}
+
+// lib/screens/squad_screen.dart'taki _formationSlots ile birebir aynı slot
+// grup dizilimi (x/y koordinatları burada gerekmiyor, sadece grup sırası).
+// starting_eleven_ids[i], bu dizideki slots[i].group'ta oynuyor demektir.
+const FORMATION_SLOT_GROUPS: Record<string, PositionGroup[]> = {
+  f433: ['GK', 'DEF', 'DEF', 'DEF', 'DEF', 'MID', 'MID', 'MID', 'FOR', 'FOR', 'FOR'],
+  f442: ['GK', 'DEF', 'DEF', 'DEF', 'DEF', 'MID', 'MID', 'MID', 'MID', 'FOR', 'FOR'],
+  f352: ['GK', 'DEF', 'DEF', 'DEF', 'MID', 'MID', 'MID', 'MID', 'MID', 'FOR', 'FOR'],
+  f532: ['GK', 'DEF', 'DEF', 'DEF', 'DEF', 'DEF', 'MID', 'MID', 'MID', 'FOR', 'FOR'],
+};
+
+const POSITION_GROUP_ORDER: PositionGroup[] = ['GK', 'DEF', 'MID', 'FOR'];
+const POSITION_MISMATCH_PENALTIES = [0, 0.15, 0.30, 0.50];
+
+// lib/screens/squad_screen.dart'taki effectiveAbilityInSlot ile birebir
+// aynı formül: bir oyuncu kendi doğal mevki grubu dışında bir slotta
+// oynatılırsa, mesafeye göre kademeli güç kaybeder.
+function effectiveAbilityInSlot(player: PlayerRow, slotGroup: PositionGroup): number {
+  const ownIndex = POSITION_GROUP_ORDER.indexOf(positionGroup(player.position));
+  const slotIndex = POSITION_GROUP_ORDER.indexOf(slotGroup);
+  if (ownIndex < 0 || slotIndex < 0) return player.current_ability;
+  const distance = Math.min(Math.abs(ownIndex - slotIndex), POSITION_MISMATCH_PENALTIES.length - 1);
+  return Math.round(player.current_ability * (1 - POSITION_MISMATCH_PENALTIES[distance]));
+}
+
+interface RosterEntry {
+  player: PlayerRow;
+  effectiveGroup: PositionGroup;
+  effectiveAbility: number;
+}
+
+// Kulübün starting_eleven_ids + formation bilgisinden, sahadaki 11 kişinin
+// gerçek slot atamasını ve mevki-uyuşmazlığı cezası uygulanmış efektif
+// ability'sini üretir - artık kadronun tamamı değil, SADECE sahadaki 11
+// kişi maça dahil oluyor, ve mevki dışı oynatılan oyuncu burada (UI'daki
+// squad_screen.dart ile birebir aynı formülle) güç kaybediyor. Taktik hiç
+// kaydedilmemişse ya da starting_eleven_ids artık geçersizse (sakat/
+// cezalı/kulüpten ayrılmış biri varsa) eski davranışa (tüm uygun kadro,
+// kendi doğal mevkisinde, cezasız) düşer.
+function buildEffectiveRoster(
+  clubPlayers: PlayerRow[],
+  formation: string | null,
+  startingElevenIds: string[] | null | undefined,
+): RosterEntry[] {
+  const slotGroups = FORMATION_SLOT_GROUPS[(formation ?? 'f442').toLowerCase()];
+  const playerMap = new Map(clubPlayers.map((p) => [p.id, p]));
+
+  if (slotGroups && startingElevenIds && startingElevenIds.length === slotGroups.length) {
+    const roster: RosterEntry[] = [];
+    let allValid = true;
+    for (let i = 0; i < slotGroups.length; i += 1) {
+      const player = playerMap.get(startingElevenIds[i]);
+      if (!player || player.injury_duration_weeks > 0 || player.is_suspended) {
+        allValid = false;
+        break;
+      }
+      roster.push({
+        player,
+        effectiveGroup: slotGroups[i],
+        effectiveAbility: effectiveAbilityInSlot(player, slotGroups[i]),
+      });
+    }
+    if (allValid) return roster;
+  }
+
+  return clubPlayers
+    .filter((p) => p.injury_duration_weeks <= 0 && !p.is_suspended)
+    .map((p) => ({ player: p, effectiveGroup: positionGroup(p.position), effectiveAbility: p.current_ability }));
 }
 
 // Classic rock-paper-scissors formation matchups: each entry is the attack
@@ -146,25 +218,27 @@ function averageMorale(players: PlayerRow[]): number {
   return players.reduce((sum, p) => sum + (p.morale ?? 75), 0) / players.length;
 }
 
-function phaseRating(players: PlayerRow[], group: PositionGroup): number {
-  const groupPlayers = players.filter((p) => positionGroup(p.position) === group);
-  const pool = groupPlayers.length > 0 ? groupPlayers : players;
+function phaseRating(roster: RosterEntry[], group: PositionGroup): number {
+  const groupEntries = roster.filter((r) => r.effectiveGroup === group);
+  const pool = groupEntries.length > 0 ? groupEntries : roster;
   if (pool.length === 0) return 50;
 
-  const statFor = (p: PlayerRow): number => {
+  const statFor = (r: RosterEntry): number => {
+    const p = r.player;
+    const ca = r.effectiveAbility;
     switch (group) {
       case 'DEF':
-        return p.current_ability * 0.5 + p.tackling * 3 + p.composure * 1.5;
+        return ca * 0.5 + p.tackling * 3 + p.composure * 1.5;
       case 'MID':
-        return p.current_ability * 0.5 + p.passing * 2.5 + p.determination * 1.5;
+        return ca * 0.5 + p.passing * 2.5 + p.determination * 1.5;
       case 'FOR':
-        return p.current_ability * 0.5 + p.finishing * 3 + p.composure * 1.5;
+        return ca * 0.5 + p.finishing * 3 + p.composure * 1.5;
       default:
-        return p.current_ability;
+        return ca;
     }
   };
 
-  return pool.reduce((sum, p) => sum + statFor(p), 0) / pool.length;
+  return pool.reduce((sum, r) => sum + statFor(r), 0) / pool.length;
 }
 
 function blendedRating(abilityRating: number, tacticalModifier: number, moraleAvg: number): number {
@@ -173,17 +247,20 @@ function blendedRating(abilityRating: number, tacticalModifier: number, moraleAv
 }
 
 function makeExpectedGoals(
-  homePlayers: PlayerRow[],
-  awayPlayers: PlayerRow[],
+  homeRoster: RosterEntry[],
+  awayRoster: RosterEntry[],
   homeTactic: TacticSnapshot,
   awayTactic: TacticSnapshot,
 ) {
-  const homeAttackAbility = phaseRating(homePlayers, 'FOR');
-  const homeDefenseAbility = phaseRating(homePlayers, 'DEF');
-  const homeMidAbility = phaseRating(homePlayers, 'MID');
-  const awayAttackAbility = phaseRating(awayPlayers, 'FOR');
-  const awayDefenseAbility = phaseRating(awayPlayers, 'DEF');
-  const awayMidAbility = phaseRating(awayPlayers, 'MID');
+  const homePlayers = homeRoster.map((r) => r.player);
+  const awayPlayers = awayRoster.map((r) => r.player);
+
+  const homeAttackAbility = phaseRating(homeRoster, 'FOR');
+  const homeDefenseAbility = phaseRating(homeRoster, 'DEF');
+  const homeMidAbility = phaseRating(homeRoster, 'MID');
+  const awayAttackAbility = phaseRating(awayRoster, 'FOR');
+  const awayDefenseAbility = phaseRating(awayRoster, 'DEF');
+  const awayMidAbility = phaseRating(awayRoster, 'MID');
 
   const homeMentalityMod = mentalityModifier(homeTactic.mentality);
   const awayMentalityMod = mentalityModifier(awayTactic.mentality);
@@ -412,7 +489,7 @@ export async function resolveMatch(
 
   const { data: tactics, error: tacticsError } = await supabase
     .from('tactics')
-    .select('club_id,mentality,formation,press_intensity,tempo,defensive_line,offside_trap,time_wasting,free_kick_taker_id,corner_taker_id')
+    .select('club_id,mentality,formation,press_intensity,tempo,defensive_line,offside_trap,time_wasting,free_kick_taker_id,corner_taker_id,starting_eleven_ids')
     .in('club_id', clubIds);
   if (tacticsError) throw new Error(`Taktikler okunamadı: ${tacticsError.message}`);
 
@@ -427,6 +504,7 @@ export async function resolveMatch(
     timeWasting: row.time_wasting ?? false,
     freeKickTakerId: row.free_kick_taker_id ?? null,
     cornerTakerId: row.corner_taker_id ?? null,
+    startingElevenIds: row.starting_eleven_ids ?? null,
   }));
   const homeTactic = tacticMap.get(matchRow.home_club_id) ?? { ...DEFAULT_TACTIC };
   const awayTactic = tacticMap.get(matchRow.away_club_id) ?? { ...DEFAULT_TACTIC };
@@ -434,10 +512,23 @@ export async function resolveMatch(
   const allPlayers: PlayerRow[] = playerRows ?? [];
   const homeClubPlayers = allPlayers.filter((p) => p.club_id === matchRow.home_club_id);
   const awayClubPlayers = allPlayers.filter((p) => p.club_id === matchRow.away_club_id);
-  const homePlayers = homeClubPlayers.filter((p) => p.injury_duration_weeks <= 0 && !p.is_suspended);
-  const awayPlayers = awayClubPlayers.filter((p) => p.injury_duration_weeks <= 0 && !p.is_suspended);
 
-  const { homeXG, awayXG, homePossession, pressIntensityAvg } = makeExpectedGoals(homePlayers, awayPlayers, homeTactic, awayTactic);
+  // Sahadaki 11 kişinin gerçek slot ataması ve mevki-uyuşmazlığı cezası
+  // uygulanmış efektif ability'si - artık kadronun tamamı değil, SADECE bu
+  // 11 kişi maça dahil oluyor (bkz. buildEffectiveRoster).
+  const homeRoster = buildEffectiveRoster(homeClubPlayers, homeTactic.formation, homeTactic.startingElevenIds);
+  const awayRoster = buildEffectiveRoster(awayClubPlayers, awayTactic.formation, awayTactic.startingElevenIds);
+  const homePlayers = homeRoster.map((r) => r.player);
+  const awayPlayers = awayRoster.map((r) => r.player);
+  // Yedek kulübesi: kadroda olup sahadaki 11'de (homePlayers/awayPlayers)
+  // olmayan, sakat/cezalı olmayan oyuncular - oyuna giren (substitution)
+  // buradan seçilmeli, sahada zaten oynayan 11 kişiden değil.
+  const homeStartingIds = new Set(homePlayers.map((p) => p.id));
+  const awayStartingIds = new Set(awayPlayers.map((p) => p.id));
+  const homeBench = homeClubPlayers.filter((p) => !homeStartingIds.has(p.id) && p.injury_duration_weeks <= 0 && !p.is_suspended);
+  const awayBench = awayClubPlayers.filter((p) => !awayStartingIds.has(p.id) && p.injury_duration_weeks <= 0 && !p.is_suspended);
+
+  const { homeXG, awayXG, homePossession, pressIntensityAvg } = makeExpectedGoals(homeRoster, awayRoster, homeTactic, awayTactic);
   const homeScore = rollGoals(homeXG);
   const awayScore = rollGoals(awayXG);
   // High-press matches are more physical - a small extra bump to injury
@@ -534,8 +625,9 @@ export async function resolveMatch(
   for (let idx = 0; idx < substitutionCount; idx += 1) {
     const side = Math.random() < 0.5 ? 'home' : 'away';
     const teamPlayers = side === 'home' ? homePlayers : awayPlayers;
+    const teamBench = side === 'home' ? homeBench : awayBench;
     const fromPlayer = choosePlayer(teamPlayers);
-    const toPlayer = choosePlayer(teamPlayers.filter((p) => p.id !== fromPlayer?.id));
+    const toPlayer = choosePlayer(teamBench);
     if (fromPlayer && toPlayer) {
       timelineEvents.push(createEvent(
         matchRow.id, randomBetween(55, 90), 'substitution',

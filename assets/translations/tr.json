@@ -22,9 +22,17 @@
   },
   "settings": {
     "title": "Ayarlar",
+    "profile": "Profilim",
+    "language_turkish": "Türkçe",
+    "language_english": "English",
     "language_notice": "Uygulama dili değiştiğinde tüm metinler güncellenecektir.",
     "notifications": "Bildirimler",
-    "notifications_desc": "Uygulama bildirimlerini al"
+    "notifications_desc": "Uygulama bildirimlerini al",
+    "leave_team": "Takımı Bırak",
+    "leave_team_confirm_title": "Takımı bırakmak istediğine emin misin?",
+    "leave_team_confirm_body": "Mevcut kulübün elinden alınacak ve başkası tarafından devralınabilir hale gelecek. Bu işlem geri alınamaz; yeniden lig oluşturman ya da bir davet koduyla katılman gerekecek.",
+    "leave_team_cancel": "Vazgeç",
+    "leave_team_confirm_action": "Evet, Bırak"
   },
   "clubSetup": {
     "title": "Menajerliğe Başla",

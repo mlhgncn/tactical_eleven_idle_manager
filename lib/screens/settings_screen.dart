@@ -65,7 +65,7 @@ class _SettingsBodyState extends State<_SettingsBody> {
             Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ProfileScreen()));
           },
           icon: const Icon(Icons.person),
-          label: const Text('Profilim'),
+          label: Text('settings.profile'.tr()),
         ),
         const SizedBox(height: 24),
         ElevatedButton.icon(
@@ -73,7 +73,7 @@ class _SettingsBodyState extends State<_SettingsBody> {
             await context.setLocale(const Locale('tr'));
           },
           icon: const Icon(Icons.language),
-          label: const Text('Türkçe'),
+          label: Text('settings.language_turkish'.tr()),
         ),
         const SizedBox(height: 12),
         ElevatedButton.icon(
@@ -81,7 +81,7 @@ class _SettingsBodyState extends State<_SettingsBody> {
             await context.setLocale(const Locale('en'));
           },
           icon: const Icon(Icons.language),
-          label: const Text('English'),
+          label: Text('settings.language_english'.tr()),
         ),
         const SizedBox(height: 24),
         Text('settings.language_notice'.tr()),
@@ -103,7 +103,7 @@ class _SettingsBodyState extends State<_SettingsBody> {
           icon: _isLeaving
               ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
               : const Icon(Icons.exit_to_app),
-          label: const Text('Takımı Bırak'),
+          label: Text('settings.leave_team'.tr()),
         ),
         const SizedBox(height: 12),
         OutlinedButton.icon(
@@ -124,20 +124,17 @@ class _SettingsBodyState extends State<_SettingsBody> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Takımı bırakmak istediğine emin misin?'),
-        content: const Text(
-          'Mevcut kulübün elinden alınacak ve başkası tarafından devralınabilir hale gelecek. '
-          'Bu işlem geri alınamaz; yeniden lig oluşturman ya da bir davet koduyla katılman gerekecek.',
-        ),
+        title: Text('settings.leave_team_confirm_title'.tr()),
+        content: Text('settings.leave_team_confirm_body'.tr()),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Vazgeç'),
+            child: Text('settings.leave_team_cancel'.tr()),
           ),
           TextButton(
             style: TextButton.styleFrom(foregroundColor: Colors.red),
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Evet, Bırak'),
+            child: Text('settings.leave_team_confirm_action'.tr()),
           ),
         ],
       ),

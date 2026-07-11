@@ -144,7 +144,13 @@ class GameProvider extends ChangeNotifier {
   List<Map<String, dynamic>> get standings => List.unmodifiable(_standings);
 
   /// Calculate match economy summary for UI
-  Map<String, int> calculateMatchEconomy({required bool isWin}) {
+  // supabase/functions/_shared/match_engine.ts'teki computeClubEconomy ile
+  // aynı formülleri kullanır (stadyum geliri = kapasite*biletFiyatı/3,
+  // sadece ev sahibi maçlarında; berabere +100 GP bonus) - önceden
+  // capacity/10 kullanıyordu (sunucudan 3.33 kat düşük) ve deplasman
+  // senaryosunu hiç ayırt etmiyordu, gerçekleşenle tutarsız bir tahmin
+  // gösteriyordu.
+  Map<String, int> calculateMatchEconomy({required bool isWin, bool isDraw = false, bool isHome = true}) {
     final club = _activeClub;
     if (club == null) {
       return {
@@ -159,9 +165,9 @@ class GameProvider extends ChangeNotifier {
       };
     }
 
-    final stadiumRevenue = (club.stadiumCapacity ~/ 10) * club.ticketPrice;
+    final stadiumRevenue = isHome ? ((club.stadiumCapacity * club.ticketPrice) ~/ 3) : 0;
     final sponsorRevenue = club.sponsorLevel * 500;
-    final matchBonus = isWin ? 300 : -200;
+    final matchBonus = isWin ? 300 : (isDraw ? 100 : -200);
 
     int playerWages = 0;
     for (final player in _squadPlayers) {

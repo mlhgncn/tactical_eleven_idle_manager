@@ -22,9 +22,17 @@
   },
   "settings": {
     "title": "Settings",
+    "profile": "My Profile",
+    "language_turkish": "Türkçe",
+    "language_english": "English",
     "language_notice": "All text will update when the app language changes.",
     "notifications": "Notifications",
-    "notifications_desc": "Receive app notifications"
+    "notifications_desc": "Receive app notifications",
+    "leave_team": "Leave Team",
+    "leave_team_confirm_title": "Are you sure you want to leave your team?",
+    "leave_team_confirm_body": "Your current club will be taken from you and made available for someone else to take over. This action cannot be undone; you'll need to create a new league or join one with an invitation code.",
+    "leave_team_cancel": "Cancel",
+    "leave_team_confirm_action": "Yes, Leave"
   },
   "clubSetup": {
     "title": "Start Managing",
