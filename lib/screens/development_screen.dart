@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/game_provider.dart';
+import '../services/ad_service.dart';
 import '../widgets/timed_progress_bar.dart';
 
 class DevelopmentScreen extends StatelessWidget {
@@ -72,6 +73,14 @@ class DevelopmentScreen extends StatelessWidget {
                       TimedProgressBar(
                         completesAt: club.developmentCompletesAt!,
                         totalDuration: Duration(days: upgradingDurationDays),
+                        adUsesRemaining: 2 - club.developmentAdUses,
+                        onWatchAd: () async {
+                          final earned = await AdService.instance.showRewardedAd();
+                          if (earned) {
+                            await context.read<GameProvider>().reduceClubDevelopmentTimeWithAd();
+                          }
+                          return earned;
+                        },
                       ),
                       const SizedBox(height: 8),
                       Text(

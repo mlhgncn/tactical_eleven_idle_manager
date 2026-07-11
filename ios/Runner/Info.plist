@@ -4,6 +4,10 @@
 <dict>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
+	<key>GADApplicationIdentifier</key>
+	<string>ca-app-pub-3621419452103208~8380492399</string>
+	<key>NSUserTrackingUsageDescription</key>
+	<string>Bu veri, geliştirmeyi hızlandırmak için izlediğiniz reklamları daha uygun hale getirmek amacıyla kullanılır.</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>

@@ -15,11 +15,21 @@ class TimedProgressBar extends StatefulWidget {
     required this.completesAt,
     required this.totalDuration,
     this.label,
+    this.adUsesRemaining,
+    this.onWatchAd,
   });
 
   final DateTime completesAt;
   final Duration totalDuration;
   final String? label;
+
+  /// Reklamla süre kısaltma hakkı kaç kez daha kullanılabilir (0-2).
+  /// `null` ise reklam butonu hiç gösterilmez.
+  final int? adUsesRemaining;
+
+  /// Reklam izlendiğinde çağrılır (ödül kazanıldıysa true döner). `null`
+  /// ise buton devre dışı görünür.
+  final Future<bool> Function()? onWatchAd;
 
   @override
   State<TimedProgressBar> createState() => _TimedProgressBarState();
@@ -27,6 +37,7 @@ class TimedProgressBar extends StatefulWidget {
 
 class _TimedProgressBarState extends State<TimedProgressBar> {
   Timer? _timer;
+  bool _isWatchingAd = false;
 
   @override
   void initState() {
@@ -47,6 +58,29 @@ class _TimedProgressBarState extends State<TimedProgressBar> {
     if (d.inHours > 0) return '${d.inHours}s ${d.inMinutes % 60}dk kaldı';
     if (d.inMinutes > 0) return '${d.inMinutes}dk ${d.inSeconds % 60}sn kaldı';
     return '${d.inSeconds}sn kaldı';
+  }
+
+  Future<void> _handleWatchAd() async {
+    final onWatchAd = widget.onWatchAd;
+    if (onWatchAd == null || _isWatchingAd) return;
+    setState(() => _isWatchingAd = true);
+    try {
+      final earned = await onWatchAd();
+      if (!mounted) return;
+      if (!earned) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Reklam şu anda hazır değil, birazdan tekrar deneyin.')),
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error.toString().replaceAll('Exception: ', ''))),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isWatchingAd = false);
+    }
   }
 
   @override
@@ -79,6 +113,29 @@ class _TimedProgressBarState extends State<TimedProgressBar> {
           _formatRemaining(clampedRemaining),
           style: const TextStyle(fontSize: 11.5, color: AppColors.textMuted, fontWeight: FontWeight.w600),
         ),
+        if (widget.adUsesRemaining != null) ...[
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 34,
+            child: OutlinedButton.icon(
+              onPressed: (widget.adUsesRemaining! > 0 && !_isWatchingAd) ? _handleWatchAd : null,
+              icon: _isWatchingAd
+                  ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Icon(Icons.play_circle_outline, size: 16),
+              label: Text(
+                widget.adUsesRemaining! > 0
+                    ? 'Reklam izle, %25 hızlandır (${widget.adUsesRemaining}/2 hak)'
+                    : 'Reklam hakkı kalmadı (0/2)',
+                style: const TextStyle(fontSize: 11.5),
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.goldLight,
+                side: BorderSide(color: AppColors.gold.withValues(alpha: 0.4)),
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+              ),
+            ),
+          ),
+        ],
       ],
     );
   }

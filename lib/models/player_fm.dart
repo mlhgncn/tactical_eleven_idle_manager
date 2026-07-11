@@ -20,6 +20,7 @@
   int injuryDurationWeeks;
   bool isSuspended;
   DateTime? developmentCompletesAt;
+  int developmentAdUses;
 
   PlayerFM({
     required this.id,
@@ -43,6 +44,7 @@
     this.injuryDurationWeeks = 0,
     this.isSuspended = false,
     this.developmentCompletesAt,
+    this.developmentAdUses = 0,
   });
 
   factory PlayerFM.fromMap(Map<String, dynamic> map) {
@@ -70,6 +72,7 @@
       developmentCompletesAt: map['development_completes_at'] != null
           ? DateTime.tryParse(map['development_completes_at'] as String)
           : null,
+      developmentAdUses: (map['development_ad_uses'] as num?)?.toInt() ?? 0,
     );
   }
 

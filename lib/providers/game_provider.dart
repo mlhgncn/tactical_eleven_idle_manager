@@ -296,6 +296,22 @@ class GameProvider extends ChangeNotifier {
     return updatedPlayer;
   }
 
+  /// Ödüllü reklam izlendikten sonra bir oyuncu gelişiminin kalan süresini
+  /// %25 kısaltır (birikimli, gelişim başına en fazla 2 kez).
+  Future<PlayerFM?> reducePlayerDevelopmentTimeWithAd({required String playerId}) async {
+    final updatedPlayer = await _repository.reducePlayerDevelopmentTimeWithAd(playerId: playerId);
+
+    if (updatedPlayer != null) {
+      final index = _squadPlayers.indexWhere((player) => player.id == playerId);
+      if (index >= 0) {
+        _squadPlayers[index] = updatedPlayer;
+        notifyListeners();
+      }
+    }
+
+    return updatedPlayer;
+  }
+
   Future<void> _loadInboxMessages() async {
     _inboxMessages = await _repository.loadInboxMessages();
   }
@@ -838,6 +854,20 @@ class GameProvider extends ChangeNotifier {
       notifyListeners();
     } finally {
       _setBusy(false);
+    }
+  }
+
+  /// Ödüllü reklam izlendikten sonra süren kulüp geliştirmesinin (stadyum/
+  /// tesis/bilet fiyatı) kalan süresini %25 kısaltır (birikimli, gelişim
+  /// başına en fazla 2 kez).
+  Future<void> reduceClubDevelopmentTimeWithAd() async {
+    final activeClub = _activeClub;
+    if (activeClub == null) throw Exception('Aktif kulüp bulunamadı.');
+
+    final updatedClub = await _repository.reduceClubDevelopmentTimeWithAd(clubId: activeClub.id);
+    if (updatedClub != null) {
+      _activeClub = updatedClub;
+      notifyListeners();
     }
   }
 

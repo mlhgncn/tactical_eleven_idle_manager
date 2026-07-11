@@ -12,6 +12,7 @@ import 'screens/email_verification_screen.dart';
 import 'screens/root_shell.dart';
 import 'screens/settings_screen.dart';
 import 'screens/setup_club_screen.dart';
+import 'services/ad_service.dart';
 import 'services/error_reporting_service.dart';
 import 'services/analytics_service.dart';
 import 'config.dart';
@@ -40,6 +41,7 @@ Future<void> main() async {
     ErrorReportingService.report(details.exception, details.stack, reason: 'FlutterError');
   };
   await AnalyticsService.instance.initialize();
+  unawaited(AdService.instance.initialize());
 
   runZonedGuarded(() {
     runApp(

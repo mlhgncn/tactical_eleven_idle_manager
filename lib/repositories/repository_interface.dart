@@ -21,6 +21,8 @@ abstract class GameRepository {
   Future<void> leaveCurrentClub();
   Future<List<PlayerFM>> loadSquadPlayers(String clubId);
   Future<PlayerFM?> startPlayerDevelopment({required String playerId});
+  Future<PlayerFM?> reducePlayerDevelopmentTimeWithAd({required String playerId});
+  Future<ClubInfo?> reduceClubDevelopmentTimeWithAd({required String clubId});
   Future<List<InboxMessage>> loadInboxMessages();
   Future<InboxMessage?> addInboxMessage({required String title, required String body});
   Future<Map<String, dynamic>?> awardAdReward({required String rewardType, int? amount});

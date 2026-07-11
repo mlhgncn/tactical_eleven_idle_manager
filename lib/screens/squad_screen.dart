@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../models/player_fm.dart';
 import '../models/tactics.dart';
 import '../providers/game_provider.dart';
+import '../services/ad_service.dart';
 import '../theme/app_assets.dart';
 import '../theme/app_theme.dart';
 import '../widgets/timed_progress_bar.dart';
@@ -272,6 +273,14 @@ class SquadScreen extends StatelessWidget {
                           completesAt: player.developmentCompletesAt!,
                           totalDuration: const Duration(hours: 2),
                           label: '${player.name} · ${player.position}',
+                          adUsesRemaining: 2 - player.developmentAdUses,
+                          onWatchAd: () async {
+                            final earned = await AdService.instance.showRewardedAd();
+                            if (earned) {
+                              await provider.reducePlayerDevelopmentTimeWithAd(playerId: player.id);
+                            }
+                            return earned;
+                          },
                         ),
                       ),
                     ),

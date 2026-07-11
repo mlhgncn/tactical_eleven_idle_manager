@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../models/player_fm.dart';
 import '../providers/game_provider.dart';
+import '../services/ad_service.dart';
 import '../widgets/player_card.dart';
 import '../widgets/themed_button.dart';
 import '../widgets/timed_progress_bar.dart';
@@ -99,6 +100,14 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                     TimedProgressBar(
                       completesAt: player.developmentCompletesAt!,
                       totalDuration: const Duration(hours: 2),
+                      adUsesRemaining: 2 - player.developmentAdUses,
+                      onWatchAd: () async {
+                        final earned = await AdService.instance.showRewardedAd();
+                        if (earned) {
+                          await provider.reducePlayerDevelopmentTimeWithAd(playerId: player.id);
+                        }
+                        return earned;
+                      },
                     ),
                     const SizedBox(height: 8),
                     Text(

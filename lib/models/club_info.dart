@@ -13,6 +13,7 @@ class ClubInfo {
   final String? developmentUpgradeType; // 'stadium' | 'facility'
   final int? developmentTargetValue;
   final DateTime? developmentCompletesAt;
+  final int developmentAdUses;
 
   const ClubInfo({
     required this.id,
@@ -29,6 +30,7 @@ class ClubInfo {
     this.developmentUpgradeType,
     this.developmentTargetValue,
     this.developmentCompletesAt,
+    this.developmentAdUses = 0,
   });
 
   bool get isSponsorUpgrading =>
@@ -51,6 +53,7 @@ class ClubInfo {
     String? developmentUpgradeType,
     int? developmentTargetValue,
     DateTime? developmentCompletesAt,
+    int? developmentAdUses,
   }) {
     return ClubInfo(
       id: id,
@@ -67,6 +70,7 @@ class ClubInfo {
       developmentUpgradeType: developmentUpgradeType ?? this.developmentUpgradeType,
       developmentTargetValue: developmentTargetValue ?? this.developmentTargetValue,
       developmentCompletesAt: developmentCompletesAt ?? this.developmentCompletesAt,
+      developmentAdUses: developmentAdUses ?? this.developmentAdUses,
     );
   }
 
@@ -90,6 +94,7 @@ class ClubInfo {
       developmentCompletesAt: map['development_completes_at'] != null
           ? DateTime.tryParse(map['development_completes_at'] as String)
           : null,
+      developmentAdUses: (map['development_ad_uses'] as num?)?.toInt() ?? 0,
     );
   }
 }

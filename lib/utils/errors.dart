@@ -38,6 +38,7 @@ const Map<String, String> _exactSupabaseMessages = {
   'Insufficient available budget to make this offer': 'Bu teklifi vermek için yeterli kullanılabilir bütçeniz yok.',
   'Insufficient budget to sign this player': 'Bu oyuncuyu transfer etmek için yeterli bütçeniz yok.',
   'Invalid upgrade type': 'Geçersiz geliştirme türü.',
+  'No active development to speed up': 'Hızlandırılacak aktif bir gelişim yok.',
   'No active transfer offer exists for this player': 'Bu oyuncu için aktif bir transfer teklifi yok.',
   'Not enough budget for upgrade': 'Bu geliştirme için yeterli bütçeniz yok.',
   'Not enough budget to upgrade sponsor': 'Sponsorluğu yükseltmek için yeterli bütçeniz yok.',

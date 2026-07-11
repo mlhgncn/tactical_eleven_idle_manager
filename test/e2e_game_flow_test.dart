@@ -304,6 +304,12 @@ class _FakeGameRepository implements GameRepository {
   Future<PlayerFM?> startPlayerDevelopment({required String playerId}) async => null;
 
   @override
+  Future<PlayerFM?> reducePlayerDevelopmentTimeWithAd({required String playerId}) async => null;
+
+  @override
+  Future<ClubInfo?> reduceClubDevelopmentTimeWithAd({required String clubId}) async => null;
+
+  @override
   Future<Map<String, dynamic>?> loadCurrentSeasonState(String clubId) async => null;
 
   @override
