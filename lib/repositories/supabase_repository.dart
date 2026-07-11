@@ -336,20 +336,35 @@ class SupabaseRepository implements GameRepository {
     required String transactionId,
   }) async {
     return _wrap(() async {
-      final response = await _client.functions.invoke('verify_iap_purchase', body: {
-        'receiptData': receiptData,
-        'productId': productId,
-        'transactionId': transactionId,
-      });
+      try {
+        final response = await _client.functions.invoke('verify_iap_purchase', body: {
+          'receiptData': receiptData,
+          'productId': productId,
+          'transactionId': transactionId,
+        });
 
-      final data = response.data;
-      if (data is Map<String, dynamic>) {
-        if (data['error'] != null) {
-          throw AppException(data['error'].toString());
+        final data = response.data;
+        if (data is Map<String, dynamic>) {
+          if (data['error'] != null) {
+            throw AppException(data['error'].toString());
+          }
+          return data;
         }
-        return data;
+        throw AppException('Satın alma doğrulanamadı.');
+      } on FunctionException catch (e) {
+        // The Edge Function always returns a non-2xx status for errors
+        // (400/401/500), which the functions client surfaces as a
+        // FunctionException rather than a normal FunctionResponse - so the
+        // structured {error: "..."} body it computed lands in e.details,
+        // not response.data above. Without this, the raw
+        // "FunctionException(status: ..., details: ..., reasonPhrase: ...)"
+        // dump would leak straight to the user.
+        final details = e.details;
+        if (details is Map && details['error'] != null) {
+          throw AppException(details['error'].toString());
+        }
+        throw AppException('Satın alma doğrulanamadı.');
       }
-      throw AppException('Satın alma doğrulanamadı.');
     });
   }
 
