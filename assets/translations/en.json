@@ -293,10 +293,7 @@
     "squadTitle": "Squad",
     "playerSubtitle": "Age: {age} • Power: {ability}",
     "injuredChip": "Injured",
-    "suspendedChip": "Suspended",
-    "savedReportsTitle": "Saved Scout Reports",
-    "noSavedReports": "You haven't viewed an opponent's tactics/squad yet.",
-    "savedReportsQuickAction": "Scout Reports"
+    "suspendedChip": "Suspended"
   },
   "finance": {
     "activeClubNotFound": "Active club not found.",

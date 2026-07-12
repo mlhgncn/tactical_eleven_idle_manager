@@ -699,14 +699,6 @@ class GameProvider extends ChangeNotifier {
     }
   }
 
-  Future<List<SavedScoutReport>> loadScoutedReports() async {
-    try {
-      return await _repository.loadScoutedReports();
-    } catch (error) {
-      throw Exception(_formatClubActionError(error));
-    }
-  }
-
   Future<void> selectClubForLeague(String clubId) async {
     try {
       final club = await _repository.selectClubForLeague(clubId);

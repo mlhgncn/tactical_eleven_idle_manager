@@ -1080,15 +1080,6 @@ class SupabaseRepository implements GameRepository {
   }
 
   @override
-  Future<List<SavedScoutReport>> loadScoutedReports() async {
-    return _wrap(() async {
-      final data = await _client.rpc('list_scouted_reports');
-      if (data is! List<dynamic>) return <SavedScoutReport>[];
-      return data.cast<Map<String, dynamic>>().map(SavedScoutReport.fromMap).toList();
-    });
-  }
-
-  @override
   Future<List<ConsumableProduct>> loadConsumableProducts() async {
     return _wrap(() async {
       final data = await _client

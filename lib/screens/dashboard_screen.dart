@@ -14,7 +14,6 @@ import '../widgets/themed_button.dart';
 import 'market_screen.dart';
 import 'match_schedule_screen.dart';
 import 'opponent_scout_screen.dart';
-import 'scouted_reports_screen.dart';
 import 'squad_screen.dart';
 import 'transfer_market_screen.dart';
 import 'league_table_screen.dart';
@@ -119,13 +118,6 @@ class DashboardScreen extends StatelessWidget {
                   title: 'dashboard.market'.tr(),
                   subtitle: 'dashboard.diamondCount'.tr(namedArgs: {'count': provider.diamonds.toString()}),
                   onTap: () => _push(context, const MarketScreen()),
-                ),
-                _QuickAction(
-                  icon: Icons.visibility,
-                  color: AppColors.gold,
-                  title: 'opponentScout.savedReportsQuickAction'.tr(),
-                  subtitle: 'opponentScout.savedReportsTitle'.tr(),
-                  onTap: () => _push(context, const ScoutedReportsScreen()),
                 ),
               ],
             ),
