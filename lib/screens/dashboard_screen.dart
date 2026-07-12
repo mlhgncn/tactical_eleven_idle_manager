@@ -316,9 +316,11 @@ class _MatchCardState extends State<_MatchCard> {
     super.dispose();
   }
 
-  bool _isWithinScoutWindow(MatchFixture f) {
+  // Scouting is available any time before kickoff, but locks out in the
+  // final 15 minutes (once the match is effectively about to start).
+  bool _isScoutLocked(MatchFixture f) {
     final remaining = f.kickoff.difference(DateTime.now());
-    return remaining <= const Duration(minutes: 15) && remaining > Duration.zero;
+    return remaining <= const Duration(minutes: 15);
   }
 
   Future<void> _scoutOpponent(BuildContext context, MatchFixture f) async {
@@ -468,13 +470,13 @@ class _MatchCardState extends State<_MatchCard> {
                   )),
                   label: 'navigation.calendar'.tr(),
                 ),
-                if (_isWithinScoutWindow(f) && f.opponentClubId != null) ...[
+                if (f.opponentClubId != null) ...[
                   const SizedBox(height: 10),
                   GlassButton(
                     height: 44,
                     isLoading: _isScouting,
-                    onPressed: _isScouting ? null : () => _scoutOpponent(context, f),
-                    label: 'dashboard.scoutOpponent'.tr(),
+                    onPressed: (_isScouting || _isScoutLocked(f)) ? null : () => _scoutOpponent(context, f),
+                    label: _isScoutLocked(f) ? 'dashboard.scoutOpponentLocked'.tr() : 'dashboard.scoutOpponent'.tr(),
                   ),
                 ],
                 Builder(builder: (context) {

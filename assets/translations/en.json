@@ -270,6 +270,7 @@
     "away": "AWAY",
     "you": "You",
     "scoutOpponent": "Scout Opponent",
+    "scoutOpponentLocked": "Scouting Closed",
     "hideTactics": "Hide Tactics",
     "tacticsHiddenActive": "Tactics Hidden",
     "tacticsHiddenSuccess": "Your tactics have been hidden for the next match.",

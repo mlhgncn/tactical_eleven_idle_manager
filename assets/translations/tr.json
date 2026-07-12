@@ -270,6 +270,7 @@
     "away": "DEPLASMAN",
     "you": "Sen",
     "scoutOpponent": "Rakibi İncele",
+    "scoutOpponentLocked": "Rakip İnceleme Kapandı",
     "hideTactics": "Taktik Gizle",
     "tacticsHiddenActive": "Taktik Gizli",
     "tacticsHiddenSuccess": "Taktikleriniz bir sonraki maç için gizlendi.",
