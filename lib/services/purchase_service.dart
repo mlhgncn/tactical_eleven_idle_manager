@@ -76,8 +76,20 @@ class PurchaseService {
       }
 
       if (purchase.status == PurchaseStatus.purchased || purchase.status == PurchaseStatus.restored) {
-        final verified = await onPurchaseVerified?.call(purchase) ?? false;
-        if (verified && purchase.pendingCompletePurchase) {
+        try {
+          await onPurchaseVerified?.call(purchase);
+        } catch (error) {
+          debugPrint('PurchaseService onPurchaseVerified error: $error');
+        }
+        // Always finish the transaction once StoreKit has delivered it,
+        // regardless of whether server-side verification succeeded. The
+        // server's iap_transactions table is idempotent on transactionId,
+        // so a failed verification can safely be retried by the user
+        // buying again; leaving the transaction unfinished instead left it
+        // permanently stuck in StoreKit's queue (storekit_duplicate_
+        // product_object on every subsequent purchase attempt for that
+        // product) whenever verification failed even once.
+        if (purchase.pendingCompletePurchase) {
           await _iap.completePurchase(purchase);
         }
       }
