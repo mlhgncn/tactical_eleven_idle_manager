@@ -246,6 +246,25 @@ class SupabaseRepository implements GameRepository {
     });
   }
 
+  /// Loads a single player by id - used to open a player's card from a
+  /// deep link (e.g. an inbox message referencing related_player_id).
+  /// Relies on players_select_policy: only resolves if the caller can
+  /// actually see this player (own squad, free agent, or listed on the
+  /// transfer market) - otherwise returns null instead of throwing.
+  Future<PlayerFM?> loadPlayerById(String playerId) async {
+    return _wrap(() async {
+      final response = await _client
+          .from('players')
+          .select(
+              'id,club_id,name,position,age,current_ability,potential_ability,morale,fitness,finishing,passing,tackling,composure,determination,consistency,injury_proneness,injury_type,injury_duration_weeks,is_suspended,development_completes_at,development_ad_uses,preferred_foot')
+          .eq('id', playerId)
+          .maybeSingle();
+
+      if (response == null) return null;
+      return PlayerFM.fromMap(response as Map<String, dynamic>);
+    });
+  }
+
   Future<List<InboxMessage>> loadInboxMessages() async {
     return _wrap(() async {
       final userId = currentUserId;
@@ -253,7 +272,7 @@ class SupabaseRepository implements GameRepository {
 
       final data = await _client
           .from('inbox_messages')
-          .select('id,title,body,is_read,created_at')
+          .select('id,title,body,is_read,created_at,related_player_id')
           .eq('recipient_id', userId)
           .order('created_at', ascending: false);
 

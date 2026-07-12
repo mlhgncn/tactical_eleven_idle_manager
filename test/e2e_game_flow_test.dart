@@ -202,6 +202,9 @@ class _FakeGameRepository implements GameRepository {
   }
 
   @override
+  Future<PlayerFM?> loadPlayerById(String playerId) async => null;
+
+  @override
   Future<List<InboxMessage>> loadInboxMessages() async => List<InboxMessage>.from(_inboxMessages);
 
   @override

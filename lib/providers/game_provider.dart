@@ -281,6 +281,21 @@ class GameProvider extends ChangeNotifier {
     _squadPlayers = await _repository.loadSquadPlayers(activeClub.id);
   }
 
+  /// Resolves a player by id for deep-linking into their card (e.g. from an
+  /// inbox message's related_player_id) - checks the already-loaded squad
+  /// first to avoid a round-trip for the common case, falls back to a
+  /// direct lookup otherwise.
+  Future<PlayerFM?> loadPlayerById(String playerId) async {
+    for (final p in _squadPlayers) {
+      if (p.id == playerId) return p;
+    }
+    try {
+      return await _repository.loadPlayerById(playerId);
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<void> _loadFinancialTransactions() async {
     final activeClub = _activeClub;
     if (activeClub == null) {

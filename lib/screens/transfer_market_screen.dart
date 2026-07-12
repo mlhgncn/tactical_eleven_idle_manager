@@ -21,6 +21,17 @@ class TransferMarketScreen extends StatefulWidget {
 class _TransferMarketScreenState extends State<TransferMarketScreen> {
   String? _positionFilter;
   RangeValues _abilityRange = const RangeValues(0, 99);
+  final _searchController = TextEditingController();
+  final _minPriceController = TextEditingController();
+  final _maxPriceController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _minPriceController.dispose();
+    _maxPriceController.dispose();
+    super.dispose();
+  }
 
   bool _matchesFilter(String position, int ability) {
     if (_positionFilter != null && position != _positionFilter) return false;
@@ -28,12 +39,118 @@ class _TransferMarketScreenState extends State<TransferMarketScreen> {
     return true;
   }
 
-  Widget _buildFilterBar() {
+  /// Search matches either the player's name or their club's name
+  /// (case-insensitive substring), per "Kulüp Adı ve Oyuncu Adı arama
+  /// motoru". Empty search always matches.
+  bool _matchesSearch(String playerName, String? clubName) {
+    final query = _searchController.text.trim().toLowerCase();
+    if (query.isEmpty) return true;
+    return playerName.toLowerCase().contains(query) || (clubName?.toLowerCase().contains(query) ?? false);
+  }
+
+  bool _matchesPrice(int price) {
+    final min = int.tryParse(_minPriceController.text.trim());
+    final max = int.tryParse(_maxPriceController.text.trim());
+    if (min != null && price < min) return false;
+    if (max != null && price > max) return false;
+    return true;
+  }
+
+  Future<void> _showReofferDialog(BuildContext context, String playerId, String playerName, int previousAmount) async {
+    final controller = TextEditingController(text: previousAmount.toString());
+    final amount = await showDialog<int>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('transferMarket.offerDialogTitle'.tr(namedArgs: {'playerName': playerName})),
+        content: TextField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          decoration: InputDecoration(labelText: 'transferMarket.offerAmountLabel'.tr()),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text('common.cancel'.tr()),
+          ),
+          TextButton(
+            onPressed: () {
+              final value = int.tryParse(controller.text.trim());
+              Navigator.of(dialogContext).pop(value);
+            },
+            child: Text('transferMarket.submitOffer'.tr()),
+          ),
+        ],
+      ),
+    );
+
+    if (amount == null || amount <= 0 || !context.mounted) return;
+    try {
+      await context.read<GameProvider>().makeTransferOffer(playerId: playerId, offerAmount: amount);
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('transferMarket.offerSent'.tr())),
+      );
+    } catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString().replaceAll('Exception: ', ''))),
+      );
+    }
+  }
+
+  Widget _buildFilterBar({bool showPriceFilter = false}) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          TextField(
+            controller: _searchController,
+            decoration: InputDecoration(
+              hintText: 'transferMarket.searchHint'.tr(),
+              prefixIcon: const Icon(Icons.search, size: 20),
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onChanged: (_) => setState(() {}),
+          ),
+          const SizedBox(height: 8),
+          if (showPriceFilter) ...[
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _minPriceController,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      hintText: 'transferMarket.minPriceHint'.tr(),
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                    onChanged: (_) => setState(() {}),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TextField(
+                    controller: _maxPriceController,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      hintText: 'transferMarket.maxPriceHint'.tr(),
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                    onChanged: (_) => setState(() {}),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+          ],
           SizedBox(
             height: 36,
             child: ListView(
@@ -99,10 +216,13 @@ class _TransferMarketScreenState extends State<TransferMarketScreen> {
     }
 
     final listings = provider.transferMarketItems
-        .where((item) => _matchesFilter(item.playerPosition, item.currentAbility))
+        .where((item) =>
+            _matchesFilter(item.playerPosition, item.currentAbility) &&
+            _matchesSearch(item.playerName, item.sellerClubName) &&
+            _matchesPrice(item.askingPrice))
         .toList();
     final freeAgents = provider.freeAgents
-        .where((player) => _matchesFilter(player.position, player.currentAbility))
+        .where((player) => _matchesFilter(player.position, player.currentAbility) && _matchesSearch(player.name, null))
         .toList();
     final incoming = provider.incomingTransferOffers;
     final outgoing = provider.outgoingTransferOffers;
@@ -131,7 +251,7 @@ class _TransferMarketScreenState extends State<TransferMarketScreen> {
                 children: [
                   Column(
                     children: [
-                      _buildFilterBar(),
+                      _buildFilterBar(showPriceFilter: true),
                       Expanded(
                         child: RefreshIndicator(
                           onRefresh: () => context.read<GameProvider>().refreshGameState(),
@@ -155,6 +275,20 @@ class _TransferMarketScreenState extends State<TransferMarketScreen> {
                                         Navigator.of(context).push(
                                           MaterialPageRoute(builder: (_) => PlayerStatsScreen.fromListing(item)),
                                         );
+                                      },
+                                      onWithdraw: () async {
+                                        try {
+                                          await context.read<GameProvider>().withdrawTransferListing(playerId: item.playerId);
+                                          if (!context.mounted) return;
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(content: Text('transferMarket.listingRemoved'.tr())),
+                                          );
+                                        } catch (error) {
+                                          if (!context.mounted) return;
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(content: Text(error.toString().replaceAll('Exception: ', ''))),
+                                          );
+                                        }
                                       },
                                       onMakeOffer: (amount) async {
                                         try {
@@ -292,6 +426,7 @@ class _TransferMarketScreenState extends State<TransferMarketScreen> {
                                         );
                                       }
                                     },
+                                    onReoffer: () => _showReofferDialog(context, offer.playerId, offer.playerName, offer.offerAmount),
                                   ),
                               ],
                             ],

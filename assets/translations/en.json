@@ -202,6 +202,8 @@
     "submitOffer": "Submit Offer",
     "sellerClub": "Selling Club: {name}",
     "yourClub": "Your club",
+    "removeListingAction": "Remove from Transfer List",
+    "listingRemoved": "Player removed from the transfer list.",
     "askingPrice": "Asking Price: {price} GP",
     "makeOffer": "Make Offer",
     "freeAgentChip": "Free Agent",
@@ -210,6 +212,9 @@
     "signPlayer": "Sign Player",
     "allPositions": "All",
     "abilityLabel": "Ability:",
+    "searchHint": "Search player or club name",
+    "minPriceHint": "Min. price",
+    "maxPriceHint": "Max. price",
     "title": "Transfer Market",
     "noClubMessage": "You must select or create a club before accessing the transfer market.",
     "tabListed": "Listed",
@@ -236,7 +241,8 @@
     "toLabel": "Target club: {name}",
     "accept": "Accept",
     "reject": "Reject",
-    "withdrawAction": "Withdraw Offer"
+    "withdrawAction": "Withdraw Offer",
+    "reofferAction": "Make New Offer"
   },
   "playerCard": {
     "power": "POW",
@@ -438,7 +444,8 @@
   "inbox": {
     "empty": "Your inbox is empty.",
     "markFailed": "Could not mark message: {error}",
-    "markedAsRead": "Message marked as read."
+    "markedAsRead": "Message marked as read.",
+    "playerUnavailable": "This player's card can no longer be viewed."
   },
   "matchSchedule": {
     "tabResults": "Results",

@@ -4,6 +4,7 @@ class InboxMessage {
   final String body;
   final bool isRead;
   final DateTime createdAt;
+  final String? relatedPlayerId;
 
   const InboxMessage({
     required this.id,
@@ -11,6 +12,7 @@ class InboxMessage {
     required this.body,
     required this.isRead,
     required this.createdAt,
+    this.relatedPlayerId,
   });
 
   factory InboxMessage.fromMap(Map<String, dynamic> map) {
@@ -20,6 +22,7 @@ class InboxMessage {
       body: map['body'] as String,
       isRead: map['is_read'] as bool? ?? false,
       createdAt: DateTime.parse(map['created_at'] as String),
+      relatedPlayerId: map['related_player_id'] as String?,
     );
   }
 
@@ -30,6 +33,7 @@ class InboxMessage {
       'body': body,
       'is_read': isRead,
       'created_at': createdAt.toIso8601String(),
+      'related_player_id': relatedPlayerId,
     };
   }
 }

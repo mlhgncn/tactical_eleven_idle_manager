@@ -7,6 +7,7 @@ class TransferOfferCard extends StatelessWidget {
   final bool isIncoming;
   final Future<void> Function(bool accept)? onRespond;
   final Future<void> Function()? onWithdraw;
+  final Future<void> Function()? onReoffer;
 
   const TransferOfferCard({
     super.key,
@@ -14,6 +15,7 @@ class TransferOfferCard extends StatelessWidget {
     required this.isIncoming,
     this.onRespond,
     this.onWithdraw,
+    this.onReoffer,
   });
 
   Color _statusColor() {
@@ -101,6 +103,13 @@ class TransferOfferCard extends StatelessWidget {
                 onPressed: onWithdraw,
                 child: Text('transferOffer.withdrawAction'.tr()),
               ),
+          ],
+          if (!offer.isPending && !isIncoming && offer.status == 'rejected' && onReoffer != null) ...[
+            const SizedBox(height: 12),
+            OutlinedButton(
+              onPressed: onReoffer,
+              child: Text('transferOffer.reofferAction'.tr()),
+            ),
           ],
         ],
       ),

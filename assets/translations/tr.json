@@ -202,6 +202,8 @@
     "submitOffer": "Teklif Ver",
     "sellerClub": "Satıcı Kulüp: {name}",
     "yourClub": "Senin kulübün",
+    "removeListingAction": "Transferden Kaldır",
+    "listingRemoved": "Oyuncu transfer listesinden kaldırıldı.",
     "askingPrice": "İstenen Fiyat: {price} GP",
     "makeOffer": "Teklif Yap",
     "freeAgentChip": "Serbest",
@@ -210,6 +212,9 @@
     "signPlayer": "Satın Al",
     "allPositions": "Tümü",
     "abilityLabel": "Güç:",
+    "searchHint": "Oyuncu veya kulüp adı ara",
+    "minPriceHint": "Min. fiyat",
+    "maxPriceHint": "Maks. fiyat",
     "title": "Transfer Pazarı",
     "noClubMessage": "Transfer pazarına erişmek için önce bir kulüp seçmeli veya oluşturmalısınız.",
     "tabListed": "Listelenen",
@@ -236,7 +241,8 @@
     "toLabel": "Hedef kulüp: {name}",
     "accept": "Kabul Et",
     "reject": "Reddet",
-    "withdrawAction": "Teklifi Geri Çek"
+    "withdrawAction": "Teklifi Geri Çek",
+    "reofferAction": "Tekrar Teklif Yap"
   },
   "playerCard": {
     "power": "GÜÇ",
@@ -438,7 +444,8 @@
   "inbox": {
     "empty": "Gelen kutunuz boş.",
     "markFailed": "Mesaj işaretlenemedi: {error}",
-    "markedAsRead": "Mesaj okundu olarak işaretlendi."
+    "markedAsRead": "Mesaj okundu olarak işaretlendi.",
+    "playerUnavailable": "Bu oyuncunun kartı artık görüntülenemiyor."
   },
   "matchSchedule": {
     "tabResults": "Sonuçlar",

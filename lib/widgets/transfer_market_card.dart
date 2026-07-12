@@ -7,6 +7,7 @@ class TransferMarketCard extends StatelessWidget {
   final String? activeClubId;
   final Future<void> Function(int offerAmount)? onMakeOffer;
   final VoidCallback? onTap;
+  final Future<void> Function()? onWithdraw;
 
   const TransferMarketCard({
     super.key,
@@ -14,6 +15,7 @@ class TransferMarketCard extends StatelessWidget {
     this.activeClubId,
     this.onMakeOffer,
     this.onTap,
+    this.onWithdraw,
   });
 
   Future<void> _showOfferDialog(BuildContext context) async {
@@ -95,6 +97,11 @@ class TransferMarketCard extends StatelessWidget {
                   ElevatedButton(
                     onPressed: onMakeOffer == null ? null : () => _showOfferDialog(context),
                     child: Text('transferMarket.makeOffer'.tr()),
+                  )
+                else if (onWithdraw != null)
+                  OutlinedButton(
+                    onPressed: onWithdraw,
+                    child: Text('transferMarket.removeListingAction'.tr()),
                   ),
               ],
             ),

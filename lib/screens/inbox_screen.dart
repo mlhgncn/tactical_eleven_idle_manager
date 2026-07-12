@@ -3,9 +3,23 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/game_provider.dart';
+import 'player_stats_screen.dart';
 
 class InboxScreen extends StatelessWidget {
   const InboxScreen({super.key});
+
+  Future<void> _openRelatedPlayer(BuildContext context, String playerId) async {
+    final provider = context.read<GameProvider>();
+    final player = await provider.loadPlayerById(playerId);
+    if (!context.mounted) return;
+    if (player == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('inbox.playerUnavailable'.tr())),
+      );
+      return;
+    }
+    Navigator.push(context, MaterialPageRoute(builder: (_) => PlayerStatsScreen(player: player)));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,11 +46,13 @@ class InboxScreen extends StatelessWidget {
               itemCount: messages.length,
               itemBuilder: (context, index) {
                 final message = messages[index];
+                final hasPlayerLink = message.relatedPlayerId != null;
                 return Card(
                   margin: const EdgeInsets.only(bottom: 12),
                   child: ListTile(
                     title: Text(message.title),
                     subtitle: Text(message.body),
+                    onTap: hasPlayerLink ? () => _openRelatedPlayer(context, message.relatedPlayerId!) : null,
                     trailing: IconButton(
                       icon: Icon(
                         message.isRead ? Icons.mark_email_read : Icons.mark_email_unread,

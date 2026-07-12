@@ -26,6 +26,7 @@ abstract class GameRepository {
   Future<void> leaveCurrentClub({String? clubId});
   Future<void> deleteAccount();
   Future<List<PlayerFM>> loadSquadPlayers(String clubId);
+  Future<PlayerFM?> loadPlayerById(String playerId);
   Future<PlayerFM?> startPlayerDevelopment({required String playerId});
   Future<PlayerFM?> reducePlayerDevelopmentTimeWithAd({required String playerId});
   Future<ClubInfo?> reduceClubDevelopmentTimeWithAd({required String clubId});
