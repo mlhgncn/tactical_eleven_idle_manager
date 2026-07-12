@@ -35,21 +35,30 @@ class _MarketScreenState extends State<MarketScreen> {
   }
 
   Future<void> _initStore() async {
-    final available = await _purchaseService.initialize();
-    if (!mounted) return;
-    setState(() => _isStoreAvailable = available);
-    if (!available) {
-      setState(() => _isLoadingStore = false);
-      return;
-    }
+    try {
+      final available = await _purchaseService.initialize();
+      if (!mounted) return;
+      setState(() => _isStoreAvailable = available);
+      if (!available) {
+        setState(() => _isLoadingStore = false);
+        return;
+      }
 
-    final productIds = context.read<GameProvider>().diamondProducts.map((p) => p.productId).toSet();
-    final products = await _purchaseService.queryProducts(productIds);
-    if (!mounted) return;
-    setState(() {
-      _storeProducts = {for (final p in products) p.id: p};
-      _isLoadingStore = false;
-    });
+      final productIds = context.read<GameProvider>().diamondProducts.map((p) => p.productId).toSet();
+      final products = await _purchaseService.queryProducts(productIds);
+      if (!mounted) return;
+      setState(() {
+        _storeProducts = {for (final p in products) p.id: p};
+        _isLoadingStore = false;
+      });
+    } catch (error) {
+      debugPrint('MarketScreen._initStore error: $error');
+      if (!mounted) return;
+      setState(() {
+        _isStoreAvailable = false;
+        _isLoadingStore = false;
+      });
+    }
   }
 
   Future<bool> _handlePurchaseVerification(PurchaseDetails details) async {

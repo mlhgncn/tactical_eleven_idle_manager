@@ -37,7 +37,11 @@ class PurchaseService {
     // data"). Must run before any other InAppPurchase call touches the
     // platform instance, or the plugin locks in StoreKit2.
     if (Platform.isIOS) {
-      await InAppPurchaseStoreKitPlatform.enableStoreKit1();
+      try {
+        await InAppPurchaseStoreKitPlatform.enableStoreKit1();
+      } catch (error) {
+        debugPrint('PurchaseService enableStoreKit1 error: $error');
+      }
     }
 
     final available = await _iap.isAvailable();
