@@ -712,7 +712,7 @@ class SupabaseRepository implements GameRepository {
       final response = await _client
           .from('seasons')
           .select(
-              'id,name,current_week,is_active,is_completed,league:leagues(id,name,invitation_code),champion_club:clubs(id,name)')
+              'id,name,current_week,is_active,is_completed,league:leagues(id,name,invitation_code),champion_club:clubs!champion_club_id(id,name)')
           .eq('league_id', leagueId)
           .eq('is_active', true)
           .limit(1)
