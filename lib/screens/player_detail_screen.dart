@@ -22,6 +22,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
   bool isUpdating = false;
   bool isListing = false;
   bool isWithdrawing = false;
+  bool isReleasing = false;
   late final TextEditingController _askingPriceController =
       TextEditingController(text: widget.player.marketValue.toString());
 
@@ -152,7 +153,67 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
           ),
           const SizedBox(height: 16),
           _buildTransferCard(context, provider, player),
+          const SizedBox(height: 16),
+          _buildReleaseCard(context, provider, player),
         ],
+      ),
+    );
+  }
+
+  Widget _buildReleaseCard(BuildContext context, GameProvider provider, PlayerFM player) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('playerDetail.releaseTitle'.tr(), style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
+            Text('playerDetail.releaseDescription'.tr(), style: const TextStyle(fontSize: 12, color: Colors.grey)),
+            const SizedBox(height: 12),
+            OutlinedButton(
+              onPressed: isReleasing
+                  ? null
+                  : () async {
+                      final confirmed = await showDialog<bool>(
+                        context: context,
+                        builder: (dialogContext) => AlertDialog(
+                          title: Text('playerDetail.releaseConfirmTitle'.tr()),
+                          content: Text('playerDetail.releaseConfirmBody'.tr(namedArgs: {'name': player.name})),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.of(dialogContext).pop(false),
+                              child: Text('playerDetail.releaseCancel'.tr()),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.of(dialogContext).pop(true),
+                              child: Text('playerDetail.releaseConfirm'.tr()),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (confirmed != true) return;
+
+                      setState(() => isReleasing = true);
+                      try {
+                        await provider.releasePlayer(playerId: player.id);
+                        if (!mounted) return;
+                        Navigator.of(context).pop();
+                      } catch (error) {
+                        if (!mounted) return;
+                        setState(() => isReleasing = false);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(error.toString().replaceAll('Exception: ', ''))),
+                        );
+                      }
+                    },
+              style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
+              child: isReleasing
+                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                  : Text('playerDetail.releaseButton'.tr()),
+            ),
+          ],
+        ),
       ),
     );
   }

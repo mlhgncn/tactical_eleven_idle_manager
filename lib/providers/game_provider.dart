@@ -992,6 +992,29 @@ class GameProvider extends ChangeNotifier {
     }
   }
 
+  /// Oyuncuyu satmadan/teklif beklemeden doğrudan serbest bırakır - kadrodan
+  /// çıkar, oyuncu free agent havuzuna döner. Gelir sağlamaz.
+  Future<void> releasePlayer({required String playerId}) async {
+    if (_repository.currentUserId == null) {
+      throw Exception('Kullanıcı oturumu bulunamadı.');
+    }
+
+    if (_isBusy) return;
+
+    _setBusy(true);
+    try {
+      await _repository.releasePlayerToFreeAgency(playerId);
+      _squadPlayers = List<PlayerFM>.from(_squadPlayers)..removeWhere((p) => p.id == playerId);
+      _transferMarketItems = List<TransferMarketItem>.from(_transferMarketItems)
+        ..removeWhere((item) => item.playerId == playerId);
+      notifyListeners();
+    } catch (error) {
+      throw Exception(_formatClubActionError(error));
+    } finally {
+      _setBusy(false);
+    }
+  }
+
   /// Bir oyuncu için gerçek transfer teklifi gönderir (açık artırma değil).
   /// Oyuncu bir kulübe aitse, o kulüp (gerçek kullanıcı ya da bot) teklifi
   /// kabul/red edecek. Teklif bloke edilen bütçeyle (blocked_budget) güvence

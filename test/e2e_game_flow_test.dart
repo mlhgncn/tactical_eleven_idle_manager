@@ -182,6 +182,9 @@ class _FakeGameRepository implements GameRepository {
   }
 
   @override
+  Future<void> releasePlayerToFreeAgency(String playerId) async {}
+
+  @override
   Future<void> deleteAccount() async {
     _activeClub = null;
   }

@@ -28,6 +28,7 @@ abstract class GameRepository {
   Future<void> leaveCurrentClub({String? clubId});
   Future<ClubInfo?> continueClubNewSeason(String clubId);
   Future<void> releaseClubAndLeaveLeague(String clubId);
+  Future<void> releasePlayerToFreeAgency(String playerId);
   Future<void> deleteAccount();
   Future<List<PlayerFM>> loadSquadPlayers(String clubId);
   Future<PlayerFM?> loadPlayerById(String playerId);

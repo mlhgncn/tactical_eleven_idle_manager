@@ -157,6 +157,12 @@ class SupabaseRepository implements GameRepository {
     });
   }
 
+  Future<void> releasePlayerToFreeAgency(String playerId) async {
+    return _wrap(() async {
+      await _client.rpc('release_player_to_free_agency', params: {'p_player_id': playerId});
+    });
+  }
+
   Future<void> deleteAccount() async {
     return _wrap(() async {
       await _client.rpc('delete_own_account');
