@@ -276,7 +276,8 @@
     "tacticsHiddenSuccess": "Taktikleriniz bir sonraki maç için gizlendi.",
     "sendToCamp": "Kampa Gönder",
     "campActive": "Kamp Aktif",
-    "campSentSuccess": "Takımınız bir sonraki maç için kampa gönderildi (+%5 performans)."
+    "campSentSuccess": "Takımınız bir sonraki maç için kampa gönderildi (+%5 performans).",
+    "remainingCount": "Kalan hak: {count}"
   },
   "opponentScout": {
     "tacticsTitle": "Rakip Taktiği",

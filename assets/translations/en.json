@@ -276,7 +276,8 @@
     "tacticsHiddenSuccess": "Your tactics have been hidden for the next match.",
     "sendToCamp": "Send to Camp",
     "campActive": "Camp Active",
-    "campSentSuccess": "Your team has been sent to camp for the next match (+5% performance)."
+    "campSentSuccess": "Your team has been sent to camp for the next match (+5% performance).",
+    "remainingCount": "Remaining: {count}"
   },
   "opponentScout": {
     "tacticsTitle": "Opponent Tactics",

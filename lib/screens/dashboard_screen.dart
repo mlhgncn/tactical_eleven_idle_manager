@@ -484,33 +484,54 @@ class _MatchCardState extends State<_MatchCard> {
                   if (club == null) return const SizedBox.shrink();
                   final tacticAlreadyHidden = club.tacticHiddenForMatchId == f.id;
                   final campAlreadyActive = club.campActiveForMatchId == f.id;
+                  final tacticHideCount = club.freeTacticHidesThisSeason + club.tacticHideCharges;
+                  final campCount = club.freeCampUsesThisSeason + club.campCharges;
                   return Padding(
                     padding: const EdgeInsets.only(top: 10),
                     child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(
-                          child: GlassButton(
-                            height: 44,
-                            isLoading: _isHidingTactics,
-                            onPressed: (_isHidingTactics || tacticAlreadyHidden || !club.hasTacticHideAvailable)
-                                ? null
-                                : () => _hideTactics(context),
-                            label: tacticAlreadyHidden
-                                ? 'dashboard.tacticsHiddenActive'.tr()
-                                : 'dashboard.hideTactics'.tr(),
+                          child: Column(
+                            children: [
+                              GlassButton(
+                                height: 44,
+                                isLoading: _isHidingTactics,
+                                onPressed: (_isHidingTactics || tacticAlreadyHidden || !club.hasTacticHideAvailable)
+                                    ? null
+                                    : () => _hideTactics(context),
+                                label: tacticAlreadyHidden
+                                    ? 'dashboard.tacticsHiddenActive'.tr()
+                                    : 'dashboard.hideTactics'.tr(),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'dashboard.remainingCount'.tr(namedArgs: {'count': tacticHideCount.toString()}),
+                                style: const TextStyle(fontSize: 10.5, color: AppColors.textMuted),
+                              ),
+                            ],
                           ),
                         ),
                         const SizedBox(width: 10),
                         Expanded(
-                          child: GlassButton(
-                            height: 44,
-                            isLoading: _isSendingToCamp,
-                            onPressed: (_isSendingToCamp || campAlreadyActive || !club.hasCampAvailable)
-                                ? null
-                                : () => _sendToCamp(context),
-                            label: campAlreadyActive
-                                ? 'dashboard.campActive'.tr()
-                                : 'dashboard.sendToCamp'.tr(),
+                          child: Column(
+                            children: [
+                              GlassButton(
+                                height: 44,
+                                isLoading: _isSendingToCamp,
+                                onPressed: (_isSendingToCamp || campAlreadyActive || !club.hasCampAvailable)
+                                    ? null
+                                    : () => _sendToCamp(context),
+                                label: campAlreadyActive
+                                    ? 'dashboard.campActive'.tr()
+                                    : 'dashboard.sendToCamp'.tr(),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'dashboard.remainingCount'.tr(namedArgs: {'count': campCount.toString()}),
+                                style: const TextStyle(fontSize: 10.5, color: AppColors.textMuted),
+                              ),
+                            ],
                           ),
                         ),
                       ],
