@@ -455,7 +455,13 @@
     "empty": "Your inbox is empty.",
     "markFailed": "Could not mark message: {error}",
     "markedAsRead": "Message marked as read.",
+    "markedAsUnread": "Message marked as unread.",
+    "markAsReadTooltip": "Mark as read",
+    "markAsUnreadTooltip": "Mark as unread",
     "playerUnavailable": "This player's card can no longer be viewed."
+  },
+  "clubRoster": {
+    "subtitle": "{count} players"
   },
   "matchSchedule": {
     "tabResults": "Results",

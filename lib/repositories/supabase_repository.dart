@@ -1108,4 +1108,21 @@ class SupabaseRepository implements GameRepository {
       return ClubInfo.fromMap(Map<String, dynamic>.from(data as Map<String, dynamic>));
     });
   }
+
+  @override
+  Future<OpponentScoutReport> viewClubRoster(String clubId) async {
+    return _wrap(() async {
+      final data = await _client.rpc('view_club_roster', params: {'p_club_id': clubId});
+      return OpponentScoutReport.fromMap(Map<String, dynamic>.from(data as Map<String, dynamic>));
+    });
+  }
+
+  @override
+  Future<InboxMessage?> markMessageAsUnread(String messageId) async {
+    return _wrap(() async {
+      final data = await _client.rpc('mark_message_unread', params: {'p_message_id': messageId});
+      if (data == null) return null;
+      return InboxMessage.fromMap(Map<String, dynamic>.from(data as Map<String, dynamic>));
+    });
+  }
 }

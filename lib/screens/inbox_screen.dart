@@ -58,25 +58,28 @@ class InboxScreen extends StatelessWidget {
                         message.isRead ? Icons.mark_email_read : Icons.mark_email_unread,
                         color: message.isRead ? Colors.greenAccent : Colors.orangeAccent,
                       ),
-                      onPressed: message.isRead
-                          ? null
-                          : () async {
-                              try {
-                                await context.read<GameProvider>().markMessageAsRead(message.id);
-                              } catch (error) {
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('inbox.markFailed'.tr(namedArgs: {'error': error.toString()}))),
-                                  );
-                                }
-                                return;
-                              }
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('inbox.markedAsRead'.tr())),
-                                );
-                              }
-                            },
+                      tooltip: message.isRead ? 'inbox.markAsUnreadTooltip'.tr() : 'inbox.markAsReadTooltip'.tr(),
+                      onPressed: () async {
+                        try {
+                          if (message.isRead) {
+                            await context.read<GameProvider>().markMessageAsUnread(message.id);
+                          } else {
+                            await context.read<GameProvider>().markMessageAsRead(message.id);
+                          }
+                        } catch (error) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('inbox.markFailed'.tr(namedArgs: {'error': error.toString()}))),
+                            );
+                          }
+                          return;
+                        }
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(message.isRead ? 'inbox.markedAsUnread'.tr() : 'inbox.markedAsRead'.tr())),
+                          );
+                        }
+                      },
                     ),
                   ),
                 );

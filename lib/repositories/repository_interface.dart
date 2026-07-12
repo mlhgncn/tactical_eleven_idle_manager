@@ -88,6 +88,8 @@ abstract class GameRepository {
   Future<Profile?> claimAchievementReward(String achievement);
   Future<Map<String, dynamic>> claimDailyLoginReward({String? clubId});
   Future<Profile?> claimSocialReward(String platform);
+  Future<OpponentScoutReport> viewClubRoster(String clubId);
+  Future<InboxMessage?> markMessageAsUnread(String messageId);
   // Admin actions
   Future<bool> isAdmin();
   Future<List<Map<String, dynamic>>> adminListUsers();

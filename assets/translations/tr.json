@@ -455,7 +455,13 @@
     "empty": "Gelen kutunuz boş.",
     "markFailed": "Mesaj işaretlenemedi: {error}",
     "markedAsRead": "Mesaj okundu olarak işaretlendi.",
+    "markedAsUnread": "Mesaj okunmadı olarak işaretlendi.",
+    "markAsReadTooltip": "Okundu olarak işaretle",
+    "markAsUnreadTooltip": "Okunmadı olarak işaretle",
     "playerUnavailable": "Bu oyuncunun kartı artık görüntülenemiyor."
+  },
+  "clubRoster": {
+    "subtitle": "{count} oyuncu"
   },
   "matchSchedule": {
     "tabResults": "Sonuçlar",

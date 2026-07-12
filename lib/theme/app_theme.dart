@@ -35,6 +35,14 @@ class AppTheme {
     final base = ThemeData.dark(useMaterial3: true);
     return base.copyWith(
       scaffoldBackgroundColor: AppColors.background,
+      // Kills Material's default gray/white press overlay (ripple +
+      // highlight) app-wide, since the hand-drawn gold/glass button assets
+      // already convey a pressed state visually and the stock overlay just
+      // muddies them - a cleaner touch feel per the design spec.
+      splashFactory: NoSplash.splashFactory,
+      splashColor: Colors.transparent,
+      highlightColor: Colors.transparent,
+      hoverColor: Colors.transparent,
       colorScheme: base.colorScheme.copyWith(
         surface: AppColors.background,
         primary: AppColors.gold,
@@ -80,6 +88,23 @@ class AppTheme {
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.gold,
           foregroundColor: AppColors.goldOnGoldText,
+        ).copyWith(
+          overlayColor: const WidgetStatePropertyAll(Colors.transparent),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom().copyWith(
+          overlayColor: const WidgetStatePropertyAll(Colors.transparent),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom().copyWith(
+          overlayColor: const WidgetStatePropertyAll(Colors.transparent),
+        ),
+      ),
+      iconButtonTheme: IconButtonThemeData(
+        style: IconButton.styleFrom().copyWith(
+          overlayColor: const WidgetStatePropertyAll(Colors.transparent),
         ),
       ),
       chipTheme: base.chipTheme.copyWith(

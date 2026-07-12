@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -41,6 +43,7 @@ Widget _navIcon(String asset) => Image.asset(asset, width: 26, height: 26);
 
 class _RootShellState extends State<RootShell> {
   int _selectedIndex = 0;
+  Timer? _matchAlertTimer;
 
   @override
   void initState() {
@@ -52,12 +55,21 @@ class _RootShellState extends State<RootShell> {
         SnackBar(content: Text('$title: $body')),
       );
     };
+
+    // App-wide check for the "30 minutes to kickoff" reminder, independent
+    // of which tab is currently open - cheap (no network call, just scans
+    // already-loaded fixtures).
+    _matchAlertTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (!mounted) return;
+      context.read<GameProvider>().checkUpcomingMatchAlertsNow();
+    });
   }
 
   @override
   void dispose() {
     // Clear callback
     NotificationService.instance.onSendNotification = null;
+    _matchAlertTimer?.cancel();
     super.dispose();
   }
 

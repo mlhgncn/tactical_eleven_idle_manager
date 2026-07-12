@@ -619,6 +619,37 @@ class GameProvider extends ChangeNotifier {
     if (_results.isEmpty) {
       _results = <MatchResult>[];
     }
+
+    _checkUpcomingMatchAlerts(now);
+  }
+
+  // Session-local guard against re-notifying for the same fixture on every
+  // refresh tick while the app stays open - the server's
+  // pre_match_alert_sent flag is the durable/cross-session guard, this is
+  // just to stop the in-app local notification from repeating every 20s.
+  final Set<String> _alertedFixtureIds = <String>{};
+
+  /// Re-checks already-loaded fixtures for the 30-minutes-to-kickoff
+  /// window without re-fetching from the server - cheap enough to call
+  /// from a short-interval app-wide timer (see RootShell) so the alert
+  /// fires even while the user is on a screen that doesn't otherwise
+  /// refresh fixtures (e.g. Dashboard).
+  void checkUpcomingMatchAlertsNow() => _checkUpcomingMatchAlerts(DateTime.now());
+
+  void _checkUpcomingMatchAlerts(DateTime now) {
+    for (final fixture in _fixtures) {
+      if (fixture.status == 'Tamamlandı') continue;
+      if (_alertedFixtureIds.contains(fixture.id)) continue;
+
+      final remaining = fixture.kickoff.difference(now);
+      if (remaining <= const Duration(minutes: 30) && remaining > const Duration(minutes: 25)) {
+        _alertedFixtureIds.add(fixture.id);
+        NotificationService.instance.sendNotification(
+          'Kritik Maç Yaklaşıyor',
+          'Kritik maç 30 dakika içinde başlıyor! Kadronu son kez kontrol et.',
+        );
+      }
+    }
   }
 
   List<MatchFixture> _buildDebugFixtures(DateTime now) {
@@ -1210,6 +1241,32 @@ class GameProvider extends ChangeNotifier {
       createdAt: message.createdAt,
     );
     notifyListeners();
+  }
+
+  Future<void> markMessageAsUnread(String messageId) async {
+    final index =
+        _inboxMessages.indexWhere((message) => message.id == messageId);
+    if (index < 0) return;
+
+    final message = _inboxMessages[index];
+    if (!message.isRead) return;
+
+    final updated = await _repository.markMessageAsUnread(messageId);
+    if (updated == null) return;
+
+    _inboxMessages[index] = InboxMessage(
+      id: message.id,
+      title: message.title,
+      body: message.body,
+      isRead: false,
+      createdAt: message.createdAt,
+    );
+    notifyListeners();
+  }
+
+  /// Puan durumu ekranından herhangi bir kulübün güncel kadrosunu getirir.
+  Future<OpponentScoutReport> viewClubRoster(String clubId) {
+    return _repository.viewClubRoster(clubId);
   }
 
   void _setLoading(bool value) {

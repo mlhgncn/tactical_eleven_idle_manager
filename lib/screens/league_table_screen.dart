@@ -8,6 +8,7 @@ import '../providers/game_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/club_badge.dart';
 import '../widgets/level_frame.dart';
+import 'club_roster_sheet.dart';
 
 class LeagueTableScreen extends StatelessWidget {
   const LeagueTableScreen({super.key});
@@ -119,118 +120,156 @@ class LeagueTableScreen extends StatelessWidget {
           )
         else
           Card(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: DataTable(
-                columnSpacing: 14,
-                horizontalMargin: 10,
-                headingRowHeight: 40,
-                dataRowMinHeight: 44,
-                dataRowMaxHeight: 56,
-                headingTextStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textMuted),
-                dataTextStyle: const TextStyle(fontSize: 12.5),
-                headingRowColor: WidgetStateProperty.resolveWith(
-                  (states) => AppColors.cardBottom,
-                ),
-                columns: [
-                  const DataColumn(label: Text('#')),
-                  DataColumn(label: Text('leagueTable.teamLabel'.tr())),
-                  DataColumn(label: Text('leagueTable.columnPlayed'.tr())),
-                  DataColumn(label: Text('leagueTable.columnWon'.tr())),
-                  DataColumn(label: Text('leagueTable.columnDraw'.tr())),
-                  DataColumn(label: Text('leagueTable.columnLost'.tr())),
-                  DataColumn(label: Text('leagueTable.columnGoalsFor'.tr())),
-                  DataColumn(label: Text('leagueTable.columnGoalsAgainst'.tr())),
-                  DataColumn(label: Text('leagueTable.columnGoalDiff'.tr())),
-                  DataColumn(label: Text('leagueTable.columnPoints'.tr())),
-                ],
-                rows: sortedStandings.asMap().entries.map((entry) {
-                  final position = entry.key + 1;
-                  final row = entry.value;
-                  final club = row['club'] as Map<String, dynamic>? ??
-                      <String, dynamic>{};
-                  final teamId = club['id'] as String?;
-                  final isActiveClub = teamId != null && teamId == activeClubId;
-                  final played = (row['played'] as num?)?.toInt() ?? 0;
-                  final wins = (row['wins'] as num?)?.toInt() ?? 0;
-                  final draws = (row['draws'] as num?)?.toInt() ?? 0;
-                  final losses = (row['losses'] as num?)?.toInt() ?? 0;
-                  final goalsFor = (row['goals_for'] as num?)?.toInt() ?? 0;
-                  final goalsAgainst = (row['goals_against'] as num?)?.toInt() ?? 0;
-                  final goalDifference = goalsFor - goalsAgainst;
-                  final points = (row['points'] as num?)?.toInt() ?? 0;
-                  final username = club['username']?.toString();
-                  final ownerLevel = Profile.levelForTitles((club['owner_league_titles'] as num?)?.toInt() ?? 0);
-
-                  return DataRow(
-                    color: WidgetStateProperty.resolveWith(
-                      (states) => isActiveClub ? AppColors.gold.withValues(alpha: 0.14) : null,
+            clipBehavior: Clip.antiAlias,
+            child: LayoutBuilder(builder: (context, constraints) {
+              return Column(
+                children: [
+                  Container(
+                    color: AppColors.cardBottom,
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                    child: Row(
+                      children: [
+                        const SizedBox(width: 22, child: Text('#', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.textMuted))),
+                        Expanded(child: Text('leagueTable.teamLabel'.tr(), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.textMuted))),
+                        _headerCell('leagueTable.columnPlayed'.tr()),
+                        _headerCell('leagueTable.columnWon'.tr()),
+                        _headerCell('leagueTable.columnDraw'.tr()),
+                        _headerCell('leagueTable.columnLost'.tr()),
+                        _headerCell('leagueTable.columnGoalDiff'.tr()),
+                        _headerCell('leagueTable.columnPoints'.tr(), bold: true),
+                      ],
                     ),
-                    cells: [
-                      DataCell(Text(
-                        '$position',
-                        style: TextStyle(color: isActiveClub ? AppColors.goldLight : AppColors.textPrimary, fontWeight: isActiveClub ? FontWeight.bold : FontWeight.normal),
-                      )),
-                      DataCell(
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            LevelFrame(
-                              level: ownerLevel,
-                              padding: 2,
-                              child: ClubBadge(
-                                clubName: club['name']?.toString() ?? 'leagueTable.teamLabel'.tr(),
-                                kind: isActiveClub ? ClubBadgeKind.home : ClubBadgeKind.neutral,
-                                size: 24,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            ConstrainedBox(
-                              constraints: const BoxConstraints(maxWidth: 110),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    club['name']?.toString() ?? 'leagueTable.teamLabel'.tr(),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      color: isActiveClub ? AppColors.goldLight : AppColors.textPrimary,
-                                      fontWeight: isActiveClub ? FontWeight.bold : FontWeight.normal,
-                                    ),
-                                  ),
-                                  if (username != null)
-                                    Text(
-                                      '@$username',
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(color: AppColors.textMuted, fontSize: 10.5),
-                                    ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      DataCell(Text('$played', style: const TextStyle(color: AppColors.textMuted))),
-                      DataCell(Text('$wins', style: const TextStyle(color: AppColors.textMuted))),
-                      DataCell(Text('$draws', style: const TextStyle(color: AppColors.textMuted))),
-                      DataCell(Text('$losses', style: const TextStyle(color: AppColors.textMuted))),
-                      DataCell(Text('$goalsFor', style: const TextStyle(color: AppColors.textMuted))),
-                      DataCell(Text('$goalsAgainst', style: const TextStyle(color: AppColors.textMuted))),
-                      DataCell(Text('$goalDifference', style: const TextStyle(color: AppColors.textMuted))),
-                      DataCell(Text(
-                        '$points',
-                        style: TextStyle(color: isActiveClub ? AppColors.goldLight : AppColors.textPrimary, fontWeight: FontWeight.bold),
-                      )),
-                    ],
-                  );
-                }).toList(),
-              ),
-            ),
+                  ),
+                  for (final entry in sortedStandings.asMap().entries)
+                    _StandingRow(
+                      position: entry.key + 1,
+                      row: entry.value,
+                      isActiveClub: (entry.value['club'] as Map?)?['id'] == activeClubId,
+                    ),
+                ],
+              );
+            }),
           ),
       ],
+      ),
+    );
+  }
+
+  static Widget _headerCell(String label, {bool bold = false}) {
+    return SizedBox(
+      width: 30,
+      child: Text(
+        label,
+        textAlign: TextAlign.center,
+        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: bold ? AppColors.goldLight : AppColors.textMuted),
+      ),
+    );
+  }
+}
+
+class _StandingRow extends StatelessWidget {
+  const _StandingRow({required this.position, required this.row, required this.isActiveClub});
+
+  final int position;
+  final Map<String, dynamic> row;
+  final bool isActiveClub;
+
+  @override
+  Widget build(BuildContext context) {
+    final club = row['club'] as Map<String, dynamic>? ?? <String, dynamic>{};
+    final clubId = club['id'] as String?;
+    final played = (row['played'] as num?)?.toInt() ?? 0;
+    final wins = (row['wins'] as num?)?.toInt() ?? 0;
+    final draws = (row['draws'] as num?)?.toInt() ?? 0;
+    final losses = (row['losses'] as num?)?.toInt() ?? 0;
+    final goalsFor = (row['goals_for'] as num?)?.toInt() ?? 0;
+    final goalsAgainst = (row['goals_against'] as num?)?.toInt() ?? 0;
+    final goalDifference = goalsFor - goalsAgainst;
+    final points = (row['points'] as num?)?.toInt() ?? 0;
+    final username = club['username']?.toString();
+    final clubName = club['name']?.toString() ?? 'leagueTable.teamLabel'.tr();
+    final ownerLevel = Profile.levelForTitles((club['owner_league_titles'] as num?)?.toInt() ?? 0);
+
+    return InkWell(
+      onTap: clubId == null
+          ? null
+          : () => showModalBottomSheet<void>(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                builder: (_) => ClubRosterSheet(clubId: clubId, clubName: clubName),
+              ),
+      child: Container(
+        color: isActiveClub ? AppColors.gold.withValues(alpha: 0.14) : null,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        decoration: const BoxDecoration(
+          border: Border(top: BorderSide(color: AppColors.cardBorder, width: 0.5)),
+        ),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 22,
+              child: Text(
+                '$position',
+                style: TextStyle(fontSize: 12.5, color: isActiveClub ? AppColors.goldLight : AppColors.textPrimary, fontWeight: isActiveClub ? FontWeight.bold : FontWeight.normal),
+              ),
+            ),
+            Expanded(
+              child: Row(
+                children: [
+                  LevelFrame(
+                    level: ownerLevel,
+                    padding: 2,
+                    child: ClubBadge(
+                      clubName: clubName,
+                      kind: isActiveClub ? ClubBadgeKind.home : ClubBadgeKind.neutral,
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          clubName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            color: isActiveClub ? AppColors.goldLight : AppColors.textPrimary,
+                            fontWeight: isActiveClub ? FontWeight.bold : FontWeight.normal,
+                          ),
+                        ),
+                        if (username != null)
+                          Text(
+                            '@$username',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(color: AppColors.textMuted, fontSize: 10),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(width: 30, child: Text('$played', textAlign: TextAlign.center, style: const TextStyle(fontSize: 12, color: AppColors.textMuted))),
+            SizedBox(width: 30, child: Text('$wins', textAlign: TextAlign.center, style: const TextStyle(fontSize: 12, color: AppColors.textMuted))),
+            SizedBox(width: 30, child: Text('$draws', textAlign: TextAlign.center, style: const TextStyle(fontSize: 12, color: AppColors.textMuted))),
+            SizedBox(width: 30, child: Text('$losses', textAlign: TextAlign.center, style: const TextStyle(fontSize: 12, color: AppColors.textMuted))),
+            SizedBox(width: 30, child: Text('$goalDifference', textAlign: TextAlign.center, style: const TextStyle(fontSize: 12, color: AppColors.textMuted))),
+            SizedBox(
+              width: 30,
+              child: Text(
+                '$points',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: isActiveClub ? AppColors.goldLight : AppColors.textPrimary),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

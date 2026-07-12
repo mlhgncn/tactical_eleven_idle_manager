@@ -325,6 +325,13 @@ class _FakeGameRepository implements GameRepository {
   Future<Profile?> claimSocialReward(String platform) async => null;
 
   @override
+  Future<OpponentScoutReport> viewClubRoster(String clubId) async =>
+      OpponentScoutReport(clubId: clubId, players: const [], tactics: null);
+
+  @override
+  Future<InboxMessage?> markMessageAsUnread(String messageId) async => null;
+
+  @override
   Future<Map<String, dynamic>> verifyIapPurchase({
     required String receiptData,
     required String productId,

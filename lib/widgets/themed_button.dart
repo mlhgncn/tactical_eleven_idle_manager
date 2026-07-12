@@ -36,6 +36,8 @@ class GoldButton extends StatelessWidget {
             ),
             child: InkWell(
               onTap: disabled ? null : onPressed,
+              splashFactory: NoSplash.splashFactory,
+              overlayColor: const WidgetStatePropertyAll(Colors.transparent),
               child: Center(
                 child: isLoading
                     ? const SizedBox(
@@ -94,6 +96,8 @@ class GlassButton extends StatelessWidget {
             ),
             child: InkWell(
               onTap: disabled ? null : onPressed,
+              splashFactory: NoSplash.splashFactory,
+              overlayColor: const WidgetStatePropertyAll(Colors.transparent),
               child: Center(
                 child: isLoading
                     ? const SizedBox(
