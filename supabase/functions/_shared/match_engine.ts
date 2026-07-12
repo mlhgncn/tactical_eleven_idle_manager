@@ -481,7 +481,7 @@ function computeClubEconomy(
   // revenue both scale with the club's recent league performance (see
   // performanceMultiplier) - a team on a good run fills more seats and
   // attracts better sponsor terms.
-  const stadiumRevenue = isHome ? Math.round((stadiumCapacity * ticketPrice) / 3 * perfMultiplier) : 0;
+  const stadiumRevenue = isHome ? Math.round((stadiumCapacity * ticketPrice) / 8 * perfMultiplier) : 0;
   const sponsorRevenue = Math.round(sponsorLevel * 500 * perfMultiplier);
   const maintenanceCost = Math.floor(stadiumCapacity / 200) + trainingFacilityLevel * 25;
   const totalRevenue = stadiumRevenue + sponsorRevenue + matchBonus;

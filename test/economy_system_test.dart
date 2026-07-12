@@ -62,8 +62,8 @@ void main() {
 
       // === EKONOMI HESAPLAMASI ===
       // 1. Stadyum Geliri: (Kapasitesi * Bilet Fiyatı * 30% doluluk)
-      final stadiumRevenue = (testClub.stadiumCapacity * testClub.ticketPrice) ~/ 3;
-      expect(stadiumRevenue, equals(8333)); // 5000 * 5 / 3 = 8333
+      final stadiumRevenue = (testClub.stadiumCapacity * testClub.ticketPrice) ~/ 8;
+      expect(stadiumRevenue, equals(3125)); // 5000 * 5 / 8 = 3125
 
       // 2. Sponsor Geliri: Sponsor seviyesi * 500 GP
       final sponsorRevenue = testClub.sponsorLevel * 500;
@@ -89,13 +89,13 @@ void main() {
       final totalExpense = playerWages + maintenanceCost;
       final netIncome = totalRevenue - totalExpense;
 
-      expect(totalRevenue, equals(9133)); // 8333 + 500 + 300
+      expect(totalRevenue, equals(3925)); // 3125 + 500 + 300
       expect(totalExpense, equals(1260)); // 1210 + 50
-      expect(netIncome, equals(7873)); // 9133 - 1260
+      expect(netIncome, equals(2665)); // 3925 - 1260
 
       // Yeni bütçe
       final newBudget = testClub.budget + netIncome;
-      expect(newBudget, equals(17873)); // 10000 + 7873
+      expect(newBudget, equals(12665)); // 10000 + 2665
     });
 
     test('Calculate match loss economy', () {
@@ -114,7 +114,7 @@ void main() {
         events: [],
       );
 
-      final stadiumRevenue = (testClub.stadiumCapacity * testClub.ticketPrice) ~/ 3;
+      final stadiumRevenue = (testClub.stadiumCapacity * testClub.ticketPrice) ~/ 8;
       final sponsorRevenue = testClub.sponsorLevel * 500;
       int matchBonus = result.homeScore > result.awayScore ? 300 : -200;
       expect(matchBonus, equals(-200));
@@ -129,12 +129,12 @@ void main() {
       final totalExpense = playerWages + maintenanceCost;
       final netIncome = totalRevenue - totalExpense;
 
-      expect(totalRevenue, equals(8633)); // 8333 + 500 - 200
+      expect(totalRevenue, equals(3425)); // 3125 + 500 - 200
       expect(totalExpense, equals(1260));
-      expect(netIncome, equals(7373)); // Kaybetse bile kazanç (stadyum geliri büyük)
+      expect(netIncome, equals(2165)); // Kaybetse bile kazanç (stadyum geliri büyük)
 
       final newBudget = testClub.budget + netIncome;
-      expect(newBudget, equals(17373));
+      expect(newBudget, equals(12165));
     });
 
     test('Upgrade costs are reasonable', () {
@@ -155,33 +155,33 @@ void main() {
       // Haftada 7 maç, hepsi kazanma
       const matchesPerWeek = 7;
       
-      final stadiumRevenue = (testClub.stadiumCapacity * testClub.ticketPrice) ~/ 3;
+      final stadiumRevenue = (testClub.stadiumCapacity * testClub.ticketPrice) ~/ 8;
       final sponsorRevenue = testClub.sponsorLevel * 500;
       const matchBonus = 300;
-      
+
       int playerWages = 0;
       for (final player in testSquad) {
         playerWages += (player.currentAbility * 2).toInt();
       }
-      
+
       final maintenanceCost = (testClub.stadiumCapacity ~/ 200) + (testClub.trainingFacilityLevel * 25);
       final perMatchIncome = stadiumRevenue + sponsorRevenue + matchBonus - playerWages - maintenanceCost;
-      
+
       final weeklyIncome = perMatchIncome * matchesPerWeek;
       final monthlyIncome = weeklyIncome * 4;
-      
+
       print('Per match income: $perMatchIncome GP');
       print('Weekly income: $weeklyIncome GP');
       print('Monthly income: $monthlyIncome GP');
-      
-      // ~7873 per match * 7 = ~55,111 per week
-      // ~55,111 * 4 = ~220,444 per month
-      
-      // Tesis upgrade'e ne kadar sürer? 3500 GP / 7873 = 0.44 maç = çabuk!
+
+      // ~2665 per match * 7 = ~18,655 per week
+      // ~18,655 * 4 = ~74,620 per month
+
+      // Tesis upgrade'e ne kadar sürer? 3500 GP / 2665 = 1.3 maç = hâlâ hızlı
       // Bu normalized: başlangıçta çabuk upgrade, sonra zorlasıyor
-      
-      expect(weeklyIncome, greaterThan(50000));
-      expect(monthlyIncome, greaterThan(200000));
+
+      expect(weeklyIncome, greaterThan(15000));
+      expect(monthlyIncome, greaterThan(60000));
     });
   });
 }

@@ -79,6 +79,7 @@ abstract class GameRepository {
   Future<bool?> loadNotificationPreference();
   Future<MatchResult?> playNextFixture();
   Future<OpponentScoutReport> scoutOpponent(String matchId);
+  Future<List<SavedScoutReport>> loadScoutedReports();
   Future<List<ConsumableProduct>> loadConsumableProducts();
   Future<ClubInfo?> purchaseConsumable({required String productId, String? clubId});
   Future<ClubInfo?> hideTacticsForNextMatch({String? clubId});

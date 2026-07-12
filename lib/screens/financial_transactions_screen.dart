@@ -5,23 +5,8 @@ import 'package:provider/provider.dart';
 import '../providers/game_provider.dart';
 import '../widgets/async_state_builder.dart';
 
-Map<String, String> get _typeLabels => {
-      'match_income': 'finance.txMatchIncome'.tr(),
-      'upgrade_sponsor': 'finance.txUpgradeSponsor'.tr(),
-      'upgrade_club': 'finance.clubDevelopmentButton'.tr(),
-      'transfer_revenue': 'finance.txTransferRevenue'.tr(),
-      'transfer_cost': 'finance.txTransferCost'.tr(),
-      'offline_income': 'finance.txOfflineIncome'.tr(),
-      'sign_free_agent': 'finance.txSignFreeAgent'.tr(),
-      'ad_reward': 'finance.txAdReward'.tr(),
-    };
-
 class FinancialTransactionsScreen extends StatelessWidget {
   const FinancialTransactionsScreen({super.key});
-
-  String _categoryLabel(String type) {
-    return _typeLabels[type] ?? type.split('_').map((w) => w.isEmpty ? w : '${w[0].toUpperCase()}${w.substring(1)}').join(' ');
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -46,7 +31,6 @@ class FinancialTransactionsScreen extends StatelessWidget {
             return Card(
               child: ListTile(
                 title: Text(tx.description),
-                subtitle: Text('${_categoryLabel(tx.type)} • ${DateFormat('dd.MM.yyyy HH:mm', 'tr_TR').format(tx.createdAt.toLocal())}'),
                 trailing: Text(
                   '${tx.amount > 0 ? '+' : ''}${tx.amount} GP',
                   style: TextStyle(

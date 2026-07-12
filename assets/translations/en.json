@@ -293,7 +293,10 @@
     "squadTitle": "Squad",
     "playerSubtitle": "Age: {age} • Power: {ability}",
     "injuredChip": "Injured",
-    "suspendedChip": "Suspended"
+    "suspendedChip": "Suspended",
+    "savedReportsTitle": "Saved Scout Reports",
+    "noSavedReports": "You haven't viewed an opponent's tactics/squad yet.",
+    "savedReportsQuickAction": "Scout Reports"
   },
   "finance": {
     "activeClubNotFound": "Active club not found.",
@@ -493,7 +496,7 @@
     "confirmNewPasswordLabel": "New Password (Confirm)",
     "updatePasswordButton": "Update Password",
     "avatarUpdated": "Profile picture updated.",
-    "levelNone": "No Level",
+    "levelNone": "Starting Level",
     "levelSilver": "Silver Level",
     "levelGold": "Gold Level",
     "levelDiamond": "Diamond Level",

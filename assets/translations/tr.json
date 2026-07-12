@@ -293,7 +293,10 @@
     "squadTitle": "Kadro",
     "playerSubtitle": "Yaş: {age} • Güç: {ability}",
     "injuredChip": "Sakat",
-    "suspendedChip": "Cezalı"
+    "suspendedChip": "Cezalı",
+    "savedReportsTitle": "Kaydedilen Scout Raporları",
+    "noSavedReports": "Henüz bir rakip taktiği/kadrosu görüntülemediniz.",
+    "savedReportsQuickAction": "Scout Raporları"
   },
   "finance": {
     "activeClubNotFound": "Aktif kulüp bulunamadı.",
@@ -493,7 +496,7 @@
     "confirmNewPasswordLabel": "Yeni Şifre (Tekrar)",
     "updatePasswordButton": "Şifreyi Güncelle",
     "avatarUpdated": "Profil fotoğrafı güncellendi.",
-    "levelNone": "Seviyesiz",
+    "levelNone": "Başlangıç Seviyesi",
     "levelSilver": "Gümüş Seviye",
     "levelGold": "Altın Seviye",
     "levelDiamond": "Elmas Seviye",

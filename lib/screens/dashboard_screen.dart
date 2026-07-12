@@ -14,6 +14,7 @@ import '../widgets/themed_button.dart';
 import 'market_screen.dart';
 import 'match_schedule_screen.dart';
 import 'opponent_scout_screen.dart';
+import 'scouted_reports_screen.dart';
 import 'squad_screen.dart';
 import 'transfer_market_screen.dart';
 import 'league_table_screen.dart';
@@ -118,6 +119,13 @@ class DashboardScreen extends StatelessWidget {
                   title: 'dashboard.market'.tr(),
                   subtitle: 'dashboard.diamondCount'.tr(namedArgs: {'count': provider.diamonds.toString()}),
                   onTap: () => _push(context, const MarketScreen()),
+                ),
+                _QuickAction(
+                  icon: Icons.visibility,
+                  color: AppColors.gold,
+                  title: 'opponentScout.savedReportsQuickAction'.tr(),
+                  subtitle: 'opponentScout.savedReportsTitle'.tr(),
+                  onTap: () => _push(context, const ScoutedReportsScreen()),
                 ),
               ],
             ),
@@ -431,7 +439,7 @@ class _MatchCardState extends State<_MatchCard> {
                     Expanded(
                       child: Column(
                         children: [
-                          ClubBadge(clubName: f.isHome ? 'dashboard.you'.tr() : f.opponentName, kind: f.isHome ? ClubBadgeKind.home : ClubBadgeKind.away, size: 52),
+                          ClubBadge(clubName: f.isHome ? 'dashboard.you'.tr() : f.opponentName, kind: f.isHome ? ClubBadgeKind.home : ClubBadgeKind.away, size: 52, avatarUrl: f.isHome ? null : f.opponentAvatarUrl),
                           const SizedBox(height: 6),
                           Text(f.isHome ? 'dashboard.you'.tr() : f.opponentName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5, color: AppColors.textPrimary)),
                         ],
@@ -452,7 +460,7 @@ class _MatchCardState extends State<_MatchCard> {
                     Expanded(
                       child: Column(
                         children: [
-                          ClubBadge(clubName: f.isHome ? f.opponentName : 'dashboard.you'.tr(), kind: f.isHome ? ClubBadgeKind.away : ClubBadgeKind.home, size: 52),
+                          ClubBadge(clubName: f.isHome ? f.opponentName : 'dashboard.you'.tr(), kind: f.isHome ? ClubBadgeKind.away : ClubBadgeKind.home, size: 52, avatarUrl: f.isHome ? f.opponentAvatarUrl : null),
                           const SizedBox(height: 6),
                           Text(f.isHome ? f.opponentName : 'dashboard.you'.tr(), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5, color: AppColors.textPrimary)),
                         ],

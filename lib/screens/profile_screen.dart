@@ -283,13 +283,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ],
                   ),
                 ),
-                if (level != ProfileLevel.none) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    LevelFrame.labelKey(level).tr(),
-                    style: TextStyle(color: LevelFrame.solidColor(level), fontWeight: FontWeight.bold, fontSize: 13),
-                  ),
-                ],
+                const SizedBox(height: 8),
+                Text(
+                  LevelFrame.labelKey(level).tr(),
+                  style: TextStyle(color: LevelFrame.solidColor(level), fontWeight: FontWeight.bold, fontSize: 13),
+                ),
               ],
             ),
           ),

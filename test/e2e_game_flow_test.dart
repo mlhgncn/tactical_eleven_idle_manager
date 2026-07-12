@@ -438,6 +438,9 @@ class _FakeGameRepository implements GameRepository {
     return OpponentScoutReport(clubId: 'opponent-club-1', players: const [], tactics: null);
   }
 
+  @override
+  Future<List<SavedScoutReport>> loadScoutedReports() async => const [];
+
   // Admin RPC stubs to satisfy GameRepository interface for widget tests
   @override
   Future<bool> isAdmin() async => true;

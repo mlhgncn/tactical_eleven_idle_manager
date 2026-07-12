@@ -602,14 +602,6 @@ class SupabaseRepository implements GameRepository {
     return data.cast<Map<String, dynamic>>();
   }
 
-  Future<Map<String, String>> _clubOwnerUsernames(Iterable<String> clubIds) async {
-    final rows = await _clubOwnerInfo(clubIds);
-    return {
-      for (final row in rows)
-        if (row['username'] != null) row['club_id'] as String: row['username'] as String,
-    };
-  }
-
   Future<List<Map<String, dynamic>>> loadFixturesForClub(String clubId) async {
     return _wrap(() async {
       final data = await _client
@@ -622,15 +614,28 @@ class SupabaseRepository implements GameRepository {
       if (data is! List<dynamic>) return <Map<String, dynamic>>[];
       final fixtures = data.cast<Map<String, dynamic>>();
 
-      final usernames = await _clubOwnerUsernames(fixtures.expand(
+      final ownerRows = await _clubOwnerInfo(fixtures.expand(
         (f) => [f['home_club_id'] as String, f['away_club_id'] as String],
       ));
-      if (usernames.isNotEmpty) {
+      if (ownerRows.isNotEmpty) {
+        final usernames = <String, String>{};
+        final avatarUrls = <String, String>{};
+        for (final row in ownerRows) {
+          final clubId = row['club_id'] as String;
+          if (row['username'] != null) usernames[clubId] = row['username'] as String;
+          if (row['avatar_url'] != null) avatarUrls[clubId] = row['avatar_url'] as String;
+        }
         for (final f in fixtures) {
           final homeClub = f['home_club'] as Map<String, dynamic>?;
-          if (homeClub != null) homeClub['username'] = usernames[f['home_club_id']];
+          if (homeClub != null) {
+            homeClub['username'] = usernames[f['home_club_id']];
+            homeClub['avatar_url'] = avatarUrls[f['home_club_id']];
+          }
           final awayClub = f['away_club'] as Map<String, dynamic>?;
-          if (awayClub != null) awayClub['username'] = usernames[f['away_club_id']];
+          if (awayClub != null) {
+            awayClub['username'] = usernames[f['away_club_id']];
+            awayClub['avatar_url'] = avatarUrls[f['away_club_id']];
+          }
         }
       }
 
@@ -736,13 +741,25 @@ class SupabaseRepository implements GameRepository {
 
   Future<TransferMarketItem?> listPlayerForTransfer({required String playerId, required int askingPrice}) async {
     return _wrap(() async {
-      final created = await _client.rpc('list_player_for_transfer', params: {
+      await _client.rpc('list_player_for_transfer', params: {
         'p_player_id': playerId,
         'p_asking_price': askingPrice,
-      }).single();
+      });
 
-      if (created == null) return null;
-      return TransferMarketItem.fromMap(created as Map<String, dynamic>);
+      // The RPC's RETURNING * only carries transfer_market's own bare
+      // columns (id/player_id/asking_price), not the player/club data
+      // TransferMarketItem needs for display - re-fetch the joined row so
+      // the freshly listed player doesn't show up with blank name/stats
+      // (which read as "player not found" to the user).
+      final row = await _client
+          .from('transfer_market')
+          .select(
+              'id,player_id,asking_price,players(name,position,age,current_ability,potential_ability,morale,fitness,finishing,passing,tackling,composure,determination,consistency,injury_proneness,form_rating,injury_type,injury_duration_weeks,is_suspended,club:clubs(id,name))')
+          .eq('player_id', playerId)
+          .maybeSingle();
+
+      if (row == null) return null;
+      return TransferMarketItem.fromMap(row as Map<String, dynamic>);
     });
   }
 
@@ -1059,6 +1076,15 @@ class SupabaseRepository implements GameRepository {
     return _wrap(() async {
       final data = await _client.rpc('scout_opponent', params: {'p_match_id': matchId});
       return OpponentScoutReport.fromMap(Map<String, dynamic>.from(data as Map<String, dynamic>));
+    });
+  }
+
+  @override
+  Future<List<SavedScoutReport>> loadScoutedReports() async {
+    return _wrap(() async {
+      final data = await _client.rpc('list_scouted_reports');
+      if (data is! List<dynamic>) return <SavedScoutReport>[];
+      return data.cast<Map<String, dynamic>>().map(SavedScoutReport.fromMap).toList();
     });
   }
 

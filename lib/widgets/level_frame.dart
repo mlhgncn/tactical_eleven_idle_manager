@@ -30,8 +30,6 @@ class LevelFrame extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (level == ProfileLevel.none) return child;
-
     final colors = [solidColor(level).withValues(alpha: 0.85), solidColor(level)];
     return Container(
       padding: EdgeInsets.all(padding),

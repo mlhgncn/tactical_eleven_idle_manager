@@ -67,6 +67,42 @@ async function importApplePrivateKey(pem: string): Promise<CryptoKey> {
   );
 }
 
+// crypto.subtle.sign('ECDSA', ...) is specified to return the raw (r||s,
+// IEEE P1363) signature format that JOSE/JWT ES256 requires - but as a
+// defensive fallback (some runtimes/versions have been observed to hand
+// back a DER-encoded ECDSA-Sig-Value SEQUENCE instead), detect a DER
+// signature by its leading 0x30 (SEQUENCE) tag and convert it to raw r||s.
+function derToRawEcdsaSignature(der: Uint8Array, componentLength = 32): Uint8Array {
+  if (der[0] !== 0x30) return der; // Not DER - assume already raw.
+
+  let offset = 2; // skip SEQUENCE tag + length byte
+  if (der[1] & 0x80) {
+    // Long-form length (rare for a P-256 signature, but handle it).
+    offset = 2 + (der[1] & 0x7f);
+  }
+
+  function readInteger(buf: Uint8Array, pos: number): { value: Uint8Array; next: number } {
+    if (buf[pos] !== 0x02) throw new Error('Beklenmeyen DER yapısı (INTEGER tag yok).');
+    const len = buf[pos + 1];
+    let start = pos + 2;
+    let bytes = buf.slice(start, start + len);
+    // DER INTEGER strips leading zero padding except when needed to keep
+    // the value non-negative - strip a leading 0x00 pad byte if present.
+    if (bytes.length > componentLength && bytes[0] === 0x00) {
+      bytes = bytes.slice(1);
+    }
+    return { value: bytes, next: start + len };
+  }
+
+  const r = readInteger(der, offset);
+  const s = readInteger(der, r.next);
+
+  const raw = new Uint8Array(componentLength * 2);
+  raw.set(r.value, componentLength - r.value.length);
+  raw.set(s.value, componentLength * 2 - s.value.length);
+  return raw;
+}
+
 // Builds the short-lived (5 minute) ES256 JWT App Store Server API calls
 // require in their Authorization header - signed with the .p8 private key
 // downloaded once from App Store Connect (never logged, only read from an
@@ -87,13 +123,14 @@ async function buildAppleJwt(): Promise<string> {
   const signingInput = `${encodedHeader}.${encodedPayload}`;
 
   const privateKey = await importApplePrivateKey(APPLE_PRIVATE_KEY_PEM);
-  const signature = await crypto.subtle.sign(
+  const rawSignature = await crypto.subtle.sign(
     { name: 'ECDSA', hash: 'SHA-256' },
     privateKey,
     new TextEncoder().encode(signingInput),
   );
+  const signatureBytes = derToRawEcdsaSignature(new Uint8Array(rawSignature));
 
-  return `${signingInput}.${base64UrlEncode(new Uint8Array(signature))}`;
+  return `${signingInput}.${base64UrlEncode(signatureBytes)}`;
 }
 
 // A JWS has three base64url segments (header.payload.signature) - this
@@ -123,7 +160,13 @@ async function fetchTransactionInfo(transactionId: string, appleJwt: string): Pr
   }
 
   if (!response.ok) {
-    throw new Error(`App Store Server API isteği başarısız oldu (status: ${response.status}).`);
+    let bodyText = '';
+    try {
+      bodyText = await response.text();
+    } catch (_) {
+      // ignore
+    }
+    throw new Error(`App Store Server API isteği başarısız oldu (status: ${response.status}): ${bodyText}`);
   }
 
   const body = await response.json();

@@ -247,7 +247,7 @@ class GameProvider extends ChangeNotifier {
     }
 
     final perfMultiplier = _performanceMultiplier();
-    final stadiumRevenue = isHome ? (((club.stadiumCapacity * club.ticketPrice) / 3) * perfMultiplier).round() : 0;
+    final stadiumRevenue = isHome ? (((club.stadiumCapacity * club.ticketPrice) / 8) * perfMultiplier).round() : 0;
     final sponsorRevenue = (club.sponsorLevel * 500 * perfMultiplier).round();
     final matchBonus = isWin ? 300 : (isDraw ? 100 : -200);
 
@@ -586,6 +586,7 @@ class GameProvider extends ChangeNotifier {
           final opponentClub = isHome ? r['away_club'] : r['home_club'];
           final opponentName = (opponentClub is Map ? opponentClub['name'] as String? : null) ?? 'Rakip';
           final opponentUsername = opponentClub is Map ? opponentClub['username'] as String? : null;
+          final opponentAvatarUrl = opponentClub is Map ? opponentClub['avatar_url'] as String? : null;
           final kickoff = DateTime.tryParse(r['match_date'] as String? ?? '') ??
               now.add(const Duration(days: 3));
           final opponentClubId = isHome ? awayId : homeId;
@@ -594,6 +595,7 @@ class GameProvider extends ChangeNotifier {
             opponentName: opponentName,
             opponentUsername: opponentUsername,
             opponentClubId: opponentClubId,
+            opponentAvatarUrl: opponentAvatarUrl,
             kickoff: kickoff,
             isHome: isHome,
             status:
@@ -692,6 +694,14 @@ class GameProvider extends ChangeNotifier {
   Future<OpponentScoutReport> scoutOpponent(String matchId) async {
     try {
       return await _repository.scoutOpponent(matchId);
+    } catch (error) {
+      throw Exception(_formatClubActionError(error));
+    }
+  }
+
+  Future<List<SavedScoutReport>> loadScoutedReports() async {
+    try {
+      return await _repository.loadScoutedReports();
     } catch (error) {
       throw Exception(_formatClubActionError(error));
     }

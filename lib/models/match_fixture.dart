@@ -3,6 +3,7 @@ class MatchFixture {
   final String opponentName;
   final String? opponentUsername;
   final String? opponentClubId;
+  final String? opponentAvatarUrl;
   final DateTime kickoff;
   final bool isHome;
   final String status;
@@ -15,6 +16,7 @@ class MatchFixture {
     required this.opponentName,
     this.opponentUsername,
     this.opponentClubId,
+    this.opponentAvatarUrl,
     required this.kickoff,
     required this.isHome,
     required this.status,

@@ -100,3 +100,36 @@ class OpponentScoutReport {
     );
   }
 }
+
+/// A previously scouted opponent, persisted server-side so the club screen
+/// can reopen it any time - unlike scouting itself (still gated to 15
+/// minutes before kickoff), viewing an already-scouted report has no time
+/// restriction.
+class SavedScoutReport {
+  final String id;
+  final String matchId;
+  final String opponentClubId;
+  final String opponentName;
+  final OpponentScoutReport report;
+  final DateTime scoutedAt;
+
+  SavedScoutReport({
+    required this.id,
+    required this.matchId,
+    required this.opponentClubId,
+    required this.opponentName,
+    required this.report,
+    required this.scoutedAt,
+  });
+
+  factory SavedScoutReport.fromMap(Map<String, dynamic> map) {
+    return SavedScoutReport(
+      id: map['id'] as String,
+      matchId: map['match_id'] as String,
+      opponentClubId: map['opponent_club_id'] as String,
+      opponentName: map['opponent_name'] as String? ?? 'Rakip',
+      report: OpponentScoutReport.fromMap(Map<String, dynamic>.from(map['report'] as Map<String, dynamic>)),
+      scoutedAt: DateTime.parse(map['scouted_at'] as String),
+    );
+  }
+}

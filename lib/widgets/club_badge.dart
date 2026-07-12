@@ -12,11 +12,17 @@ class ClubBadge extends StatelessWidget {
     required this.clubName,
     this.kind = ClubBadgeKind.neutral,
     this.size = 36,
+    this.avatarUrl,
   });
 
   final String clubName;
   final ClubBadgeKind kind;
   final double size;
+
+  /// When the opposing club is controlled by a real user who has set a
+  /// profile photo, show that instead of the club's initials - makes the
+  /// "next match" card recognizably about a person, not just a bot club.
+  final String? avatarUrl;
 
   String get _asset => switch (kind) {
         ClubBadgeKind.home => AppAssets.badgeHome,
@@ -42,6 +48,7 @@ class ClubBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasAvatar = avatarUrl != null && avatarUrl!.isNotEmpty;
     return SizedBox(
       width: size,
       height: size,
@@ -49,19 +56,35 @@ class ClubBadge extends StatelessWidget {
         alignment: Alignment.center,
         children: [
           Image.asset(_asset, width: size, height: size),
-          Container(
-            width: size * 0.62,
-            height: size * 0.62,
-            decoration: BoxDecoration(shape: BoxShape.circle, color: _fillColor),
-          ),
-          Text(
-            _initials,
-            style: TextStyle(
-              fontSize: size * 0.32,
-              fontWeight: FontWeight.bold,
-              color: kind == ClubBadgeKind.neutral ? Colors.white70 : Colors.white,
+          if (hasAvatar)
+            ClipOval(
+              child: Image.network(
+                avatarUrl!,
+                width: size * 0.62,
+                height: size * 0.62,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Container(
+                  width: size * 0.62,
+                  height: size * 0.62,
+                  decoration: BoxDecoration(shape: BoxShape.circle, color: _fillColor),
+                ),
+              ),
+            )
+          else ...[
+            Container(
+              width: size * 0.62,
+              height: size * 0.62,
+              decoration: BoxDecoration(shape: BoxShape.circle, color: _fillColor),
             ),
-          ),
+            Text(
+              _initials,
+              style: TextStyle(
+                fontSize: size * 0.32,
+                fontWeight: FontWeight.bold,
+                color: kind == ClubBadgeKind.neutral ? Colors.white70 : Colors.white,
+              ),
+            ),
+          ],
         ],
       ),
     );
