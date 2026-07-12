@@ -315,6 +315,7 @@
     "levelValue": "Level {level}",
     "upgradeSponsorButton": "Upgrade Sponsorship",
     "clubDevelopmentButton": "Club Development",
+    "bankButton": "Bank",
     "transferHistoryButton": "Transfer History",
     "budgetTransactionsButton": "Budget Transactions",
     "noTransactionsYet": "No budget transactions yet.",
@@ -484,5 +485,21 @@
     "notPlayedYet": "This match hasn't been played yet.",
     "noEventsRecorded": "No notable events were recorded for this match.",
     "matchSummary": "MATCH SUMMARY"
+  },
+  "bank": {
+    "title": "Bank",
+    "myDepositsTitle": "My Deposits",
+    "availableBanksTitle": "Banks",
+    "dailyRateLabel": "Daily Interest: {rate}",
+    "noLockUp": "Withdraw any time",
+    "lockUpDaysLabel": "Locked for {days} days",
+    "limitsLabel": "Min: {min} GP · Max: {max} GP",
+    "depositAmountLabel": "Amount to Deposit (GP)",
+    "depositAction": "Deposit",
+    "withdrawAction": "Withdraw ({amount} GP)",
+    "depositSuccess": "Deposit successful.",
+    "withdrawSuccess": "Withdrawal successful.",
+    "lockedUntilLabel": "Unlocks: {date}",
+    "unlockedLabel": "Withdrawable"
   }
 }

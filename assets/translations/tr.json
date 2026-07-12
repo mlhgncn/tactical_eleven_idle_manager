@@ -315,6 +315,7 @@
     "levelValue": "Level {level}",
     "upgradeSponsorButton": "Sponsorluğu Yükselt",
     "clubDevelopmentButton": "Kulüp Geliştirme",
+    "bankButton": "Banka",
     "transferHistoryButton": "Transfer Geçmişi",
     "budgetTransactionsButton": "Bütçe Hareketleri",
     "noTransactionsYet": "Henüz bütçe hareketi yok.",
@@ -484,5 +485,21 @@
     "notPlayedYet": "Bu maç henüz oynanmadı.",
     "noEventsRecorded": "Bu maç için önemli olay kaydedilmedi.",
     "matchSummary": "MAÇ ÖZETİ"
+  },
+  "bank": {
+    "title": "Banka",
+    "myDepositsTitle": "Yatırımlarım",
+    "availableBanksTitle": "Bankalar",
+    "dailyRateLabel": "Günlük Faiz: {rate}",
+    "noLockUp": "İstediğin zaman çekilebilir",
+    "lockUpDaysLabel": "{days} gün kilitli",
+    "limitsLabel": "Min: {min} GP · Maks: {max} GP",
+    "depositAmountLabel": "Yatırılacak Tutar (GP)",
+    "depositAction": "Yatır",
+    "withdrawAction": "Çek ({amount} GP)",
+    "depositSuccess": "Yatırım başarıyla yapıldı.",
+    "withdrawSuccess": "Para başarıyla çekildi.",
+    "lockedUntilLabel": "Kilit bitiş: {date}",
+    "unlockedLabel": "Çekilebilir"
   }
 }

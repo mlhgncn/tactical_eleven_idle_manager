@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../utils/errors.dart';
 import '../services/error_reporting_service.dart';
 
+import '../models/bank.dart';
 import '../models/club_info.dart';
 import '../models/inbox_message.dart';
 import '../models/league_club_option.dart';
@@ -262,6 +263,48 @@ class SupabaseRepository implements GameRepository {
 
       if (response == null) return null;
       return PlayerFM.fromMap(response as Map<String, dynamic>);
+    });
+  }
+
+  Future<List<Bank>> loadBanks() async {
+    return _wrap(() async {
+      final data = await _client.from('banks').select('id,name,daily_interest_rate,lock_up_days,min_deposit,max_deposit').order('sort_order', ascending: true);
+      if (data is! List<dynamic>) return <Bank>[];
+      return data.cast<Map<String, dynamic>>().map(Bank.fromMap).toList();
+    });
+  }
+
+  Future<List<BankDeposit>> loadBankDeposits(String clubId) async {
+    return _wrap(() async {
+      final data = await _client
+          .from('bank_deposits')
+          .select('id,bank_id,principal,balance,deposited_at,unlocks_at')
+          .eq('club_id', clubId)
+          .filter('withdrawn_at', 'is', null)
+          .order('deposited_at', ascending: false);
+      if (data is! List<dynamic>) return <BankDeposit>[];
+      return data.cast<Map<String, dynamic>>().map(BankDeposit.fromMap).toList();
+    });
+  }
+
+  Future<BankDeposit?> depositToBank({required String bankId, required int amount}) async {
+    return _wrap(() async {
+      final response = await _client.rpc('deposit_to_bank', params: {
+        'p_bank_id': bankId,
+        'p_amount': amount,
+      }).single();
+      if (response == null) return null;
+      return BankDeposit.fromMap(response as Map<String, dynamic>);
+    });
+  }
+
+  Future<ClubInfo?> withdrawFromBank({required String depositId}) async {
+    return _wrap(() async {
+      final response = await _client.rpc('withdraw_from_bank', params: {
+        'p_deposit_id': depositId,
+      }).single();
+      if (response == null) return null;
+      return ClubInfo.fromMap(response as Map<String, dynamic>);
     });
   }
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../models/bank.dart';
 import '../models/club_info.dart';
 import '../models/inbox_message.dart';
 import '../models/league_club_option.dart';
@@ -120,6 +121,59 @@ class GameProvider extends ChangeNotifier {
   bool get isLoadingTransferHistory => _isLoadingTransferHistory;
   String? get transferHistoryErrorMessage => _transferHistoryErrorMessage;
 
+  List<Bank> _banks = <Bank>[];
+  List<BankDeposit> _bankDeposits = <BankDeposit>[];
+  bool _isLoadingBanks = false;
+
+  List<Bank> get banks => List.unmodifiable(_banks);
+  List<BankDeposit> get bankDeposits => List.unmodifiable(_bankDeposits);
+  bool get isLoadingBanks => _isLoadingBanks;
+
+  Future<void> loadBankData() async {
+    final activeClub = _activeClub;
+    if (activeClub == null) {
+      _banks = <Bank>[];
+      _bankDeposits = <BankDeposit>[];
+      return;
+    }
+    _isLoadingBanks = true;
+    notifyListeners();
+    try {
+      final results = await Future.wait([
+        _repository.loadBanks(),
+        _repository.loadBankDeposits(activeClub.id),
+      ]);
+      _banks = results[0] as List<Bank>;
+      _bankDeposits = results[1] as List<BankDeposit>;
+    } finally {
+      _isLoadingBanks = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> depositToBank({required String bankId, required int amount}) async {
+    try {
+      await _repository.depositToBank(bankId: bankId, amount: amount);
+      await loadBankData();
+      final refreshedClub = await _repository.loadActiveClub(clubId: _activeClub?.id);
+      if (refreshedClub != null) _activeClub = refreshedClub;
+      notifyListeners();
+    } catch (error) {
+      throw Exception(_formatClubActionError(error));
+    }
+  }
+
+  Future<void> withdrawFromBank({required String depositId}) async {
+    try {
+      final updatedClub = await _repository.withdrawFromBank(depositId: depositId);
+      if (updatedClub != null) _activeClub = updatedClub;
+      await loadBankData();
+      notifyListeners();
+    } catch (error) {
+      throw Exception(_formatClubActionError(error));
+    }
+  }
+
   Future<void> loadTransferHistory() async {
     final activeClub = _activeClub;
     if (activeClub == null) {
@@ -144,13 +198,36 @@ class GameProvider extends ChangeNotifier {
   Map<String, dynamic>? get seasonState => _seasonState;
   List<Map<String, dynamic>> get standings => List.unmodifiable(_standings);
 
+  /// Same shape as performanceMultiplier in
+  /// supabase/functions/_shared/match_engine.ts - kept in sync so the
+  /// pre-match income estimate matches what the server will actually pay
+  /// out. Looks up the active club's own row in the already-loaded
+  /// standings list.
+  double _performanceMultiplier() {
+    final club = _activeClub;
+    if (club == null) return 1.0;
+    final row = _standings.cast<Map<String, dynamic>?>().firstWhere(
+          (s) => (s?['club'] as Map<String, dynamic>?)?['id'] == club.id,
+          orElse: () => null,
+        );
+    if (row == null) return 1.0;
+    final wins = (row['wins'] as num?)?.toInt() ?? 0;
+    final draws = (row['draws'] as num?)?.toInt() ?? 0;
+    final played = (row['played'] as num?)?.toInt() ?? 0;
+    if (played <= 0) return 1.0;
+    final winRate = (wins + draws * 0.5) / played;
+    final sampleWeight = (played / 5).clamp(0, 1);
+    final raw = 0.7 + winRate * 0.6;
+    return 1.0 + (raw - 1.0) * sampleWeight;
+  }
+
   /// Calculate match economy summary for UI
   // supabase/functions/_shared/match_engine.ts'teki computeClubEconomy ile
   // aynı formülleri kullanır (stadyum geliri = kapasite*biletFiyatı/3,
-  // sadece ev sahibi maçlarında; berabere +100 GP bonus) - önceden
-  // capacity/10 kullanıyordu (sunucudan 3.33 kat düşük) ve deplasman
-  // senaryosunu hiç ayırt etmiyordu, gerçekleşenle tutarsız bir tahmin
-  // gösteriyordu.
+  // sadece ev sahibi maçlarında; berabere +100 GP bonus; lig performansına
+  // göre ölçeklenen çarpan) - önceden capacity/10 kullanıyordu (sunucudan
+  // 3.33 kat düşük) ve deplasman senaryosunu hiç ayırt etmiyordu,
+  // gerçekleşenle tutarsız bir tahmin gösteriyordu.
   Map<String, int> calculateMatchEconomy({required bool isWin, bool isDraw = false, bool isHome = true}) {
     final club = _activeClub;
     if (club == null) {
@@ -166,8 +243,9 @@ class GameProvider extends ChangeNotifier {
       };
     }
 
-    final stadiumRevenue = isHome ? ((club.stadiumCapacity * club.ticketPrice) ~/ 3) : 0;
-    final sponsorRevenue = club.sponsorLevel * 500;
+    final perfMultiplier = _performanceMultiplier();
+    final stadiumRevenue = isHome ? (((club.stadiumCapacity * club.ticketPrice) / 3) * perfMultiplier).round() : 0;
+    final sponsorRevenue = (club.sponsorLevel * 500 * perfMultiplier).round();
     final matchBonus = isWin ? 300 : (isDraw ? 100 : -200);
 
     int playerWages = 0;

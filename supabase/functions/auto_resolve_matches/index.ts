@@ -55,7 +55,7 @@ serve(async (req: Request) => {
   try {
     const { data: dueMatches, error: matchesError } = await supabase
       .from('matches')
-      .select('id,home_club_id,away_club_id,match_date')
+      .select('id,home_club_id,away_club_id,match_date,season_id')
       .eq('is_played', false)
       .lte('match_date', new Date().toISOString())
       .order('match_date', { ascending: true })

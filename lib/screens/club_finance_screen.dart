@@ -6,6 +6,7 @@ import '../providers/game_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/currency_label.dart';
 import '../widgets/themed_button.dart';
+import 'bank_screen.dart';
 import 'development_screen.dart';
 import 'sponsor_upgrade_screen.dart';
 import 'transfer_history_screen.dart';
@@ -240,6 +241,14 @@ class ClubFinanceScreen extends StatelessWidget {
                 MaterialPageRoute(builder: (_) => const DevelopmentScreen()),
               ),
               label: 'finance.clubDevelopmentButton'.tr(),
+            ),
+            const SizedBox(height: 10),
+
+            GoldButton(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const BankScreen()),
+              ),
+              label: 'finance.bankButton'.tr(),
             ),
             const SizedBox(height: 10),
 

@@ -1,3 +1,4 @@
+import '../models/bank.dart';
 import '../models/club_info.dart';
 import '../models/inbox_message.dart';
 import '../models/league_club_option.dart';
@@ -27,6 +28,10 @@ abstract class GameRepository {
   Future<void> deleteAccount();
   Future<List<PlayerFM>> loadSquadPlayers(String clubId);
   Future<PlayerFM?> loadPlayerById(String playerId);
+  Future<List<Bank>> loadBanks();
+  Future<List<BankDeposit>> loadBankDeposits(String clubId);
+  Future<BankDeposit?> depositToBank({required String bankId, required int amount});
+  Future<ClubInfo?> withdrawFromBank({required String depositId});
   Future<PlayerFM?> startPlayerDevelopment({required String playerId});
   Future<PlayerFM?> reducePlayerDevelopmentTimeWithAd({required String playerId});
   Future<ClubInfo?> reduceClubDevelopmentTimeWithAd({required String clubId});

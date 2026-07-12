@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:tactical_eleven_idle_manager/models/bank.dart';
 import 'package:tactical_eleven_idle_manager/models/club_info.dart';
 import 'package:tactical_eleven_idle_manager/models/inbox_message.dart';
 import 'package:tactical_eleven_idle_manager/models/league_club_option.dart';
@@ -203,6 +204,18 @@ class _FakeGameRepository implements GameRepository {
 
   @override
   Future<PlayerFM?> loadPlayerById(String playerId) async => null;
+
+  @override
+  Future<List<Bank>> loadBanks() async => [];
+
+  @override
+  Future<List<BankDeposit>> loadBankDeposits(String clubId) async => [];
+
+  @override
+  Future<BankDeposit?> depositToBank({required String bankId, required int amount}) async => null;
+
+  @override
+  Future<ClubInfo?> withdrawFromBank({required String depositId}) async => null;
 
   @override
   Future<List<InboxMessage>> loadInboxMessages() async => List<InboxMessage>.from(_inboxMessages);

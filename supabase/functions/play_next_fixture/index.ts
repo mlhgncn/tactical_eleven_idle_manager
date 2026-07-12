@@ -57,7 +57,7 @@ serve(async (req: Request) => {
 
     const { data: matchRow, error: matchError } = await supabase
       .from('matches')
-      .select('id,home_club_id,away_club_id,match_date')
+      .select('id,home_club_id,away_club_id,match_date,season_id')
       .or(`home_club_id.eq.${clubId},away_club_id.eq.${clubId}`)
       .eq('is_played', false)
       .order('match_date', { ascending: true })

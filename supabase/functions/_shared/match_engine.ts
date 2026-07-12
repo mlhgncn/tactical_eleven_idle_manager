@@ -10,6 +10,7 @@ export interface MatchRow {
   home_club_id: string;
   away_club_id: string;
   match_date: string;
+  season_id: string;
 }
 
 export interface ClubRow {
@@ -443,24 +444,44 @@ export interface ResolvedMatch {
 // deno-lint-ignore no-explicit-any
 type SupabaseClientLike = any;
 
+// Performance multiplier for stadium/sponsor revenue - fans turn up (and
+// sponsors pay more) for a team that's actually winning. Scaled around a
+// neutral 1.0 at a 50% win rate, ranging roughly 0.7x (struggling team) to
+// 1.3x (dominant team), so it nudges the economy without swinging it
+// wildly. formSample is how many league games the win rate is based on -
+// below a small sample (new season, promoted club) we blend toward the
+// neutral 1.0 instead of overreacting to 1-2 results.
+function performanceMultiplier(wins: number, draws: number, played: number): number {
+  if (played <= 0) return 1.0;
+  const winRate = (wins + draws * 0.5) / played;
+  const sampleWeight = Math.min(1, played / 5); // ramps up to full effect over the first 5 games
+  const raw = 0.7 + winRate * 0.6; // winRate 0 -> 0.7x, winRate 1 -> 1.3x
+  return 1.0 + (raw - 1.0) * sampleWeight;
+}
+
 function computeClubEconomy(
   club: ClubRow,
   clubPlayers: PlayerRow[],
   isHome: boolean,
   goalsFor: number,
   goalsAgainst: number,
+  standing: { wins: number; draws: number; played: number } | null,
 ): ClubEconomyResult {
   const stadiumCapacity = Number(club.stadium_capacity ?? 15000);
   const ticketPrice = Number(club.ticket_price ?? 5);
   const trainingFacilityLevel = Number(club.training_facility_level ?? 1);
   const sponsorLevel = Number(club.sponsor_level ?? 1);
   const budget = Number(club.budget ?? 0);
+  const perfMultiplier = performanceMultiplier(standing?.wins ?? 0, standing?.draws ?? 0, standing?.played ?? 0);
 
   const matchBonus = goalsFor > goalsAgainst ? 300 : goalsFor === goalsAgainst ? 100 : -200;
   const playerWages = clubPlayers.reduce((sum, player) => sum + player.current_ability * 2, 0);
-  // Only the home club sells tickets for this fixture.
-  const stadiumRevenue = isHome ? Math.floor((stadiumCapacity * ticketPrice) / 3) : 0;
-  const sponsorRevenue = sponsorLevel * 500;
+  // Only the home club sells tickets for this fixture. Stadium + sponsor
+  // revenue both scale with the club's recent league performance (see
+  // performanceMultiplier) - a team on a good run fills more seats and
+  // attracts better sponsor terms.
+  const stadiumRevenue = isHome ? Math.round((stadiumCapacity * ticketPrice) / 3 * perfMultiplier) : 0;
+  const sponsorRevenue = Math.round(sponsorLevel * 500 * perfMultiplier);
   const maintenanceCost = Math.floor(stadiumCapacity / 200) + trainingFacilityLevel * 25;
   const totalRevenue = stadiumRevenue + sponsorRevenue + matchBonus;
   const totalExpense = playerWages + maintenanceCost;
@@ -672,8 +693,23 @@ export async function resolveMatch(
     if (eventInsertError) throw new Error(`Maç olayları kaydedilemedi: ${eventInsertError.message}`);
   }
 
-  const homeEconomy = computeClubEconomy(homeClub, homeClubPlayers, true, homeScore, awayScore);
-  const awayEconomy = computeClubEconomy(awayClub, awayClubPlayers, false, awayScore, homeScore);
+  // Recent-performance standings, fetched BEFORE this match's result is
+  // applied (update_standings_after_match runs later below) - so the
+  // multiplier reflects form coming into this match, not including it.
+  const { data: standingsRows } = await supabase
+    .from('league_standings')
+    .select('club_id,wins,draws,played')
+    .in('club_id', clubIds)
+    .eq('season_id', matchRow.season_id);
+  const standingsMap = new Map<string, { wins: number; draws: number; played: number }>(
+    (standingsRows ?? []).map((s: { club_id: string; wins: number; draws: number; played: number }) => [
+      s.club_id,
+      { wins: s.wins, draws: s.draws, played: s.played },
+    ]),
+  );
+
+  const homeEconomy = computeClubEconomy(homeClub, homeClubPlayers, true, homeScore, awayScore, standingsMap.get(matchRow.home_club_id) ?? null);
+  const awayEconomy = computeClubEconomy(awayClub, awayClubPlayers, false, awayScore, homeScore, standingsMap.get(matchRow.away_club_id) ?? null);
 
   for (const economy of [homeEconomy, awayEconomy]) {
     const { error: clubUpdateError } = await supabase
