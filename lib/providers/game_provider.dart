@@ -194,7 +194,20 @@ class GameProvider extends ChangeNotifier {
     };
   }
 
-  Future<void> refreshGameState() async {
+  /// Every club the current user owns (up to 4, one per league). Populated
+  /// alongside the active club so a league-switcher UI can list them.
+  List<ClubInfo> get myClubs => List.unmodifiable(_myClubs);
+  List<ClubInfo> _myClubs = <ClubInfo>[];
+
+  /// Switches the active club to [clubId] (must be one of [myClubs]) and
+  /// reloads all club-scoped state (squad, fixtures, transfer market, etc.)
+  /// for it. Used by the league picker to re-enter a different league
+  /// without a full logout/login.
+  Future<void> switchActiveClub(String clubId) async {
+    await refreshGameState(activeClubId: clubId);
+  }
+
+  Future<void> refreshGameState({String? activeClubId}) async {
     if (!_canUseSupabase && _repository is SupabaseRepository) {
       _activeClub = null;
       _profile = null;
@@ -215,7 +228,8 @@ class GameProvider extends ChangeNotifier {
 
     _setLoading(true);
     try {
-      await _loadActiveClub();
+      await _loadActiveClub(clubId: activeClubId);
+      _myClubs = await _repository.loadMyClubs();
 
       await _loadUserProfile();
       await Future.wait(<Future<void>>[
@@ -253,8 +267,8 @@ class GameProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> _loadActiveClub() async {
-    _activeClub = await _repository.loadActiveClub();
+  Future<void> _loadActiveClub({String? clubId}) async {
+    _activeClub = await _repository.loadActiveClub(clubId: clubId);
   }
 
   Future<void> _loadSquadPlayers() async {
@@ -496,6 +510,17 @@ class GameProvider extends ChangeNotifier {
     }
   }
 
+  Future<List<LeagueClubOption>> previewLeagueByCode(String invitationCode) async {
+    if (invitationCode.trim().isEmpty) {
+      throw Exception('Davet kodu boş olamaz.');
+    }
+    try {
+      return await _repository.previewLeagueByCode(invitationCode);
+    } catch (error) {
+      throw Exception(_formatClubActionError(error));
+    }
+  }
+
   Future<OpponentScoutReport> scoutOpponent(String matchId) async {
     try {
       return await _repository.scoutOpponent(matchId);
@@ -508,11 +533,10 @@ class GameProvider extends ChangeNotifier {
     try {
       final club = await _repository.selectClubForLeague(clubId);
       if (club != null) {
-        _activeClub = club;
         try {
           AnalyticsService.instance.logEvent('select_club', parameters: {'club_id': clubId});
         } catch (_) {}
-        await refreshGameState();
+        await refreshGameState(activeClubId: club.id);
         return;
       }
 
@@ -530,11 +554,10 @@ class GameProvider extends ChangeNotifier {
     try {
       final club = await _repository.joinLeagueWithCode(invitationCode);
       if (club != null) {
-        _activeClub = club;
         try {
           AnalyticsService.instance.logEvent('join_league');
         } catch (_) {}
-        await refreshGameState();
+        await refreshGameState(activeClubId: club.id);
         return;
       }
 
@@ -548,9 +571,9 @@ class GameProvider extends ChangeNotifier {
   /// başka biri tarafından katılınabilir olur. Yerel durumu tamamen
   /// temizler; çağıran taraf kullanıcıyı lig oluştur/katıl ekranına
   /// yönlendirmelidir.
-  Future<void> leaveClub() async {
+  Future<void> leaveClub({String? clubId}) async {
     try {
-      await _repository.leaveCurrentClub();
+      await _repository.leaveCurrentClub(clubId: clubId ?? _activeClub?.id);
     } catch (error) {
       throw Exception(_formatClubActionError(error));
     }

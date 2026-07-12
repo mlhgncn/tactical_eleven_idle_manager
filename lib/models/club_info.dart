@@ -1,6 +1,7 @@
 class ClubInfo {
   final String id;
   final String name;
+  final String? leagueId;
   final int budget;
   final int blockedBudget;
   final int stadiumCapacity;
@@ -18,6 +19,7 @@ class ClubInfo {
   const ClubInfo({
     required this.id,
     required this.name,
+    this.leagueId,
     required this.budget,
     this.blockedBudget = 0,
     required this.stadiumCapacity,
@@ -58,6 +60,7 @@ class ClubInfo {
     return ClubInfo(
       id: id,
       name: name ?? this.name,
+      leagueId: leagueId,
       budget: budget ?? this.budget,
       blockedBudget: blockedBudget ?? this.blockedBudget,
       stadiumCapacity: stadiumCapacity ?? this.stadiumCapacity,
@@ -78,6 +81,7 @@ class ClubInfo {
     return ClubInfo(
       id: map['id'] as String,
       name: map['name'] as String,
+      leagueId: map['league_id'] as String?,
       budget: (map['budget'] as num).toInt(),
       blockedBudget: (map['blocked_budget'] as num?)?.toInt() ?? 0,
       stadiumCapacity: (map['stadium_capacity'] as num).toInt(),

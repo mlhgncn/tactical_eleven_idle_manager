@@ -4,6 +4,7 @@ class LeagueClubOption {
   final int quality;
   final bool isPremiumLocked;
   final int? premiumUnlockCost;
+  final bool isTaken;
 
   LeagueClubOption({
     required this.clubId,
@@ -11,6 +12,7 @@ class LeagueClubOption {
     required this.quality,
     required this.isPremiumLocked,
     this.premiumUnlockCost,
+    this.isTaken = false,
   });
 
   factory LeagueClubOption.fromMap(Map<String, dynamic> map) {
@@ -20,6 +22,7 @@ class LeagueClubOption {
       quality: (map['quality'] as num).toInt(),
       isPremiumLocked: map['is_premium_locked'] as bool,
       premiumUnlockCost: (map['premium_unlock_cost'] as num?)?.toInt(),
+      isTaken: map['is_taken'] as bool? ?? false,
     );
   }
 }

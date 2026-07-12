@@ -54,6 +54,7 @@
     "freeSectionTitle": "Other Clubs",
     "qualityLabel": "Power: {quality}",
     "freeLabel": "Free",
+    "takenLabel": "Taken",
     "confirmFreeBody": "Do you want to start your league with this club?",
     "confirmPremiumBody": "Do you want to claim this elite club for {cost} diamonds?",
     "confirmAction": "Confirm",
@@ -65,11 +66,19 @@
     "joinLeague": "Join League",
     "invitationCode": "Invitation Code",
     "joinConfirm": "Join",
+    "maxLeaguesReached": "You can have a club in at most 4 different leagues.",
     "errors": {
       "codeRequired": "Invitation code cannot be empty.",
       "createLeague": "An error occurred while creating the league: {error}",
       "joinLeague": "An error occurred while joining the league: {error}"
     }
+  },
+  "leagueSelector": {
+    "title": "My Leagues",
+    "subtitle": "Choose which league to manage",
+    "addLeague": "Add New League",
+    "maxReached": "You've reached the maximum number of leagues (4)",
+    "switchAction": "Manage this league"
   },
   "menu": {
     "play": "Play",

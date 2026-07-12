@@ -127,9 +127,11 @@ interface RosterEntry {
 // ability'sini üretir - artık kadronun tamamı değil, SADECE sahadaki 11
 // kişi maça dahil oluyor, ve mevki dışı oynatılan oyuncu burada (UI'daki
 // squad_screen.dart ile birebir aynı formülle) güç kaybediyor. Taktik hiç
-// kaydedilmemişse ya da starting_eleven_ids artık geçersizse (sakat/
-// cezalı/kulüpten ayrılmış biri varsa) eski davranışa (tüm uygun kadro,
-// kendi doğal mevkisinde, cezasız) düşer.
+// kaydedilmemişse eski davranışa (tüm uygun kadro, kendi doğal mevkisinde,
+// cezasız) düşer. Kaydedilmiş bir XI'de sakat/cezalı/kulüpten ayrılmış biri
+// varsa, o slot tek başına en iyi uygun yedekle (aynı slot grubunda,
+// current_ability'ye göre en yüksek, henüz sahada olmayan) değiştirilir -
+// tüm XI'yi atıp kadronun tamamına düşmek yerine.
 function buildEffectiveRoster(
   clubPlayers: PlayerRow[],
   formation: string | null,
@@ -137,27 +139,42 @@ function buildEffectiveRoster(
 ): RosterEntry[] {
   const slotGroups = FORMATION_SLOT_GROUPS[(formation ?? 'f442').toLowerCase()];
   const playerMap = new Map(clubPlayers.map((p) => [p.id, p]));
+  const isAvailable = (p: PlayerRow) => p.injury_duration_weeks <= 0 && !p.is_suspended;
 
   if (slotGroups && startingElevenIds && startingElevenIds.length === slotGroups.length) {
     const roster: RosterEntry[] = [];
-    let allValid = true;
+    const usedIds = new Set<string>();
+    let sawKnownPlayer = false;
+
     for (let i = 0; i < slotGroups.length; i += 1) {
-      const player = playerMap.get(startingElevenIds[i]);
-      if (!player || player.injury_duration_weeks > 0 || player.is_suspended) {
-        allValid = false;
-        break;
+      const slotGroup = slotGroups[i];
+      let player = playerMap.get(startingElevenIds[i]);
+      if (player) sawKnownPlayer = true;
+
+      if (!player || !isAvailable(player)) {
+        // Best available bench replacement for this slot: same position
+        // group, not already used elsewhere in this XI, highest
+        // current_ability first.
+        const replacement = clubPlayers
+          .filter((p) => !usedIds.has(p.id) && isAvailable(p) && positionGroup(p.position) === slotGroup)
+          .sort((a, b) => b.current_ability - a.current_ability)[0];
+        player = replacement;
       }
+
+      if (!player) continue;
+      usedIds.add(player.id);
       roster.push({
         player,
-        effectiveGroup: slotGroups[i],
-        effectiveAbility: effectiveAbilityInSlot(player, slotGroups[i]),
+        effectiveGroup: slotGroup,
+        effectiveAbility: effectiveAbilityInSlot(player, slotGroup),
       });
     }
-    if (allValid) return roster;
+
+    if (sawKnownPlayer) return roster;
   }
 
   return clubPlayers
-    .filter((p) => p.injury_duration_weeks <= 0 && !p.is_suspended)
+    .filter(isAvailable)
     .map((p) => ({ player: p, effectiveGroup: positionGroup(p.position), effectiveAbility: p.current_ability }));
 }
 
@@ -677,6 +694,20 @@ export async function resolveMatch(
 
   const { error: standingsError } = await supabase.rpc('update_standings_after_match', { p_match_id: matchRow.id });
   if (standingsError) throw new Error(`Puan durumu güncellenirken hata oluştu: ${standingsError.message}`);
+
+  // Lineup-neglect tracking: a valid saved XI (right length, all slots
+  // filled by known/available players) resets the counter; anything else
+  // (never set, wrong length, or fully invalidated by injuries/suspensions
+  // - see buildEffectiveRoster) counts as a miss. 10 misses in a row
+  // releases the whole squad to free agency (public.track_lineup_neglect).
+  const slotCountForFormation = (formation: string | null) =>
+    FORMATION_SLOT_GROUPS[(formation ?? 'f442').toLowerCase()]?.length ?? 11;
+  const homeHadValidLineup = !!homeTactic.startingElevenIds &&
+    homeTactic.startingElevenIds.length === slotCountForFormation(homeTactic.formation);
+  const awayHadValidLineup = !!awayTactic.startingElevenIds &&
+    awayTactic.startingElevenIds.length === slotCountForFormation(awayTactic.formation);
+  await supabase.rpc('track_lineup_neglect', { p_club_id: matchRow.home_club_id, p_had_valid_lineup: homeHadValidLineup });
+  await supabase.rpc('track_lineup_neglect', { p_club_id: matchRow.away_club_id, p_had_valid_lineup: awayHadValidLineup });
 
   return {
     matchId: matchRow.id,

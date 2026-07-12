@@ -54,6 +54,7 @@
     "freeSectionTitle": "Diğer Kulüpler",
     "qualityLabel": "Güç: {quality}",
     "freeLabel": "Ücretsiz",
+    "takenLabel": "Dolu",
     "confirmFreeBody": "Bu kulüple lige başlamak istiyor musun?",
     "confirmPremiumBody": "Bu elit kulübü {cost} elmas karşılığında almak istiyor musun?",
     "confirmAction": "Onayla",
@@ -65,11 +66,19 @@
     "joinLeague": "Lige Katıl",
     "invitationCode": "Davet Kodu",
     "joinConfirm": "Katıl",
+    "maxLeaguesReached": "En fazla 4 farklı ligde kulübünüz olabilir.",
     "errors": {
       "codeRequired": "Davet kodu boş olamaz.",
       "createLeague": "Lig oluşturulurken hata oluştu: {error}",
       "joinLeague": "Lige katılırken hata oluştu: {error}"
     }
+  },
+  "leagueSelector": {
+    "title": "Liglerim",
+    "subtitle": "Yönetmek istediğin ligi seç",
+    "addLeague": "Yeni Lig Ekle",
+    "maxReached": "Maksimum lig sayısına (4) ulaştın",
+    "switchAction": "Bu ligi yönet"
   },
   "menu": {
     "play": "Oyna",

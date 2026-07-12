@@ -10,6 +10,7 @@ import '../providers/game_provider.dart';
 import 'club_finance_screen.dart';
 import 'dashboard_screen.dart';
 import 'inbox_screen.dart';
+import 'league_selector_screen.dart';
 import 'league_table_screen.dart';
 import 'match_schedule_screen.dart';
 import 'squad_screen.dart';
@@ -131,6 +132,7 @@ class _RootShellState extends State<RootShell> {
   Widget build(BuildContext context) {
     final activeClub = context.select((GameProvider provider) => provider.activeClub);
     final isAdmin = context.select((GameProvider p) => p.isAdmin);
+    final myClubsCount = context.select((GameProvider p) => p.myClubs.length);
     final title = activeClub == null ? 'navigation.manager_panel'.tr() : 'navigation.club_prefix'.tr(namedArgs: {'name': activeClub.name});
 
     final pages = List<_ShellPage>.from(_navigationPages);
@@ -142,6 +144,14 @@ class _RootShellState extends State<RootShell> {
       appBar: AppBar(
         title: Text(title),
         actions: [
+          if (myClubsCount > 1)
+            IconButton(
+              icon: const Icon(Icons.swap_horiz),
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const LeagueSelectorScreen()),
+              ),
+              tooltip: 'leagueSelector.title'.tr(),
+            ),
           IconButton(
             icon: const Icon(Icons.settings),
             onPressed: () => Navigator.of(context).pushNamed('/settings'),

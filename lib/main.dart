@@ -9,6 +9,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'providers/game_provider.dart';
 import 'screens/auth_screen.dart';
 import 'screens/email_verification_screen.dart';
+import 'screens/league_selector_screen.dart';
 import 'screens/root_shell.dart';
 import 'screens/settings_screen.dart';
 import 'screens/setup_club_screen.dart';
@@ -96,6 +97,7 @@ class MyApp extends StatelessWidget {
           '/auth': (_) => AuthScreen(),
           '/email-verification': (_) => const EmailVerificationScreen(),
           '/setup-club': (_) => SetupClubScreen(),
+          '/league-selector': (_) => const LeagueSelectorScreen(),
           '/root': (_) => RootShell(),
           '/settings': (_) => const SettingsScreen(),
         },

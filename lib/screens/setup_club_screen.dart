@@ -52,8 +52,13 @@ class _SetupClubScreenState extends State<SetupClubScreen> {
     setState(() => _isLoading = true);
 
     try {
-      await context.read<GameProvider>().joinLeagueWithCode(_invitationCodeController.text.trim());
-      _navigateToRoot();
+      final options = await context.read<GameProvider>().previewLeagueByCode(_invitationCodeController.text.trim());
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      final joined = await Navigator.of(context).push<bool>(
+        MaterialPageRoute(builder: (_) => LeagueClubPickerScreen(options: options)),
+      );
+      if (joined == true) _navigateToRoot();
     } catch (error) {
       if (!mounted) return;
       setState(() => _isLoading = false);

@@ -66,12 +66,16 @@ class _AuthScreenState extends State<AuthScreen> {
     if (!mounted) return;
     final gameProvider = context.read<GameProvider>();
     final hasClub = gameProvider.activeClub != null;
+    final hasMultipleClubs = gameProvider.myClubs.length > 1;
     final navigator = Navigator.of(context);
     // OSM-style: no offline rewards. Matches and income only happen on the
     // server-side schedule (auto_resolve_matches cron), whether or not
     // anyone was online to see them - reopening the app just shows whatever
-    // already happened.
-    navigator.pushReplacementNamed(hasClub ? '/root' : '/setup-club');
+    // already happened. A user managing more than one league lands on the
+    // league picker first instead of jumping straight into whichever club
+    // happened to load as "active".
+    final destination = !hasClub ? '/setup-club' : (hasMultipleClubs ? '/league-selector' : '/root');
+    navigator.pushReplacementNamed(destination);
   }
 
   String? _validateEmail(String? value) {

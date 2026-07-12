@@ -20,6 +20,8 @@ class _LeagueClubPickerScreenState extends State<LeagueClubPickerScreen> {
   bool _isSelecting = false;
 
   Future<void> _selectClub(LeagueClubOption option) async {
+    if (option.isTaken) return;
+
     final diamonds = context.read<GameProvider>().diamonds;
     if (option.isPremiumLocked && diamonds < (option.premiumUnlockCost ?? 0)) {
       await _showInsufficientDiamondsDialog(option);
@@ -135,47 +137,55 @@ class _ClubOptionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      shape: option.isPremiumLocked
-          ? RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: const BorderSide(color: AppColors.gold, width: 1.5),
-            )
-          : null,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              if (option.isPremiumLocked) ...[
-                const Icon(Icons.workspace_premium, color: AppColors.gold),
-                const SizedBox(width: 12),
-              ],
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(option.clubName, style: Theme.of(context).textTheme.titleMedium),
-                    const SizedBox(height: 4),
-                    Text(
-                      'clubSetup.qualityLabel'.tr(namedArgs: {'quality': option.quality.toString()}),
-                      style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
-                    ),
-                  ],
+    return Opacity(
+      opacity: option.isTaken ? 0.45 : 1,
+      child: Card(
+        margin: const EdgeInsets.only(bottom: 12),
+        shape: option.isPremiumLocked
+            ? RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: const BorderSide(color: AppColors.gold, width: 1.5),
+              )
+            : null,
+        child: InkWell(
+          onTap: option.isTaken ? null : onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                if (option.isPremiumLocked) ...[
+                  const Icon(Icons.workspace_premium, color: AppColors.gold),
+                  const SizedBox(width: 12),
+                ],
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(option.clubName, style: Theme.of(context).textTheme.titleMedium),
+                      const SizedBox(height: 4),
+                      Text(
+                        'clubSetup.qualityLabel'.tr(namedArgs: {'quality': option.quality.toString()}),
+                        style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              if (option.isPremiumLocked)
-                Chip(
-                  label: Text('${option.premiumUnlockCost} 💎'),
-                  backgroundColor: AppColors.cardTop,
-                  side: const BorderSide(color: AppColors.gold),
-                )
-              else
-                Text('clubSetup.freeLabel'.tr(), style: const TextStyle(color: AppColors.green, fontWeight: FontWeight.bold)),
-            ],
+                if (option.isTaken)
+                  Chip(
+                    label: Text('clubSetup.takenLabel'.tr()),
+                    backgroundColor: AppColors.cardTop,
+                  )
+                else if (option.isPremiumLocked)
+                  Chip(
+                    label: Text('${option.premiumUnlockCost} 💎'),
+                    backgroundColor: AppColors.cardTop,
+                    side: const BorderSide(color: AppColors.gold),
+                  )
+                else
+                  Text('clubSetup.freeLabel'.tr(), style: const TextStyle(color: AppColors.green, fontWeight: FontWeight.bold)),
+              ],
+            ),
           ),
         ),
       ),

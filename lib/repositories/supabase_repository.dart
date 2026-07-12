@@ -49,19 +49,40 @@ class SupabaseRepository implements GameRepository {
     }
   }
 
-  Future<ClubInfo?> loadActiveClub() async {
+  static const _clubSelectColumns =
+      'id,name,league_id,budget,blocked_budget,stadium_capacity,ticket_price,ticket_price_level,training_facility_level,sponsor_level,last_maintenance_date,sponsor_upgrade_completes_at,development_upgrade_type,development_target_value,development_completes_at,development_ad_uses';
+
+  /// Loads every club the current user owns (up to 4, one per league).
+  Future<List<ClubInfo>> loadMyClubs() async {
+    return _wrap(() async {
+      final userId = currentUserId;
+      if (userId == null) return <ClubInfo>[];
+
+      final response = await _client
+          .from('clubs')
+          .select(_clubSelectColumns)
+          .eq('user_id', userId)
+          .order('created_at', ascending: true);
+
+      return (response as List<dynamic>)
+          .cast<Map<String, dynamic>>()
+          .map(ClubInfo.fromMap)
+          .toList();
+    });
+  }
+
+  /// Loads a single club by id (must be owned by the current user). When
+  /// [clubId] is omitted, falls back to the user's first club (oldest by
+  /// created_at) - the pre-multi-league behavior.
+  Future<ClubInfo?> loadActiveClub({String? clubId}) async {
     return _wrap(() async {
       final userId = currentUserId;
       if (userId == null) return null;
 
-      final response = await _client
-          .from('clubs')
-          .select(
-              'id,name,budget,blocked_budget,stadium_capacity,ticket_price,ticket_price_level,training_facility_level,sponsor_level,last_maintenance_date,sponsor_upgrade_completes_at,development_upgrade_type,development_target_value,development_completes_at,development_ad_uses')
-          .eq('user_id', userId)
-          .order('created_at', ascending: true)
-          .limit(1)
-          .maybeSingle();
+      var query = _client.from('clubs').select(_clubSelectColumns).eq('user_id', userId);
+      final response = clubId != null
+          ? await query.eq('id', clubId).maybeSingle()
+          : await query.order('created_at', ascending: true).limit(1).maybeSingle();
 
       if (response == null) return null;
       return ClubInfo.fromMap(response as Map<String, dynamic>);
@@ -96,10 +117,23 @@ class SupabaseRepository implements GameRepository {
     });
   }
 
-  @override
-  Future<void> leaveCurrentClub() async {
+  /// Lists every club in the league matching [invitationCode] (both taken
+  /// and free) so the joiner can pick a specific free club instead of
+  /// being handed a random one.
+  Future<List<LeagueClubOption>> previewLeagueByCode(String invitationCode) async {
     return _wrap(() async {
-      await _client.rpc('leave_current_club');
+      final data = await _client.rpc('preview_league_by_code', params: {
+        'p_invitation_code': invitationCode,
+      });
+      if (data is! List<dynamic>) return <LeagueClubOption>[];
+      return data.cast<Map<String, dynamic>>().map(LeagueClubOption.fromMap).toList();
+    });
+  }
+
+  @override
+  Future<void> leaveCurrentClub({String? clubId}) async {
+    return _wrap(() async {
+      await _client.rpc('leave_current_club', params: clubId != null ? {'p_club_id': clubId} : {});
     });
   }
 

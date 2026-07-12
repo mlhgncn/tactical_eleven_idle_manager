@@ -1,10 +1,9 @@
--- Eski fikstür üretimi her gün kulüpleri BAĞIMSIZ rastgele eşleştiriyordu
--- (önceki günlerin hafızası yok) - bu yüzden bazı kulüp çiftleri sezonda
--- 4-5 kez oynuyor, bazıları hiç oynamıyordu. Bunun yerine standart "circle
--- method" round-robin algoritmasıyla gerçek bir lig fikstürü üretiyoruz:
--- her kulüp her diğer kulüple TAM 1 kez (tek devre), sonra ev sahibi/
--- deplasman ters çevrilerek 2. kez (çift devre) eşleşiyor - 18 kulüp için
--- toplam 34 gün/hafta, standart bir lig sezonu uzunluğu.
+-- A freshly created league's first match used to kick off "today or
+-- tomorrow at 21:00 Istanbul" - as little as a few hours away if the
+-- league was created shortly before 21:00. Push it out to exactly 48
+-- hours after league creation (rounded up to the same 21:00 slot every
+-- other matchday uses), so a new manager always has 2 full days to build
+-- a squad before the season starts.
 CREATE OR REPLACE FUNCTION public.generate_season_fixtures_for_league(p_league_id uuid)
  RETURNS void
  LANGUAGE plpgsql
@@ -24,10 +23,6 @@ DECLARE
   home_id UUID;
   away_id UUID;
   last_elem UUID;
-  -- First match kicks off exactly 48 hours after league creation, at the
-  -- same 21:00 Istanbul slot every other matchday uses - not "today or
-  -- tomorrow at 21:00" (which could be under 24h away). Round up to the
-  -- 21:00 slot on/after the 48h mark so the gap is never less than 2 days.
   season_start TIMESTAMPTZ := (date_trunc('day', (now() + interval '48 hours') AT TIME ZONE 'Europe/Istanbul') + interval '21 hours') AT TIME ZONE 'Europe/Istanbul';
 BEGIN
   IF season_start < now() + interval '48 hours' THEN
@@ -53,8 +48,6 @@ BEGIN
     RETURN;
   END IF;
 
-  -- Tek sayıda kulüp varsa NULL bir "bye" ekleyip çift sayıya tamamla -
-  -- o turda NULL ile eşleşen kulüp maç oynamaz.
   IF n % 2 = 1 THEN
     club_ids := array_append(club_ids, NULL);
     n := n + 1;
@@ -63,8 +56,6 @@ BEGIN
   half := n / 2;
   single_rounds := n - 1;
 
-  -- Tek devre: circle method. club_ids[1] sabit kalır, geri kalanlar her
-  -- turda 1 pozisyon döner.
   FOR round_no IN 1..single_rounds LOOP
     day_no := round_no;
 
@@ -83,7 +74,6 @@ BEGIN
       END IF;
     END LOOP;
 
-    -- club_ids[2..n] dizisini 1 pozisyon sağa döndür (club_ids[1] sabit).
     last_elem := club_ids[n];
     FOR i IN REVERSE n..3 LOOP
       club_ids[i] := club_ids[i - 1];
@@ -91,8 +81,6 @@ BEGIN
     club_ids[2] := last_elem;
   END LOOP;
 
-  -- Çift devre: tek devrenin tüm maçlarını ev sahibi/deplasman ters
-  -- çevrilmiş olarak, sonraki günlere kaydırarak tekrar ekle.
   FOR round_no IN 1..single_rounds LOOP
     day_no := single_rounds + round_no;
     INSERT INTO public.matches (league_id, season_id, week, home_club_id, away_club_id, match_date, is_played)

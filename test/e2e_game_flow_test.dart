@@ -98,7 +98,10 @@ class _FakeGameRepository implements GameRepository {
   String? get currentUserId => _currentUserId;
 
   @override
-  Future<ClubInfo?> loadActiveClub() async => _activeClub;
+  Future<ClubInfo?> loadActiveClub({String? clubId}) async => _activeClub;
+
+  @override
+  Future<List<ClubInfo>> loadMyClubs() async => _activeClub == null ? [] : [_activeClub!];
 
   @override
   Future<Profile?> loadProfile() async {
@@ -121,6 +124,13 @@ class _FakeGameRepository implements GameRepository {
   Future<List<LeagueClubOption>> previewLeagueTheme(String theme) async {
     return [
       LeagueClubOption(clubId: 'club-created', clubName: 'Zero Account FC', quality: 50, isPremiumLocked: false),
+    ];
+  }
+
+  @override
+  Future<List<LeagueClubOption>> previewLeagueByCode(String invitationCode) async {
+    return [
+      LeagueClubOption(clubId: 'club-joined', clubName: 'Joined FC', quality: 50, isPremiumLocked: false),
     ];
   }
 
@@ -157,7 +167,7 @@ class _FakeGameRepository implements GameRepository {
   }
 
   @override
-  Future<void> leaveCurrentClub() async {
+  Future<void> leaveCurrentClub({String? clubId}) async {
     _activeClub = null;
   }
 

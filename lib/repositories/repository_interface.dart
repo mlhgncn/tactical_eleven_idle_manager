@@ -15,13 +15,15 @@ import '../models/diamond_product.dart';
 
 abstract class GameRepository {
   String? get currentUserId;
-  Future<ClubInfo?> loadActiveClub();
+  Future<ClubInfo?> loadActiveClub({String? clubId});
+  Future<List<ClubInfo>> loadMyClubs();
   Future<Profile?> loadProfile();
   Future<Profile?> updateUsername(String username);
   Future<List<LeagueClubOption>> previewLeagueTheme(String theme);
+  Future<List<LeagueClubOption>> previewLeagueByCode(String invitationCode);
   Future<ClubInfo?> selectClubForLeague(String clubId);
   Future<ClubInfo?> joinLeagueWithCode(String invitationCode);
-  Future<void> leaveCurrentClub();
+  Future<void> leaveCurrentClub({String? clubId});
   Future<void> deleteAccount();
   Future<List<PlayerFM>> loadSquadPlayers(String clubId);
   Future<PlayerFM?> startPlayerDevelopment({required String playerId});
