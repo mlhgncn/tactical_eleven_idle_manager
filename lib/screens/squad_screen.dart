@@ -71,6 +71,48 @@ const Map<Formation, List<_FormationSlot>> _formationSlots = {
     _FormationSlot('FOR', 0.38, 0.14),
     _FormationSlot('FOR', 0.62, 0.14),
   ],
+  // 4-4-2 "diamond" variant - same GK/DEF/MID/FOR group counts as f442
+  // (so it stays interchangeable with saved lineups from that formation),
+  // just a narrower diamond midfield instead of a flat bank of four.
+  Formation.f442b: [
+    _FormationSlot('GK', 0.5, 0.90),
+    _FormationSlot('DEF', 0.14, 0.68),
+    _FormationSlot('DEF', 0.38, 0.71),
+    _FormationSlot('DEF', 0.62, 0.71),
+    _FormationSlot('DEF', 0.86, 0.68),
+    _FormationSlot('MID', 0.50, 0.52),
+    _FormationSlot('MID', 0.22, 0.40),
+    _FormationSlot('MID', 0.78, 0.40),
+    _FormationSlot('MID', 0.50, 0.28),
+    _FormationSlot('FOR', 0.38, 0.14),
+    _FormationSlot('FOR', 0.62, 0.14),
+  ],
+  Formation.f4231: [
+    _FormationSlot('GK', 0.5, 0.90),
+    _FormationSlot('DEF', 0.14, 0.68),
+    _FormationSlot('DEF', 0.38, 0.71),
+    _FormationSlot('DEF', 0.62, 0.71),
+    _FormationSlot('DEF', 0.86, 0.68),
+    _FormationSlot('MID', 0.35, 0.50),
+    _FormationSlot('MID', 0.65, 0.50),
+    _FormationSlot('MID', 0.18, 0.30),
+    _FormationSlot('MID', 0.50, 0.26),
+    _FormationSlot('MID', 0.82, 0.30),
+    _FormationSlot('FOR', 0.50, 0.12),
+  ],
+  Formation.f4141: [
+    _FormationSlot('GK', 0.5, 0.90),
+    _FormationSlot('DEF', 0.14, 0.68),
+    _FormationSlot('DEF', 0.38, 0.71),
+    _FormationSlot('DEF', 0.62, 0.71),
+    _FormationSlot('DEF', 0.86, 0.68),
+    _FormationSlot('MID', 0.50, 0.54),
+    _FormationSlot('MID', 0.14, 0.36),
+    _FormationSlot('MID', 0.38, 0.32),
+    _FormationSlot('MID', 0.62, 0.32),
+    _FormationSlot('MID', 0.86, 0.36),
+    _FormationSlot('FOR', 0.50, 0.12),
+  ],
 };
 
 /// Greedily fills each formation slot with the highest-rated available
@@ -195,6 +237,11 @@ class SquadScreen extends StatelessWidget {
           ],
         ),
         actions: [
+          IconButton(
+            tooltip: 'squad.resetLineup'.tr(),
+            icon: const Icon(Icons.refresh),
+            onPressed: () => _resetLineup(context, provider, squad, slots),
+          ),
           Padding(
             padding: const EdgeInsets.only(right: 16),
             child: _FormationPill(
@@ -319,63 +366,29 @@ class SquadScreen extends StatelessWidget {
   }
 
   void _showFullBench(BuildContext context, GameProvider provider, List<PlayerFM?> starters, List<PlayerFM> bench) {
+    String? selectedGroup;
     showModalBottomSheet(
       context: context,
       backgroundColor: AppColors.cardTop,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(18))),
       builder: (context) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text('squad.benchSheetTitle'.tr(), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
-                const SizedBox(height: 12),
-                Flexible(
-                  child: bench.isEmpty
-                      ? Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 24),
-                          child: Center(child: Text('squad.noBenchPlayers'.tr(), style: const TextStyle(color: AppColors.textMuted))),
-                        )
-                      : ListView.separated(
-                          shrinkWrap: true,
-                          itemCount: bench.length,
-                          separatorBuilder: (_, __) => const Divider(color: AppColors.cardBorder, height: 1),
-                          itemBuilder: (context, index) {
-                            final player = bench[index];
-                            return ListTile(
-                              leading: CircleAvatar(
-                                backgroundColor: player.hasActiveInjury ? AppColors.red.withValues(alpha: 0.25) : AppColors.cardBottom,
-                                child: Text(_initialsOf(player.name), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                              ),
-                              title: Text(player.name),
-                              subtitle: Text(
-                                player.hasActiveInjury ? player.injuryDisplayLabel : '${player.position} · ${player.currentAbility}',
-                                style: TextStyle(color: player.hasActiveInjury ? AppColors.red : AppColors.textMuted),
-                              ),
-                              trailing: player.hasActiveInjury
-                                  ? null
-                                  : IconButton(
-                                      tooltip: 'squad.addToStartingXI'.tr(),
-                                      icon: const Icon(Icons.swap_horiz, color: AppColors.goldLight),
-                                      onPressed: () {
-                                        Navigator.pop(context);
-                                        _swapIntoLineup(context, provider, starters, player);
-                                      },
-                                    ),
-                              onTap: () {
-                                Navigator.pop(context);
-                                Navigator.push(context, MaterialPageRoute(builder: (_) => PlayerDetailScreen(player: player)));
-                              },
-                            );
-                          },
-                        ),
-                ),
-              ],
-            ),
-          ),
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return _BenchSheetContent(
+              bench: bench,
+              starters: starters,
+              onGroupChanged: (group) => setSheetState(() => selectedGroup = group),
+              selectedGroup: selectedGroup,
+              onSwap: (player) {
+                Navigator.pop(context);
+                _swapIntoLineup(context, provider, starters, player);
+              },
+              onOpenDetail: (player) {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => PlayerDetailScreen(player: player)));
+              },
+            );
+          },
         );
       },
     );
@@ -435,6 +448,18 @@ class SquadScreen extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+
+  /// "Sıfırla" - discards any manually set lineup and re-picks the best
+  /// available XI for the current formation, purely by current_ability per
+  /// slot (same greedy algorithm _resolveStartingXI already falls back to
+  /// automatically - this just lets the user trigger it on demand).
+  void _resetLineup(BuildContext context, GameProvider provider, List<PlayerFM> squad, List<_FormationSlot> slots) {
+    final autoPicked = _pickStartingXI(squad, slots);
+    _saveLineup(context, provider, autoPicked);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('squad.lineupReset'.tr())),
     );
   }
 
@@ -727,6 +752,110 @@ class _BenchToken extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(color: injured ? AppColors.red : AppColors.textMuted, fontSize: 10),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+const _benchPositionGroups = ['GK', 'DEF', 'MID', 'FOR'];
+
+class _BenchSheetContent extends StatelessWidget {
+  const _BenchSheetContent({
+    required this.bench,
+    required this.starters,
+    required this.selectedGroup,
+    required this.onGroupChanged,
+    required this.onSwap,
+    required this.onOpenDetail,
+  });
+
+  final List<PlayerFM> bench;
+  final List<PlayerFM?> starters;
+  final String? selectedGroup;
+  final ValueChanged<String?> onGroupChanged;
+  final ValueChanged<PlayerFM> onSwap;
+  final ValueChanged<PlayerFM> onOpenDetail;
+
+  String _groupLabel(String group) => switch (group) {
+        'GK' => 'squad.positionGroupGk'.tr(),
+        'DEF' => 'squad.positionGroupDef'.tr(),
+        'MID' => 'squad.positionGroupMid'.tr(),
+        'FOR' => 'squad.positionGroupFor'.tr(),
+        _ => group,
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    final filtered = selectedGroup == null ? bench : bench.where((p) => p.positionGroup == selectedGroup).toList();
+
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('squad.benchSheetTitle'.tr(), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 36,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                children: [
+                  ChoiceChip(
+                    label: Text('squad.positionGroupAll'.tr()),
+                    selected: selectedGroup == null,
+                    onSelected: (_) => onGroupChanged(null),
+                  ),
+                  const SizedBox(width: 6),
+                  for (final group in _benchPositionGroups) ...[
+                    ChoiceChip(
+                      label: Text(_groupLabel(group)),
+                      selected: selectedGroup == group,
+                      onSelected: (_) => onGroupChanged(group),
+                    ),
+                    const SizedBox(width: 6),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Flexible(
+              child: filtered.isEmpty
+                  ? Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 24),
+                      child: Center(child: Text('squad.noBenchPlayers'.tr(), style: const TextStyle(color: AppColors.textMuted))),
+                    )
+                  : ListView.separated(
+                      shrinkWrap: true,
+                      itemCount: filtered.length,
+                      separatorBuilder: (_, __) => const Divider(color: AppColors.cardBorder, height: 1),
+                      itemBuilder: (context, index) {
+                        final player = filtered[index];
+                        return ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: player.hasActiveInjury ? AppColors.red.withValues(alpha: 0.25) : AppColors.cardBottom,
+                            child: Text(_initialsOf(player.name), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                          ),
+                          title: Text(player.name),
+                          subtitle: Text(
+                            player.hasActiveInjury ? player.injuryDisplayLabel : '${player.position} · ${player.currentAbility}',
+                            style: TextStyle(color: player.hasActiveInjury ? AppColors.red : AppColors.textMuted),
+                          ),
+                          trailing: player.hasActiveInjury
+                              ? null
+                              : IconButton(
+                                  tooltip: 'squad.addToStartingXI'.tr(),
+                                  icon: const Icon(Icons.swap_horiz, color: AppColors.goldLight),
+                                  onPressed: () => onSwap(player),
+                                ),
+                          onTap: () => onOpenDetail(player),
+                        );
+                      },
+                    ),
             ),
           ],
         ),

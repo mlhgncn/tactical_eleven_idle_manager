@@ -136,7 +136,14 @@
     "cannotAddToLineup": "{name} cannot be added to the lineup: {reason}",
     "replaceWhoQuestion": "Who should {name} replace?",
     "lineupSaveFailed": "Could not save lineup change: {error}",
-    "captainBadge": "C"
+    "captainBadge": "C",
+    "resetLineup": "Reset",
+    "lineupReset": "Starting XI auto-picked using your best available players.",
+    "positionGroupAll": "All",
+    "positionGroupGk": "Goalkeeper",
+    "positionGroupDef": "Defense",
+    "positionGroupMid": "Midfield",
+    "positionGroupFor": "Attack"
   },
   "match": {
     "goal": "Goal!",
@@ -176,11 +183,14 @@
     "setPiecesTitle": "SET PIECES",
     "freeKickLabel": "FREE KICK",
     "pickFreeKickTaker": "Select Free Kick Taker",
-    "cornerLabel": "CORNER",
+    "cornerLabel": "CORNER KICK",
     "pickCornerTaker": "Select Corner Taker",
     "penaltyLabel": "PENALTY",
     "pickPenaltyTaker": "Select Penalty Taker",
-    "saveButton": "SAVE TACTICS"
+    "saveButton": "SAVE TACTICS",
+    "footLeft": "Left Foot",
+    "footRight": "Right Foot",
+    "footBoth": "Both Feet"
   },
   "common": {
     "cancel": "Cancel",

@@ -108,12 +108,18 @@ class MatchPreviewRepository {
       Formation.f433 => 8,
       Formation.f352 => 10,
       Formation.f532 => 4,
+      Formation.f442b => 7,
+      Formation.f4231 => 7,
+      Formation.f4141 => 5,
     };
     final formationDefense = switch (tactics.formation) {
       Formation.f442 => 8,
       Formation.f433 => 6,
       Formation.f352 => 5,
       Formation.f532 => 10,
+      Formation.f442b => 7,
+      Formation.f4231 => 8,
+      Formation.f4141 => 9,
     };
 
     final fitnessModifier = (averageFitness - 75) * 0.4;

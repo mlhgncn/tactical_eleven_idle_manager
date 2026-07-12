@@ -100,6 +100,11 @@ const FORMATION_SLOT_GROUPS: Record<string, PositionGroup[]> = {
   f442: ['GK', 'DEF', 'DEF', 'DEF', 'DEF', 'MID', 'MID', 'MID', 'MID', 'FOR', 'FOR'],
   f352: ['GK', 'DEF', 'DEF', 'DEF', 'MID', 'MID', 'MID', 'MID', 'MID', 'FOR', 'FOR'],
   f532: ['GK', 'DEF', 'DEF', 'DEF', 'DEF', 'DEF', 'MID', 'MID', 'MID', 'FOR', 'FOR'],
+  // Diamond-midfield 4-4-2 variant - same GK/DEF/MID/FOR group counts as
+  // f442, kept as a distinct formation key for the matchup matrix + UI.
+  f442b: ['GK', 'DEF', 'DEF', 'DEF', 'DEF', 'MID', 'MID', 'MID', 'MID', 'FOR', 'FOR'],
+  f4231: ['GK', 'DEF', 'DEF', 'DEF', 'DEF', 'MID', 'MID', 'MID', 'MID', 'MID', 'FOR'],
+  f4141: ['GK', 'DEF', 'DEF', 'DEF', 'DEF', 'MID', 'MID', 'MID', 'MID', 'MID', 'FOR'],
 };
 
 const POSITION_GROUP_ORDER: PositionGroup[] = ['GK', 'DEF', 'MID', 'FOR'];
@@ -181,10 +186,17 @@ function buildEffectiveRoster(
 // Classic rock-paper-scissors formation matchups: each entry is the attack
 // modifier a formation gets when facing the given opponent formation.
 const FORMATION_MATCHUPS: Record<string, Record<string, number>> = {
-  f442: { f442: 0, f433: 0.04, f352: -0.03, f532: 0.02 },
-  f433: { f442: -0.02, f433: 0, f352: 0.02, f532: 0.05 },
-  f352: { f442: 0.05, f433: -0.03, f352: 0, f532: 0.01 },
-  f532: { f442: -0.01, f433: -0.04, f352: 0.04, f532: 0 },
+  f442: { f442: 0, f433: 0.04, f352: -0.03, f532: 0.02, f442b: 0.01, f4231: -0.02, f4141: 0.03 },
+  f433: { f442: -0.02, f433: 0, f352: 0.02, f532: 0.05, f442b: -0.01, f4231: 0.03, f4141: -0.01 },
+  f352: { f442: 0.05, f433: -0.03, f352: 0, f532: 0.01, f442b: 0.02, f4231: -0.02, f4141: 0.02 },
+  f532: { f442: -0.01, f433: -0.04, f352: 0.04, f532: 0, f442b: -0.02, f4231: -0.03, f4141: 0.01 },
+  // Diamond midfield: strong through the middle, a bit weaker out wide.
+  f442b: { f442: -0.01, f433: 0.02, f352: -0.01, f532: 0.03, f442b: 0, f4231: 0.01, f4141: -0.02 },
+  // 4-2-3-1: extra central control (double pivot), so it edges out
+  // midfield-heavy shapes but struggles for width against wing-backs.
+  f4231: { f442: 0.02, f433: -0.02, f352: 0.03, f532: 0.04, f442b: 0.00, f4231: 0, f4141: 0.02 },
+  // 4-1-4-1: single defensive pivot, solid but unspectacular everywhere.
+  f4141: { f442: -0.02, f433: 0.02, f352: -0.01, f532: -0.01, f442b: 0.03, f4231: -0.01, f4141: 0 },
 };
 
 function formationMatchupModifier(own: string | null, opponent: string | null): number {

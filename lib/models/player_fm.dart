@@ -21,6 +21,7 @@
   bool isSuspended;
   DateTime? developmentCompletesAt;
   int developmentAdUses;
+  String preferredFoot;
 
   PlayerFM({
     required this.id,
@@ -45,6 +46,7 @@
     this.isSuspended = false,
     this.developmentCompletesAt,
     this.developmentAdUses = 0,
+    this.preferredFoot = 'right',
   });
 
   factory PlayerFM.fromMap(Map<String, dynamic> map) {
@@ -73,6 +75,7 @@
           ? DateTime.tryParse(map['development_completes_at'] as String)
           : null,
       developmentAdUses: (map['development_ad_uses'] as num?)?.toInt() ?? 0,
+      preferredFoot: map['preferred_foot'] as String? ?? 'right',
     );
   }
 
@@ -132,4 +135,12 @@
     if (fwPositions.any(upper.startsWith)) return 'FOR';
     return 'All';
   }
+
+  /// Short badge text for preferred foot: S(ol)/S(ağ)/Ç(ift) - used on
+  /// compact player cards where a full label doesn't fit.
+  String get preferredFootShortLabel => switch (preferredFoot) {
+        'left' => 'S',
+        'both' => 'Ç',
+        _ => 'D',
+      };
 }

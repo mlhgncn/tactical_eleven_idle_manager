@@ -1,4 +1,4 @@
-enum Formation { f442, f433, f352, f532 }
+enum Formation { f442, f433, f352, f532, f442b, f4231, f4141 }
 enum Mentality { defensive, balanced, attacking }
 
 extension FormationLabel on Formation {
@@ -7,6 +7,9 @@ extension FormationLabel on Formation {
         Formation.f433 => '4-3-3',
         Formation.f352 => '3-5-2',
         Formation.f532 => '5-3-2',
+        Formation.f442b => '4-4-2 (Elmas)',
+        Formation.f4231 => '4-2-3-1',
+        Formation.f4141 => '4-1-4-1',
       };
 }
 

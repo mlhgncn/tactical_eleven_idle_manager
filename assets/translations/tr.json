@@ -136,7 +136,14 @@
     "cannotAddToLineup": "{name} kadroya alınamaz: {reason}",
     "replaceWhoQuestion": "{name} kimin yerine oynasın?",
     "lineupSaveFailed": "Kadro değişikliği kaydedilemedi: {error}",
-    "captainBadge": "K"
+    "captainBadge": "K",
+    "resetLineup": "Sıfırla",
+    "lineupReset": "İlk 11 en iyi oyunculara göre otomatik dizildi.",
+    "positionGroupAll": "Tümü",
+    "positionGroupGk": "Kaleci",
+    "positionGroupDef": "Defans",
+    "positionGroupMid": "Orta Saha",
+    "positionGroupFor": "Hücum"
   },
   "match": {
     "goal": "Gol!",
@@ -176,11 +183,14 @@
     "setPiecesTitle": "DURAN TOPLAR",
     "freeKickLabel": "SERBEST VURUŞ",
     "pickFreeKickTaker": "Serbest Vuruşçu Seç",
-    "cornerLabel": "KÖŞE",
+    "cornerLabel": "KÖŞE VURUŞU",
     "pickCornerTaker": "Köşe Vuruşçusu Seç",
     "penaltyLabel": "PENALTI",
     "pickPenaltyTaker": "Penaltı Atıcısı Seç",
-    "saveButton": "TAKTİĞİ KAYDET"
+    "saveButton": "TAKTİĞİ KAYDET",
+    "footLeft": "Sol Ayak",
+    "footRight": "Sağ Ayak",
+    "footBoth": "Çift Ayak"
   },
   "common": {
     "cancel": "Vazgeç",

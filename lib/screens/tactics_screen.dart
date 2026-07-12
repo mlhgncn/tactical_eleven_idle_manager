@@ -18,6 +18,12 @@ String _initialsOf(String name) {
 
 String _firstNameOf(String name) => name.trim().split(RegExp(r'\s+')).first;
 
+String _footLabel(String preferredFoot) => switch (preferredFoot) {
+      'left' => 'tactics.footLeft'.tr(),
+      'both' => 'tactics.footBoth'.tr(),
+      _ => 'tactics.footRight'.tr(),
+    };
+
 class TacticsScreen extends StatefulWidget {
   const TacticsScreen({super.key});
 
@@ -102,7 +108,10 @@ class _TacticsScreenState extends State<TacticsScreen> {
                               style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: selected ? AppColors.goldOnGoldText : Colors.white)),
                         ),
                         title: Text(player.name),
-                        subtitle: Text('${player.position} · ${player.currentAbility}', style: const TextStyle(color: AppColors.textMuted)),
+                        subtitle: Text(
+                          '${player.position} · ${player.currentAbility} · ${_footLabel(player.preferredFoot)}',
+                          style: const TextStyle(color: AppColors.textMuted),
+                        ),
                         trailing: selected ? const Icon(Icons.check_circle, color: AppColors.goldLight) : null,
                         onTap: () {
                           onPicked(player.id);
@@ -124,6 +133,31 @@ class _TacticsScreenState extends State<TacticsScreen> {
     if (value < 34) return labels[0];
     if (value < 67) return labels[1];
     return labels[2];
+  }
+
+  /// Selecting a mentality re-centers pres/tempo/savunma hattı around a
+  /// sensible starting point for that game plan - the user can still fine
+  /// tune each slider afterwards, this just replaces the "everything stays
+  /// at 50" default with something that actually matches the chosen
+  /// approach.
+  void _applyMentalityDefaults(Mentality mentality) {
+    switch (mentality) {
+      case Mentality.attacking:
+        _tactics.pressIntensity = 72;
+        _tactics.tempo = 75;
+        _tactics.defensiveLine = 70;
+        break;
+      case Mentality.defensive:
+        _tactics.pressIntensity = 32;
+        _tactics.tempo = 35;
+        _tactics.defensiveLine = 30;
+        break;
+      case Mentality.balanced:
+        _tactics.pressIntensity = 50;
+        _tactics.tempo = 50;
+        _tactics.defensiveLine = 50;
+        break;
+    }
   }
 
   @override
@@ -178,7 +212,10 @@ class _TacticsScreenState extends State<TacticsScreen> {
                         Mentality.attacking => 'tactics.mentalityAttacking'.tr(),
                       },
                       selected: _tactics.mentality == mentality,
-                      onTap: () => setState(() => _tactics.mentality = mentality),
+                      onTap: () => setState(() {
+                        _tactics.mentality = mentality;
+                        _applyMentalityDefaults(mentality);
+                      }),
                     ),
                   ),
                   if (mentality != Mentality.attacking) const SizedBox(width: 8),
@@ -418,12 +455,28 @@ class _SetPieceSlot extends StatelessWidget {
         children: [
           Text(label, style: const TextStyle(color: AppColors.textMuted, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
           const SizedBox(height: 10),
-          Container(
-            width: 44,
-            height: 44,
-            decoration: const BoxDecoration(shape: BoxShape.circle, gradient: LinearGradient(colors: [AppColors.goldLight, AppColors.gold])),
-            alignment: Alignment.center,
-            child: Text(_initialsOf(player.name), style: const TextStyle(color: AppColors.goldOnGoldText, fontWeight: FontWeight.bold)),
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: const BoxDecoration(shape: BoxShape.circle, gradient: LinearGradient(colors: [AppColors.goldLight, AppColors.gold])),
+                alignment: Alignment.center,
+                child: Text(_initialsOf(player.name), style: const TextStyle(color: AppColors.goldOnGoldText, fontWeight: FontWeight.bold)),
+              ),
+              Positioned(
+                bottom: -2,
+                right: -2,
+                child: Container(
+                  width: 16,
+                  height: 16,
+                  decoration: const BoxDecoration(color: AppColors.cardTop, shape: BoxShape.circle, border: Border.fromBorderSide(BorderSide(color: AppColors.cardBorder))),
+                  alignment: Alignment.center,
+                  child: Text(player.preferredFootShortLabel, style: const TextStyle(color: AppColors.textPrimary, fontSize: 9, fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 6),
           Text(_firstNameOf(player.name), style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600, fontSize: 12)),

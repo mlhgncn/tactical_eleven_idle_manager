@@ -237,7 +237,7 @@ class SupabaseRepository implements GameRepository {
       final data = await _client
           .from('players')
           .select(
-              'id,club_id,name,position,age,current_ability,potential_ability,morale,fitness,finishing,passing,tackling,composure,determination,consistency,injury_proneness,injury_type,injury_duration_weeks,is_suspended,development_completes_at,development_ad_uses')
+              'id,club_id,name,position,age,current_ability,potential_ability,morale,fitness,finishing,passing,tackling,composure,determination,consistency,injury_proneness,injury_type,injury_duration_weeks,is_suspended,development_completes_at,development_ad_uses,preferred_foot')
           .eq('club_id', clubId)
           .order('current_ability', ascending: false);
 
