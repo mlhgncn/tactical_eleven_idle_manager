@@ -83,6 +83,11 @@ abstract class GameRepository {
   Future<ClubInfo?> purchaseConsumable({required String productId, String? clubId});
   Future<ClubInfo?> hideTacticsForNextMatch({String? clubId});
   Future<ClubInfo?> sendTeamToCamp({String? clubId});
+  Future<Profile?> updateAvatarUrl(String avatarUrl);
+  Future<String> uploadAvatarImage(List<int> bytes, String fileExtension);
+  Future<Profile?> claimAchievementReward(String achievement);
+  Future<Map<String, dynamic>> claimDailyLoginReward({String? clubId});
+  Future<Profile?> claimSocialReward(String platform);
   // Admin actions
   Future<bool> isAdmin();
   Future<List<Map<String, dynamic>>> adminListUsers();

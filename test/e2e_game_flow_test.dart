@@ -309,6 +309,22 @@ class _FakeGameRepository implements GameRepository {
   Future<ClubInfo?> sendTeamToCamp({String? clubId}) async => null;
 
   @override
+  Future<Profile?> updateAvatarUrl(String avatarUrl) async => null;
+
+  @override
+  Future<String> uploadAvatarImage(List<int> bytes, String fileExtension) async => '';
+
+  @override
+  Future<Profile?> claimAchievementReward(String achievement) async => null;
+
+  @override
+  Future<Map<String, dynamic>> claimDailyLoginReward({String? clubId}) async =>
+      <String, dynamic>{'day': 1, 'gp_awarded': 1000, 'diamonds_awarded': 0};
+
+  @override
+  Future<Profile?> claimSocialReward(String platform) async => null;
+
+  @override
   Future<Map<String, dynamic>> verifyIapPurchase({
     required String receiptData,
     required String productId,

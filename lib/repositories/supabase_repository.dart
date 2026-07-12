@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -53,6 +54,9 @@ class SupabaseRepository implements GameRepository {
 
   static const _clubSelectColumns =
       'id,name,league_id,budget,blocked_budget,stadium_capacity,ticket_price,ticket_price_level,training_facility_level,sponsor_level,last_maintenance_date,sponsor_upgrade_completes_at,development_upgrade_type,development_target_value,development_completes_at,development_ad_uses,tactic_hidden_for_match_id,free_tactic_hides_this_season,tactic_hide_charges,camp_active_for_match_id,free_camp_uses_this_season,camp_charges';
+
+  static const _profileSelectColumns =
+      'id,full_name,avatar_url,email,language,fcm_token,username,league_titles,diamonds,total_wins,current_win_streak,best_win_streak,achievement_100_wins_claimed,achievement_win_streak_10_claimed,daily_streak_day,last_daily_claim_date,social_instagram_followed,social_x_followed,social_tiktok_followed,social_engagement_claimed,created_at,updated_at';
 
   /// Loads every club the current user owns (up to 4, one per league).
   Future<List<ClubInfo>> loadMyClubs() async {
@@ -152,8 +156,7 @@ class SupabaseRepository implements GameRepository {
 
       final response = await _client
           .from('profiles')
-          .select(
-              'id,full_name,avatar_url,email,language,fcm_token,username,league_titles,diamonds,created_at,updated_at')
+          .select(_profileSelectColumns)
           .eq('id', userId)
           .maybeSingle();
 
@@ -171,11 +174,69 @@ class SupabaseRepository implements GameRepository {
           .from('profiles')
           .update({'username': username})
           .eq('id', userId)
-          .select(
-              'id,full_name,avatar_url,email,language,fcm_token,username,league_titles,diamonds,created_at,updated_at')
+          .select(_profileSelectColumns)
           .single();
 
       return Profile.fromMap(response as Map<String, dynamic>);
+    });
+  }
+
+  Future<Profile?> updateAvatarUrl(String avatarUrl) async {
+    return _wrap(() async {
+      final userId = currentUserId;
+      if (userId == null) return null;
+
+      final response = await _client
+          .from('profiles')
+          .update({'avatar_url': avatarUrl})
+          .eq('id', userId)
+          .select(_profileSelectColumns)
+          .single();
+
+      return Profile.fromMap(response as Map<String, dynamic>);
+    });
+  }
+
+  Future<String> uploadAvatarImage(List<int> bytes, String fileExtension) async {
+    return _wrap(() async {
+      final userId = currentUserId;
+      if (userId == null) throw Exception('Oturum açılmamış.');
+
+      final path = '$userId/avatar.$fileExtension';
+      await _client.storage.from('avatars').uploadBinary(
+            path,
+            Uint8List.fromList(bytes),
+            fileOptions: const FileOptions(upsert: true),
+          );
+      return _client.storage.from('avatars').getPublicUrl(path);
+    });
+  }
+
+  @override
+  Future<Profile?> claimAchievementReward(String achievement) async {
+    return _wrap(() async {
+      final data = await _client.rpc('claim_achievement_reward', params: {'p_achievement': achievement});
+      if (data == null) return null;
+      return Profile.fromMap(Map<String, dynamic>.from(data as Map<String, dynamic>));
+    });
+  }
+
+  @override
+  Future<Map<String, dynamic>> claimDailyLoginReward({String? clubId}) async {
+    return _wrap(() async {
+      final data = await _client.rpc('claim_daily_login_reward', params: {
+        if (clubId != null) 'p_club_id': clubId,
+      });
+      return Map<String, dynamic>.from(data as Map<String, dynamic>);
+    });
+  }
+
+  @override
+  Future<Profile?> claimSocialReward(String platform) async {
+    return _wrap(() async {
+      final data = await _client.rpc('claim_social_reward', params: {'p_platform': platform});
+      if (data == null) return null;
+      return Profile.fromMap(Map<String, dynamic>.from(data as Map<String, dynamic>));
     });
   }
 
@@ -533,13 +594,18 @@ class SupabaseRepository implements GameRepository {
   /// row, so a plain embedded select (clubs -> profiles) would return null
   /// for everyone else's club; this SECURITY DEFINER RPC is the narrow,
   /// safe way to resolve just the public username for a set of clubs.
-  Future<Map<String, String>> _clubOwnerUsernames(Iterable<String> clubIds) async {
+  Future<List<Map<String, dynamic>>> _clubOwnerInfo(Iterable<String> clubIds) async {
     final ids = clubIds.toSet().toList();
-    if (ids.isEmpty) return const {};
+    if (ids.isEmpty) return const [];
     final data = await _client.rpc('get_club_owner_usernames', params: {'p_club_ids': ids});
-    if (data is! List<dynamic>) return const {};
+    if (data is! List<dynamic>) return const [];
+    return data.cast<Map<String, dynamic>>();
+  }
+
+  Future<Map<String, String>> _clubOwnerUsernames(Iterable<String> clubIds) async {
+    final rows = await _clubOwnerInfo(clubIds);
     return {
-      for (final row in data.cast<Map<String, dynamic>>())
+      for (final row in rows)
         if (row['username'] != null) row['club_id'] as String: row['username'] as String,
     };
   }
@@ -589,11 +655,21 @@ class SupabaseRepository implements GameRepository {
     final clubIds = standingsRows
         .map((row) => (row['club'] as Map?)?['id'] as String?)
         .whereType<String>();
-    final usernames = await _clubOwnerUsernames(clubIds);
-    if (usernames.isEmpty) return;
+    final ownerRows = await _clubOwnerInfo(clubIds);
+    if (ownerRows.isEmpty) return;
+    final usernames = <String, String>{};
+    final leagueTitles = <String, int>{};
+    for (final row in ownerRows) {
+      final clubId = row['club_id'] as String;
+      if (row['username'] != null) usernames[clubId] = row['username'] as String;
+      leagueTitles[clubId] = (row['league_titles'] as num?)?.toInt() ?? 0;
+    }
     for (final row in standingsRows) {
       final club = row['club'] as Map<String, dynamic>?;
-      if (club != null) club['username'] = usernames[club['id']];
+      if (club != null) {
+        club['username'] = usernames[club['id']];
+        club['owner_league_titles'] = leagueTitles[club['id']] ?? 0;
+      }
     }
   }
 

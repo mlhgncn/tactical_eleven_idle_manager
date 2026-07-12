@@ -3,9 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import '../models/profile.dart';
 import '../providers/game_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/club_badge.dart';
+import '../widgets/level_frame.dart';
 
 class LeagueTableScreen extends StatelessWidget {
   const LeagueTableScreen({super.key});
@@ -158,6 +160,7 @@ class LeagueTableScreen extends StatelessWidget {
                   final goalDifference = goalsFor - goalsAgainst;
                   final points = (row['points'] as num?)?.toInt() ?? 0;
                   final username = club['username']?.toString();
+                  final ownerLevel = Profile.levelForTitles((club['owner_league_titles'] as num?)?.toInt() ?? 0);
 
                   return DataRow(
                     color: WidgetStateProperty.resolveWith(
@@ -172,10 +175,14 @@ class LeagueTableScreen extends StatelessWidget {
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            ClubBadge(
-                              clubName: club['name']?.toString() ?? 'leagueTable.teamLabel'.tr(),
-                              kind: isActiveClub ? ClubBadgeKind.home : ClubBadgeKind.neutral,
-                              size: 24,
+                            LevelFrame(
+                              level: ownerLevel,
+                              padding: 2,
+                              child: ClubBadge(
+                                clubName: club['name']?.toString() ?? 'leagueTable.teamLabel'.tr(),
+                                kind: isActiveClub ? ClubBadgeKind.home : ClubBadgeKind.neutral,
+                                size: 24,
+                              ),
                             ),
                             const SizedBox(width: 8),
                             ConstrainedBox(

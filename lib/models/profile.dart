@@ -1,3 +1,5 @@
+enum ProfileLevel { none, silver, gold, diamond, emerald }
+
 class Profile {
   final String id;
   final String? fullName;
@@ -8,6 +10,17 @@ class Profile {
   final String? username;
   final int leagueTitles;
   final int diamonds;
+  final int totalWins;
+  final int currentWinStreak;
+  final int bestWinStreak;
+  final bool achievement100WinsClaimed;
+  final bool achievementWinStreak10Claimed;
+  final int dailyStreakDay;
+  final DateTime? lastDailyClaimDate;
+  final bool socialInstagramFollowed;
+  final bool socialXFollowed;
+  final bool socialTiktokFollowed;
+  final bool socialEngagementClaimed;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -21,9 +34,32 @@ class Profile {
     this.username,
     this.leagueTitles = 0,
     this.diamonds = 0,
+    this.totalWins = 0,
+    this.currentWinStreak = 0,
+    this.bestWinStreak = 0,
+    this.achievement100WinsClaimed = false,
+    this.achievementWinStreak10Claimed = false,
+    this.dailyStreakDay = 0,
+    this.lastDailyClaimDate,
+    this.socialInstagramFollowed = false,
+    this.socialXFollowed = false,
+    this.socialTiktokFollowed = false,
+    this.socialEngagementClaimed = false,
     required this.createdAt,
     required this.updatedAt,
   });
+
+  /// [leagueTitles]'a göre hesaplanan seviye - static olarak da kullanılabilir
+  /// (lig puan durumunda başka kullanıcıların çerçevesini göstermek için).
+  static ProfileLevel levelForTitles(int titles) {
+    if (titles >= 50) return ProfileLevel.emerald;
+    if (titles >= 20) return ProfileLevel.diamond;
+    if (titles >= 10) return ProfileLevel.gold;
+    if (titles >= 5) return ProfileLevel.silver;
+    return ProfileLevel.none;
+  }
+
+  ProfileLevel get level => levelForTitles(leagueTitles);
 
   factory Profile.fromMap(Map<String, dynamic> map) {
     return Profile(
@@ -36,6 +72,17 @@ class Profile {
       username: map['username'] as String?,
       leagueTitles: (map['league_titles'] as num?)?.toInt() ?? 0,
       diamonds: (map['diamonds'] as num?)?.toInt() ?? 0,
+      totalWins: (map['total_wins'] as num?)?.toInt() ?? 0,
+      currentWinStreak: (map['current_win_streak'] as num?)?.toInt() ?? 0,
+      bestWinStreak: (map['best_win_streak'] as num?)?.toInt() ?? 0,
+      achievement100WinsClaimed: (map['achievement_100_wins_claimed'] as bool?) ?? false,
+      achievementWinStreak10Claimed: (map['achievement_win_streak_10_claimed'] as bool?) ?? false,
+      dailyStreakDay: (map['daily_streak_day'] as num?)?.toInt() ?? 0,
+      lastDailyClaimDate: map['last_daily_claim_date'] != null ? DateTime.tryParse(map['last_daily_claim_date'] as String) : null,
+      socialInstagramFollowed: (map['social_instagram_followed'] as bool?) ?? false,
+      socialXFollowed: (map['social_x_followed'] as bool?) ?? false,
+      socialTiktokFollowed: (map['social_tiktok_followed'] as bool?) ?? false,
+      socialEngagementClaimed: (map['social_engagement_claimed'] as bool?) ?? false,
       createdAt: DateTime.parse(map['created_at'] as String),
       updatedAt: DateTime.parse(map['updated_at'] as String),
     );

@@ -348,6 +348,45 @@ class GameProvider extends ChangeNotifier {
     }
   }
 
+  /// Cihazdan seçilen fotoğrafı Supabase Storage'a yükler ve profildeki
+  /// avatar_url'i günceller.
+  Future<void> uploadAndSetAvatar(List<int> bytes, String fileExtension) async {
+    final url = await _repository.uploadAvatarImage(bytes, fileExtension);
+    final updated = await _repository.updateAvatarUrl(url);
+    if (updated != null) {
+      _profile = updated;
+      notifyListeners();
+    }
+  }
+
+  /// [achievement] ("100_wins" | "win_streak_10") başarımının elmas ödülünü
+  /// talep eder; eşik henüz karşılanmadıysa veya zaten alınmışsa hata fırlatır.
+  Future<void> claimAchievementReward(String achievement) async {
+    final updated = await _repository.claimAchievementReward(achievement);
+    if (updated != null) {
+      _profile = updated;
+      notifyListeners();
+    }
+  }
+
+  /// Haftalık 7 günlük giriş serisinin bugünkü ödülünü talep eder; gün
+  /// 1-6 GP, gün 7 elmas verir. Dönen map: {day, gp_awarded, diamonds_awarded}.
+  Future<Map<String, dynamic>> claimDailyLoginReward() async {
+    final result = await _repository.claimDailyLoginReward(clubId: _activeClub?.id);
+    await refreshGameState();
+    return result;
+  }
+
+  /// [platform] ("instagram" | "x" | "tiktok" | "engagement") için tek
+  /// seferlik sosyal medya ödülünü talep eder.
+  Future<void> claimSocialReward(String platform) async {
+    final updated = await _repository.claimSocialReward(platform);
+    if (updated != null) {
+      _profile = updated;
+      notifyListeners();
+    }
+  }
+
   Future<void> _loadActiveClub({String? clubId}) async {
     _activeClub = await _repository.loadActiveClub(clubId: clubId);
   }

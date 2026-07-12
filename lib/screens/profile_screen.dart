@@ -1,9 +1,16 @@
+import 'dart:io';
+
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../models/profile.dart';
 import '../providers/game_provider.dart';
 import '../services/auth_service.dart';
+import '../theme/app_theme.dart';
+import '../widgets/level_frame.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -22,6 +29,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _isUpdatingPassword = false;
   bool _isUpdatingUsername = false;
   bool _usernamePrefilled = false;
+  bool _isUploadingAvatar = false;
+  bool _isClaimingDaily = false;
+  String? _claimingAchievement;
+  String? _claimingSocial;
 
   @override
   void initState() {
@@ -127,10 +138,106 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  Future<void> _pickAvatar() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: ImageSource.gallery, maxWidth: 800, maxHeight: 800, imageQuality: 85);
+    if (picked == null) return;
+
+    setState(() => _isUploadingAvatar = true);
+    try {
+      final bytes = await File(picked.path).readAsBytes();
+      final extension = picked.path.split('.').last.toLowerCase();
+      await context.read<GameProvider>().uploadAndSetAvatar(bytes, extension);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('profile.avatarUpdated'.tr())),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString().replaceAll('Exception: ', ''))),
+      );
+    } finally {
+      if (mounted) setState(() => _isUploadingAvatar = false);
+    }
+  }
+
+  Future<void> _claimAchievement(String achievement) async {
+    setState(() => _claimingAchievement = achievement);
+    try {
+      await context.read<GameProvider>().claimAchievementReward(achievement);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('profile.achievementClaimed'.tr()), backgroundColor: AppColors.green),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString().replaceAll('Exception: ', ''))),
+      );
+    } finally {
+      if (mounted) setState(() => _claimingAchievement = null);
+    }
+  }
+
+  Future<void> _claimDaily() async {
+    setState(() => _isClaimingDaily = true);
+    try {
+      final result = await context.read<GameProvider>().claimDailyLoginReward();
+      if (!mounted) return;
+      final diamonds = (result['diamonds_awarded'] as num?)?.toInt() ?? 0;
+      final gp = (result['gp_awarded'] as num?)?.toInt() ?? 0;
+      final message = diamonds > 0
+          ? 'profile.dailyClaimedDiamonds'.tr(namedArgs: {'count': diamonds.toString()})
+          : 'profile.dailyClaimedGp'.tr(namedArgs: {'count': gp.toString()});
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message), backgroundColor: AppColors.green),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString().replaceAll('Exception: ', ''))),
+      );
+    } finally {
+      if (mounted) setState(() => _isClaimingDaily = false);
+    }
+  }
+
+  Future<void> _openSocialAndClaim(String platform, String url) async {
+    final uri = Uri.parse(url);
+    try {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {}
+
+    setState(() => _claimingSocial = platform);
+    try {
+      await context.read<GameProvider>().claimSocialReward(platform);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('profile.socialRewardClaimed'.tr()), backgroundColor: AppColors.green),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString().replaceAll('Exception: ', ''))),
+      );
+    } finally {
+      if (mounted) setState(() => _claimingSocial = null);
+    }
+  }
+
+  bool _isTodayClaimed(Profile profile) {
+    final last = profile.lastDailyClaimDate;
+    if (last == null) return false;
+    final now = DateTime.now();
+    return last.year == now.year && last.month == now.month && last.day == now.day;
+  }
+
   @override
   Widget build(BuildContext context) {
     final profile = context.watch<GameProvider>().profile;
     final leagueTitles = profile?.leagueTitles ?? 0;
+    final level = profile?.level ?? ProfileLevel.none;
 
     if (!_usernamePrefilled && profile?.username != null) {
       _usernameController.text = profile!.username!;
@@ -142,6 +249,51 @@ class _ProfileScreenState extends State<ProfileScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          Center(
+            child: Column(
+              children: [
+                LevelFrame(
+                  level: level,
+                  padding: 4,
+                  child: Stack(
+                    children: [
+                      CircleAvatar(
+                        radius: 44,
+                        backgroundColor: AppColors.cardBottom,
+                        backgroundImage: profile?.avatarUrl != null ? NetworkImage(profile!.avatarUrl!) : null,
+                        child: profile?.avatarUrl == null
+                            ? const Icon(Icons.person, size: 44, color: AppColors.textMuted)
+                            : null,
+                      ),
+                      Positioned(
+                        right: 0,
+                        bottom: 0,
+                        child: InkWell(
+                          onTap: _isUploadingAvatar ? null : _pickAvatar,
+                          borderRadius: BorderRadius.circular(16),
+                          child: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: const BoxDecoration(color: AppColors.gold, shape: BoxShape.circle),
+                            child: _isUploadingAvatar
+                                ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                                : const Icon(Icons.camera_alt, size: 14, color: AppColors.goldOnGoldText),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (level != ProfileLevel.none) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    LevelFrame.labelKey(level).tr(),
+                    style: TextStyle(color: LevelFrame.solidColor(level), fontWeight: FontWeight.bold, fontSize: 13),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -166,6 +318,143 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
           const SizedBox(height: 16),
+          if (profile != null) ...[
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('profile.dailyStreakTitle'.tr(), style: Theme.of(context).textTheme.titleMedium),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: List.generate(7, (index) {
+                        final day = index + 1;
+                        final isDone = day <= profile.dailyStreakDay && _isTodayClaimed(profile);
+                        final isNext = !_isTodayClaimed(profile) &&
+                            day == (profile.dailyStreakDay >= 7 ? 1 : profile.dailyStreakDay + 1);
+                        return Column(
+                          children: [
+                            Container(
+                              width: 34,
+                              height: 34,
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: isDone
+                                    ? AppColors.green.withValues(alpha: 0.2)
+                                    : isNext
+                                        ? AppColors.gold.withValues(alpha: 0.2)
+                                        : AppColors.cardBottom,
+                                border: Border.all(
+                                  color: isDone ? AppColors.green : (isNext ? AppColors.gold : AppColors.cardBorder),
+                                ),
+                              ),
+                              child: day == 7
+                                  ? const Icon(Icons.diamond, size: 14, color: AppColors.blue)
+                                  : Text('$day', style: const TextStyle(fontSize: 12)),
+                            ),
+                          ],
+                        );
+                      }),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: (_isClaimingDaily || _isTodayClaimed(profile)) ? null : _claimDaily,
+                        child: _isClaimingDaily
+                            ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                            : Text(_isTodayClaimed(profile) ? 'profile.dailyAlreadyClaimed'.tr() : 'profile.dailyClaimButton'.tr()),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('profile.achievementsTitle'.tr(), style: Theme.of(context).textTheme.titleMedium),
+                    const SizedBox(height: 12),
+                    _AchievementRow(
+                      icon: Icons.military_tech,
+                      title: 'profile.achievement100WinsTitle'.tr(),
+                      progress: '${profile.totalWins}/100',
+                      isComplete: profile.totalWins >= 100,
+                      isClaimed: profile.achievement100WinsClaimed,
+                      isLoading: _claimingAchievement == '100_wins',
+                      onClaim: () => _claimAchievement('100_wins'),
+                    ),
+                    const SizedBox(height: 10),
+                    _AchievementRow(
+                      icon: Icons.local_fire_department,
+                      title: 'profile.achievementWinStreak10Title'.tr(),
+                      progress: '${profile.bestWinStreak}/10',
+                      isComplete: profile.bestWinStreak >= 10,
+                      isClaimed: profile.achievementWinStreak10Claimed,
+                      isLoading: _claimingAchievement == 'win_streak_10',
+                      onClaim: () => _claimAchievement('win_streak_10'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('profile.socialTitle'.tr(), style: Theme.of(context).textTheme.titleMedium),
+                    const SizedBox(height: 12),
+                    _SocialRow(
+                      icon: Icons.camera_alt,
+                      label: 'Instagram',
+                      isFollowed: profile.socialInstagramFollowed,
+                      isLoading: _claimingSocial == 'instagram',
+                      onTap: () => _openSocialAndClaim('instagram', 'https://instagram.com'),
+                    ),
+                    const SizedBox(height: 8),
+                    _SocialRow(
+                      icon: Icons.alternate_email,
+                      label: 'X (Twitter)',
+                      isFollowed: profile.socialXFollowed,
+                      isLoading: _claimingSocial == 'x',
+                      onTap: () => _openSocialAndClaim('x', 'https://x.com'),
+                    ),
+                    const SizedBox(height: 8),
+                    _SocialRow(
+                      icon: Icons.music_note,
+                      label: 'TikTok',
+                      isFollowed: profile.socialTiktokFollowed,
+                      isLoading: _claimingSocial == 'tiktok',
+                      onTap: () => _openSocialAndClaim('tiktok', 'https://tiktok.com'),
+                    ),
+                    if (!profile.socialEngagementClaimed) ...[
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton(
+                          onPressed: _claimingSocial == 'engagement' ? null : () => _openSocialAndClaim('engagement', 'https://instagram.com'),
+                          child: _claimingSocial == 'engagement'
+                              ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                              : Text('profile.socialEngagementButton'.tr()),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -257,6 +546,98 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _AchievementRow extends StatelessWidget {
+  const _AchievementRow({
+    required this.icon,
+    required this.title,
+    required this.progress,
+    required this.isComplete,
+    required this.isClaimed,
+    required this.isLoading,
+    required this.onClaim,
+  });
+
+  final IconData icon;
+  final String title;
+  final String progress;
+  final bool isComplete;
+  final bool isClaimed;
+  final bool isLoading;
+  final VoidCallback onClaim;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, color: isClaimed ? AppColors.green : AppColors.gold, size: 22),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+              Text(progress, style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+            ],
+          ),
+        ),
+        if (isClaimed)
+          const Icon(Icons.check_circle, color: AppColors.green, size: 20)
+        else
+          SizedBox(
+            height: 32,
+            child: ElevatedButton(
+              onPressed: (isComplete && !isLoading) ? onClaim : null,
+              style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 12)),
+              child: isLoading
+                  ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                  : Text('profile.claimButton'.tr(), style: const TextStyle(fontSize: 12)),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _SocialRow extends StatelessWidget {
+  const _SocialRow({
+    required this.icon,
+    required this.label,
+    required this.isFollowed,
+    required this.isLoading,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool isFollowed;
+  final bool isLoading;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 20, color: AppColors.textMuted),
+        const SizedBox(width: 10),
+        Expanded(child: Text(label)),
+        if (isFollowed)
+          const Icon(Icons.check_circle, color: AppColors.green, size: 20)
+        else
+          SizedBox(
+            height: 32,
+            child: OutlinedButton(
+              onPressed: isLoading ? null : onTap,
+              style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 12)),
+              child: isLoading
+                  ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                  : Text('profile.followButton'.tr(), style: const TextStyle(fontSize: 12)),
+            ),
+          ),
+      ],
     );
   }
 }
