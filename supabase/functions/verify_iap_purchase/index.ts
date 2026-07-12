@@ -3,11 +3,17 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.34.0';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
-// Apple "In-App Purchase Shared Secret" (App Store Connect > your app >
-// General > App-Specific Shared Secret). Not set yet as of this deploy -
-// until it is, this function fails closed (returns 500) rather than
-// crediting diamonds without ever having verified a receipt.
-const APPLE_SHARED_SECRET = Deno.env.get('APPLE_IAP_SHARED_SECRET') ?? '';
+
+// App Store Server API credentials (App Store Connect > Users and Access >
+// Integrations > In-App Purchase key). Used to build a short-lived signed
+// JWT that authenticates server-to-server calls to Apple - this replaces
+// the legacy /verifyReceipt flow, which only understands StoreKit1's
+// base64 receipt format and rejects StoreKit2's JWS transaction signature
+// with status 21002 ("malformed receipt data").
+const APPLE_KEY_ID = Deno.env.get('APPLE_IAP_KEY_ID') ?? '';
+const APPLE_ISSUER_ID = Deno.env.get('APPLE_IAP_ISSUER_ID') ?? '';
+const APPLE_PRIVATE_KEY_PEM = Deno.env.get('APPLE_IAP_PRIVATE_KEY') ?? '';
+const APPLE_BUNDLE_ID = Deno.env.get('APPLE_IAP_BUNDLE_ID') ?? 'com.melih.tacticaleleven';
 
 if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
   throw new Error('SUPABASE_URL veya SUPABASE_SERVICE_ROLE_KEY ortam değişkenleri tanımlı değil.');
@@ -15,8 +21,8 @@ if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
 
 const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
-const APPLE_PRODUCTION_URL = 'https://buy.itunes.apple.com/verifyReceipt';
-const APPLE_SANDBOX_URL = 'https://sandbox.itunes.apple.com/verifyReceipt';
+const APP_STORE_SERVER_API_PRODUCTION = 'https://api.storekit.itunes.apple.com';
+const APP_STORE_SERVER_API_SANDBOX = 'https://api.storekit-sandbox.itunes.apple.com';
 
 function createResponse(body: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -25,45 +31,122 @@ function createResponse(body: Record<string, unknown>, status = 200) {
   });
 }
 
-async function verifyWithApple(receiptData: string): Promise<any> {
-  const payload = {
-    'receipt-data': receiptData,
-    password: APPLE_SHARED_SECRET,
-    'exclude-old-transactions': true,
-  };
-
-  let response = await fetch(APPLE_PRODUCTION_URL, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
-  let json = await response.json();
-
-  // Apple's documented way to detect a sandbox receipt was sent to the
-  // production endpoint - retry against sandbox instead of failing.
-  if (json.status === 21007) {
-    response = await fetch(APPLE_SANDBOX_URL, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    json = await response.json();
-  }
-
-  return json;
+function base64UrlEncode(bytes: Uint8Array): string {
+  let binary = '';
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-// Client sends the StoreKit receipt after a purchase completes; this
-// verifies it directly with Apple (never trusting the client's own claim
-// of success) before crediting diamonds, and records the Apple
-// transaction_id so a retried/duplicate call can never double-credit.
+function base64UrlDecode(input: string): Uint8Array {
+  const padded = input.replace(/-/g, '+').replace(/_/g, '/').padEnd(input.length + ((4 - (input.length % 4)) % 4), '=');
+  const binary = atob(padded);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+function standardBase64Decode(input: string): Uint8Array {
+  const binary = atob(input);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+async function importApplePrivateKey(pem: string): Promise<CryptoKey> {
+  const pemBody = pem
+    .replace('-----BEGIN PRIVATE KEY-----', '')
+    .replace('-----END PRIVATE KEY-----', '')
+    .replace(/\s+/g, '');
+  const keyBytes = standardBase64Decode(pemBody);
+  return crypto.subtle.importKey(
+    'pkcs8',
+    keyBytes,
+    { name: 'ECDSA', namedCurve: 'P-256' },
+    false,
+    ['sign'],
+  );
+}
+
+// Builds the short-lived (5 minute) ES256 JWT App Store Server API calls
+// require in their Authorization header - signed with the .p8 private key
+// downloaded once from App Store Connect (never logged, only read from an
+// env secret).
+async function buildAppleJwt(): Promise<string> {
+  const now = Math.floor(Date.now() / 1000);
+  const header = { alg: 'ES256', kid: APPLE_KEY_ID, typ: 'JWT' };
+  const payload = {
+    iss: APPLE_ISSUER_ID,
+    iat: now,
+    exp: now + 300,
+    aud: 'appstoreconnect-v1',
+    bid: APPLE_BUNDLE_ID,
+  };
+
+  const encodedHeader = base64UrlEncode(new TextEncoder().encode(JSON.stringify(header)));
+  const encodedPayload = base64UrlEncode(new TextEncoder().encode(JSON.stringify(payload)));
+  const signingInput = `${encodedHeader}.${encodedPayload}`;
+
+  const privateKey = await importApplePrivateKey(APPLE_PRIVATE_KEY_PEM);
+  const signature = await crypto.subtle.sign(
+    { name: 'ECDSA', hash: 'SHA-256' },
+    privateKey,
+    new TextEncoder().encode(signingInput),
+  );
+
+  return `${signingInput}.${base64UrlEncode(new Uint8Array(signature))}`;
+}
+
+// A JWS has three base64url segments (header.payload.signature) - this
+// decodes only the payload. Apple's own public key already produced this
+// signature when the App Store Server API returned it, and the call itself
+// was authenticated with our own signed JWT, so re-verifying the
+// signature here is not required to trust the payload's contents.
+function decodeJwsPayload(jws: string): Record<string, unknown> {
+  const parts = jws.split('.');
+  if (parts.length !== 3) throw new Error('Geçersiz JWS formatı.');
+  const json = new TextDecoder().decode(base64UrlDecode(parts[1]));
+  return JSON.parse(json);
+}
+
+async function fetchTransactionInfo(transactionId: string, appleJwt: string): Promise<Record<string, unknown>> {
+  const path = `/inApps/v1/transactions/${transactionId}`;
+  let response = await fetch(`${APP_STORE_SERVER_API_PRODUCTION}${path}`, {
+    headers: { Authorization: `Bearer ${appleJwt}` },
+  });
+
+  // Sandbox (TestFlight/development) transactions don't exist on the
+  // production endpoint - App Store Server API returns 404, retry sandbox.
+  if (response.status === 404) {
+    response = await fetch(`${APP_STORE_SERVER_API_SANDBOX}${path}`, {
+      headers: { Authorization: `Bearer ${appleJwt}` },
+    });
+  }
+
+  if (!response.ok) {
+    throw new Error(`App Store Server API isteği başarısız oldu (status: ${response.status}).`);
+  }
+
+  const body = await response.json();
+  const signedTransactionInfo = body.signedTransactionInfo as string | undefined;
+  if (!signedTransactionInfo) {
+    throw new Error('Apple yanıtında signedTransactionInfo bulunamadı.');
+  }
+
+  return decodeJwsPayload(signedTransactionInfo);
+}
+
+// Client sends the StoreKit2 transaction id + product id after a purchase
+// completes; this looks the transaction up directly with Apple's App Store
+// Server API (never trusting the client's own claim of success) before
+// crediting diamonds, and records the Apple transaction_id so a
+// retried/duplicate call can never double-credit.
 serve(async (req: Request) => {
   if (req.method !== 'POST') {
     return createResponse({ error: 'Sadece POST istekleri desteklenir.' }, 405);
   }
 
-  if (!APPLE_SHARED_SECRET) {
-    return createResponse({ error: 'IAP doğrulama henüz yapılandırılmadı (APPLE_IAP_SHARED_SECRET eksik).' }, 500);
+  if (!APPLE_KEY_ID || !APPLE_ISSUER_ID || !APPLE_PRIVATE_KEY_PEM) {
+    return createResponse({ error: 'IAP doğrulama henüz yapılandırılmadı (APPLE_IAP_KEY_ID/APPLE_IAP_ISSUER_ID/APPLE_IAP_PRIVATE_KEY eksik).' }, 500);
   }
 
   try {
@@ -78,9 +161,9 @@ serve(async (req: Request) => {
       return createResponse({ error: 'Geçersiz kullanıcı oturumu.' }, 401);
     }
 
-    const { receiptData, productId, transactionId } = await req.json();
-    if (!receiptData || !productId || !transactionId) {
-      return createResponse({ error: 'Eksik parametre: receiptData, productId, transactionId gerekli.' }, 400);
+    const { productId, transactionId } = await req.json();
+    if (!productId || !transactionId) {
+      return createResponse({ error: 'Eksik parametre: productId, transactionId gerekli.' }, 400);
     }
 
     const { data: existing } = await supabase
@@ -93,17 +176,17 @@ serve(async (req: Request) => {
       return createResponse({ success: true, alreadyProcessed: true, diamondsCredited: existing.diamonds_credited });
     }
 
-    const appleResult = await verifyWithApple(receiptData);
-    if (appleResult.status !== 0) {
-      return createResponse({ error: `Apple makbuz doğrulaması başarısız oldu (status: ${appleResult.status}).` }, 400);
-    }
+    const appleJwt = await buildAppleJwt();
+    const transactionInfo = await fetchTransactionInfo(transactionId, appleJwt);
 
-    const receiptEntries: any[] = appleResult.latest_receipt_info ?? appleResult.receipt?.in_app ?? [];
-    const matched = receiptEntries.find(
-      (entry) => entry.transaction_id === transactionId && entry.product_id === productId,
-    );
-    if (!matched) {
-      return createResponse({ error: 'İşlem Apple makbuzunda bulunamadı.' }, 400);
+    if (transactionInfo.transactionId !== transactionId || transactionInfo.productId !== productId) {
+      return createResponse({ error: 'İşlem Apple kaydıyla eşleşmedi.' }, 400);
+    }
+    if (transactionInfo.bundleId !== APPLE_BUNDLE_ID) {
+      return createResponse({ error: 'İşlem bu uygulamaya ait değil.' }, 400);
+    }
+    if (typeof transactionInfo.revocationDate === 'number') {
+      return createResponse({ error: 'Bu işlem iade edilmiş.' }, 400);
     }
 
     const { data: productRow, error: productError } = await supabase
