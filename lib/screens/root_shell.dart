@@ -15,6 +15,7 @@ import 'inbox_screen.dart';
 import 'league_selector_screen.dart';
 import 'league_table_screen.dart';
 import 'match_schedule_screen.dart';
+import 'season_end_screen.dart';
 import 'squad_screen.dart';
 import 'tactics_screen.dart';
 import 'transfer_market_screen.dart';
@@ -63,6 +64,17 @@ class _RootShellState extends State<RootShell> {
       if (!mounted) return;
       context.read<GameProvider>().checkUpcomingMatchAlertsNow();
     });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkSeasonEnd());
+  }
+
+  void _checkSeasonEnd() {
+    if (!mounted) return;
+    final club = context.read<GameProvider>().activeClub;
+    if (club?.pendingSeasonEndSeasonId == null) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => SeasonEndScreen(club: club!)),
+    );
   }
 
   @override

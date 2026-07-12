@@ -764,6 +764,56 @@ class GameProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Sezon-sonu tebrik ekranındaki puan durumu tablosu için: tamamlanmış
+  /// bir sezonun (artık güncel olmayan) son puan durumunu getirir.
+  Future<List<Map<String, dynamic>>> loadLeagueStandingsForSeason(String seasonId) async {
+    try {
+      return await _repository.loadLeagueStandings(seasonId);
+    } catch (error) {
+      throw Exception(_formatClubActionError(error));
+    }
+  }
+
+  /// Kullanıcı sezon-sonu tebrik ekranında "aynı takımla devam" dediğinde:
+  /// aynı oyuncular kalır (gücü azaltılmış olarak), ligde yeni bir sezon
+  /// başlar. Ardından tüm kulüp durumunu tazelemek için refreshGameState
+  /// çağrılmalıdır.
+  Future<void> continueClubNewSeason(String clubId) async {
+    try {
+      await _repository.continueClubNewSeason(clubId);
+    } catch (error) {
+      throw Exception(_formatClubActionError(error));
+    }
+  }
+
+  /// Kullanıcı sezon-sonu tebrik ekranında "hayır" dediğinde: leaveClub ile
+  /// aynı serbest bırakma deseni (kulüp silinmez, bot hale gelir), sadece
+  /// farklı bir RPC üzerinden (pending_season_end_season_id'yi de temizler).
+  Future<void> releaseClubAndLeaveLeague(String clubId) async {
+    try {
+      await _repository.releaseClubAndLeaveLeague(clubId);
+    } catch (error) {
+      throw Exception(_formatClubActionError(error));
+    }
+
+    if (_activeClub?.id == clubId) {
+      _activeClub = null;
+      _squadPlayers = <PlayerFM>[];
+      _fixtures = <MatchFixture>[];
+      _results = <MatchResult>[];
+      _transferMarketItems = <TransferMarketItem>[];
+      _freeAgents = <PlayerFM>[];
+      _incomingTransferOffers = <TransferOffer>[];
+      _outgoingTransferOffers = <TransferOffer>[];
+      _standings = <Map<String, dynamic>>[];
+      _seasonState = null;
+      _tactics = null;
+      _financialTransactions = <FinancialTransaction>[];
+      _transferHistory = <TransferHistoryEntry>[];
+      notifyListeners();
+    }
+  }
+
   Future<void> deleteAccount() async {
     try {
       await _repository.deleteAccount();

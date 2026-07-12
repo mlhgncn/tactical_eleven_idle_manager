@@ -336,6 +336,16 @@
     "txSignFreeAgent": "Free Agent Signing",
     "txAdReward": "Ad Reward"
   },
+  "seasonEnd": {
+    "title": "Season Over",
+    "championTitle": "You're the Champion!",
+    "championSubtitle": "A new trophy was added to your cabinet and 50 diamonds were credited to your account.",
+    "seasonOverTitle": "This season has ended.",
+    "question": "Would you like to continue with this club in a new season?",
+    "continueButton": "Yes, Continue With This Club",
+    "leaveButton": "No, Leave This Club",
+    "noStandings": "Standings could not be loaded."
+  },
   "leagueTable": {
     "seasonFallback": "Season",
     "weekLabel": "Week: {week}",

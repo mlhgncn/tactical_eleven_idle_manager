@@ -336,6 +336,16 @@
     "txSignFreeAgent": "Serbest Oyuncu Transferi",
     "txAdReward": "Reklam Ödülü"
   },
+  "seasonEnd": {
+    "title": "Sezon Sona Erdi",
+    "championTitle": "Şampiyon Oldunuz!",
+    "championSubtitle": "Kupa dolabınıza bir kupa daha eklendi ve 50 elmas hesabınıza tanımlandı.",
+    "seasonOverTitle": "Bu sezon sona erdi.",
+    "question": "Bu kulüple yeni bir sezona devam etmek ister misiniz?",
+    "continueButton": "Evet, Aynı Kulüple Devam Et",
+    "leaveButton": "Hayır, Kulübü Bırak",
+    "noStandings": "Puan durumu yüklenemedi."
+  },
   "leagueTable": {
     "seasonFallback": "Sezon",
     "weekLabel": "Hafta: {week}",

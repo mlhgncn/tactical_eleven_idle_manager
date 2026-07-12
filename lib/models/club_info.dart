@@ -21,6 +21,7 @@ class ClubInfo {
   final String? campActiveForMatchId;
   final int freeCampUsesThisSeason;
   final int campCharges;
+  final String? pendingSeasonEndSeasonId;
 
   const ClubInfo({
     required this.id,
@@ -45,6 +46,7 @@ class ClubInfo {
     this.campActiveForMatchId,
     this.freeCampUsesThisSeason = 0,
     this.campCharges = 0,
+    this.pendingSeasonEndSeasonId,
   });
 
   bool get hasTacticHideAvailable => freeTacticHidesThisSeason > 0 || tacticHideCharges > 0;
@@ -132,6 +134,7 @@ class ClubInfo {
       campActiveForMatchId: map['camp_active_for_match_id'] as String?,
       freeCampUsesThisSeason: (map['free_camp_uses_this_season'] as num?)?.toInt() ?? 0,
       campCharges: (map['camp_charges'] as num?)?.toInt() ?? 0,
+      pendingSeasonEndSeasonId: map['pending_season_end_season_id'] as String?,
     );
   }
 }
