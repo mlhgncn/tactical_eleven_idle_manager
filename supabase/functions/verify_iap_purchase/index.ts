@@ -152,8 +152,12 @@ async function fetchTransactionInfo(transactionId: string, appleJwt: string): Pr
   });
 
   // Sandbox (TestFlight/development) transactions don't exist on the
-  // production endpoint - App Store Server API returns 404, retry sandbox.
-  if (response.status === 404) {
+  // production endpoint. The App Store Server API is documented to return
+  // 404 for this, but in practice an app that has never been submitted to
+  // the App Store (still TestFlight-only, as this one is) gets a 401 from
+  // the production endpoint instead - Apple's own engineers have confirmed
+  // this on the developer forums. Retry sandbox on either status.
+  if (response.status === 404 || response.status === 401) {
     response = await fetch(`${APP_STORE_SERVER_API_SANDBOX}${path}`, {
       headers: { Authorization: `Bearer ${appleJwt}` },
     });
