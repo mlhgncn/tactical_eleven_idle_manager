@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
+import 'package:in_app_purchase_storekit/in_app_purchase_storekit.dart';
 
 /// Thin wrapper around the `in_app_purchase` plugin for buying diamond
 /// packs via StoreKit. Never credits anything itself - it only surfaces
@@ -27,6 +28,18 @@ class PurchaseService {
 
   Future<bool> initialize() async {
     if (_isInitialized) return true;
+
+    // Force StoreKit1: server-side verification (verify_iap_purchase edge
+    // function) uses Apple's legacy /verifyReceipt endpoint, which expects
+    // a base64 App Store receipt. StoreKit2 (the plugin's new default)
+    // instead hands back a JWS transaction signature in the same field,
+    // which /verifyReceipt rejects with status 21002 ("malformed receipt
+    // data"). Must run before any other InAppPurchase call touches the
+    // platform instance, or the plugin locks in StoreKit2.
+    if (Platform.isIOS) {
+      await InAppPurchaseStoreKitPlatform.enableStoreKit1();
+    }
+
     final available = await _iap.isAvailable();
     if (!available) return false;
 
