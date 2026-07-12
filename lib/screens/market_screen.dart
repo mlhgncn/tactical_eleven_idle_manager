@@ -26,6 +26,7 @@ class _MarketScreenState extends State<MarketScreen> {
   String? _purchasingProductId;
   String? _openingPackId;
   String? _purchasingConsumableId;
+  String? _storeInitError;
 
   @override
   void initState() {
@@ -50,13 +51,17 @@ class _MarketScreenState extends State<MarketScreen> {
       setState(() {
         _storeProducts = {for (final p in products) p.id: p};
         _isLoadingStore = false;
+        if (products.isEmpty && productIds.isNotEmpty) {
+          _storeInitError = 'queryProductDetails returned 0 of ${productIds.length} products (ids: ${productIds.join(", ")})';
+        }
       });
-    } catch (error) {
-      debugPrint('MarketScreen._initStore error: $error');
+    } catch (error, stack) {
+      debugPrint('MarketScreen._initStore error: $error\n$stack');
       if (!mounted) return;
       setState(() {
         _isStoreAvailable = false;
         _isLoadingStore = false;
+        _storeInitError = error.toString();
       });
     }
   }
@@ -249,9 +254,29 @@ class _MarketScreenState extends State<MarketScreen> {
           if (!_isStoreAvailable && !_isLoadingStore)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'market.purchaseUnavailable'.tr(),
+                    style: const TextStyle(color: AppColors.textMuted),
+                  ),
+                  if (_storeInitError != null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      _storeInitError!,
+                      style: const TextStyle(color: AppColors.textMuted, fontSize: 10),
+                    ),
+                  ],
+                ],
+              ),
+            )
+          else if (_isStoreAvailable && !_isLoadingStore && products.isEmpty && _storeInitError != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
               child: Text(
-                'market.purchaseUnavailable'.tr(),
-                style: const TextStyle(color: AppColors.textMuted),
+                _storeInitError!,
+                style: const TextStyle(color: AppColors.textMuted, fontSize: 10),
               ),
             )
           else if (_isLoadingStore)
