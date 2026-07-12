@@ -15,6 +15,12 @@ class ClubInfo {
   final int? developmentTargetValue;
   final DateTime? developmentCompletesAt;
   final int developmentAdUses;
+  final String? tacticHiddenForMatchId;
+  final int freeTacticHidesThisSeason;
+  final int tacticHideCharges;
+  final String? campActiveForMatchId;
+  final int freeCampUsesThisSeason;
+  final int campCharges;
 
   const ClubInfo({
     required this.id,
@@ -33,7 +39,16 @@ class ClubInfo {
     this.developmentTargetValue,
     this.developmentCompletesAt,
     this.developmentAdUses = 0,
+    this.tacticHiddenForMatchId,
+    this.freeTacticHidesThisSeason = 0,
+    this.tacticHideCharges = 0,
+    this.campActiveForMatchId,
+    this.freeCampUsesThisSeason = 0,
+    this.campCharges = 0,
   });
+
+  bool get hasTacticHideAvailable => freeTacticHidesThisSeason > 0 || tacticHideCharges > 0;
+  bool get hasCampAvailable => freeCampUsesThisSeason > 0 || campCharges > 0;
 
   bool get isSponsorUpgrading =>
       sponsorUpgradeCompletesAt != null && sponsorUpgradeCompletesAt!.isAfter(DateTime.now());
@@ -56,6 +71,12 @@ class ClubInfo {
     int? developmentTargetValue,
     DateTime? developmentCompletesAt,
     int? developmentAdUses,
+    String? tacticHiddenForMatchId,
+    int? freeTacticHidesThisSeason,
+    int? tacticHideCharges,
+    String? campActiveForMatchId,
+    int? freeCampUsesThisSeason,
+    int? campCharges,
   }) {
     return ClubInfo(
       id: id,
@@ -74,6 +95,12 @@ class ClubInfo {
       developmentTargetValue: developmentTargetValue ?? this.developmentTargetValue,
       developmentCompletesAt: developmentCompletesAt ?? this.developmentCompletesAt,
       developmentAdUses: developmentAdUses ?? this.developmentAdUses,
+      tacticHiddenForMatchId: tacticHiddenForMatchId ?? this.tacticHiddenForMatchId,
+      freeTacticHidesThisSeason: freeTacticHidesThisSeason ?? this.freeTacticHidesThisSeason,
+      tacticHideCharges: tacticHideCharges ?? this.tacticHideCharges,
+      campActiveForMatchId: campActiveForMatchId ?? this.campActiveForMatchId,
+      freeCampUsesThisSeason: freeCampUsesThisSeason ?? this.freeCampUsesThisSeason,
+      campCharges: campCharges ?? this.campCharges,
     );
   }
 
@@ -99,6 +126,12 @@ class ClubInfo {
           ? DateTime.tryParse(map['development_completes_at'] as String)
           : null,
       developmentAdUses: (map['development_ad_uses'] as num?)?.toInt() ?? 0,
+      tacticHiddenForMatchId: map['tactic_hidden_for_match_id'] as String?,
+      freeTacticHidesThisSeason: (map['free_tactic_hides_this_season'] as num?)?.toInt() ?? 0,
+      tacticHideCharges: (map['tactic_hide_charges'] as num?)?.toInt() ?? 0,
+      campActiveForMatchId: map['camp_active_for_match_id'] as String?,
+      freeCampUsesThisSeason: (map['free_camp_uses_this_season'] as num?)?.toInt() ?? 0,
+      campCharges: (map['camp_charges'] as num?)?.toInt() ?? 0,
     );
   }
 }

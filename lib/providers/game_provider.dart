@@ -16,6 +16,7 @@ import '../models/transfer_offer.dart';
 import '../models/transfer_history_entry.dart';
 import '../models/player_pack.dart';
 import '../models/diamond_product.dart';
+import '../models/consumable_product.dart';
 import '../repositories/match_preview_repository.dart';
 import '../repositories/repository_interface.dart';
 import '../repositories/supabase_repository.dart';
@@ -64,6 +65,7 @@ class GameProvider extends ChangeNotifier {
   int get pendingIncomingOfferCount => _incomingTransferOffers.where((o) => o.isPending).length;
   List<PlayerPack> get playerPacks => List.unmodifiable(_playerPacks);
   List<DiamondProduct> get diamondProducts => List.unmodifiable(_diamondProducts);
+  List<ConsumableProduct> get consumableProducts => List.unmodifiable(_consumableProducts);
   int get diamonds => _profile?.diamonds ?? 0;
   Tactics? get tactics => _tactics;
 
@@ -85,6 +87,7 @@ class GameProvider extends ChangeNotifier {
   List<TransferOffer> _outgoingTransferOffers = <TransferOffer>[];
   List<PlayerPack> _playerPacks = <PlayerPack>[];
   List<DiamondProduct> _diamondProducts = <DiamondProduct>[];
+  List<ConsumableProduct> _consumableProducts = <ConsumableProduct>[];
   List<Map<String, dynamic>> _standings = <Map<String, dynamic>>[];
   Map<String, dynamic>? _seasonState;
   Tactics? _tactics;
@@ -476,9 +479,11 @@ class GameProvider extends ChangeNotifier {
     final results = await Future.wait([
       _repository.loadPlayerPacks(),
       _repository.loadDiamondProducts(),
+      _repository.loadConsumableProducts(),
     ]);
     _playerPacks = results[0] as List<PlayerPack>;
     _diamondProducts = results[1] as List<DiamondProduct>;
+    _consumableProducts = results[2] as List<ConsumableProduct>;
   }
 
   Future<void> _loadFixturesAndResults() async {
@@ -951,6 +956,57 @@ class GameProvider extends ChangeNotifier {
       } catch (_) {}
       await refreshGameState();
       return newPlayers;
+    } finally {
+      _setBusy(false);
+    }
+  }
+
+  /// Elmas karşılığı taktik gizleme veya kamp hakkı satın alır.
+  Future<void> purchaseConsumable({required String productId}) async {
+    if (_activeClub == null) throw Exception('Aktif kulüp bulunamadı.');
+    if (_isBusy) return;
+
+    _setBusy(true);
+    try {
+      await _repository.purchaseConsumable(productId: productId, clubId: _activeClub!.id);
+      try {
+        AnalyticsService.instance.logEvent('purchase_consumable', parameters: {'product_id': productId});
+      } catch (_) {}
+      await refreshGameState();
+    } finally {
+      _setBusy(false);
+    }
+  }
+
+  /// Kulübün bir sonraki maçı için taktiklerini rakipten gizler.
+  Future<void> hideTacticsForNextMatch() async {
+    if (_activeClub == null) throw Exception('Aktif kulüp bulunamadı.');
+    if (_isBusy) return;
+
+    _setBusy(true);
+    try {
+      await _repository.hideTacticsForNextMatch(clubId: _activeClub!.id);
+      try {
+        AnalyticsService.instance.logEvent('hide_tactics_for_next_match');
+      } catch (_) {}
+      await refreshGameState();
+    } finally {
+      _setBusy(false);
+    }
+  }
+
+  /// Takımı bir sonraki maç için kampa gönderir (%5 performans bonusu).
+  Future<void> sendTeamToCamp() async {
+    if (_activeClub == null) throw Exception('Aktif kulüp bulunamadı.');
+    if (_isBusy) return;
+
+    _setBusy(true);
+    try {
+      await _repository.sendTeamToCamp(clubId: _activeClub!.id);
+      try {
+        AnalyticsService.instance.logEvent('send_team_to_camp');
+      } catch (_) {}
+      await refreshGameState();
     } finally {
       _setBusy(false);
     }

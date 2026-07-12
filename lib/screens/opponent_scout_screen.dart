@@ -32,7 +32,7 @@ class OpponentScoutScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _TacticsCard(tactics: tactics),
+          _TacticsCard(tactics: tactics, tacticsHidden: report.tacticsHidden),
           const SizedBox(height: 16),
           if (starters.isNotEmpty) ...[
             Text('opponentScout.startingElevenTitle'.tr(), style: Theme.of(context).textTheme.titleMedium),
@@ -53,12 +53,29 @@ class OpponentScoutScreen extends StatelessWidget {
 }
 
 class _TacticsCard extends StatelessWidget {
-  const _TacticsCard({required this.tactics});
+  const _TacticsCard({required this.tactics, this.tacticsHidden = false});
 
   final ScoutedTactics? tactics;
+  final bool tacticsHidden;
 
   @override
   Widget build(BuildContext context) {
+    if (tacticsHidden) {
+      return Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              const Icon(Icons.visibility_off, color: AppColors.textMuted, size: 20),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text('opponentScout.tacticsHidden'.tr(), style: const TextStyle(color: AppColors.textMuted)),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
     if (tactics == null) {
       return Card(
         child: Padding(

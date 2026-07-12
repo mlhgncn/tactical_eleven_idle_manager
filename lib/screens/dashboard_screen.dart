@@ -299,6 +299,8 @@ class _MatchCard extends StatefulWidget {
 class _MatchCardState extends State<_MatchCard> {
   Timer? _timer;
   bool _isScouting = false;
+  bool _isHidingTactics = false;
+  bool _isSendingToCamp = false;
 
   @override
   void initState() {
@@ -335,6 +337,42 @@ class _MatchCardState extends State<_MatchCard> {
       );
     } finally {
       if (mounted) setState(() => _isScouting = false);
+    }
+  }
+
+  Future<void> _hideTactics(BuildContext context) async {
+    setState(() => _isHidingTactics = true);
+    try {
+      await context.read<GameProvider>().hideTacticsForNextMatch();
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('dashboard.tacticsHiddenSuccess'.tr())),
+      );
+    } catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString().replaceAll('Exception: ', ''))),
+      );
+    } finally {
+      if (mounted) setState(() => _isHidingTactics = false);
+    }
+  }
+
+  Future<void> _sendToCamp(BuildContext context) async {
+    setState(() => _isSendingToCamp = true);
+    try {
+      await context.read<GameProvider>().sendTeamToCamp();
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('dashboard.campSentSuccess'.tr())),
+      );
+    } catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString().replaceAll('Exception: ', ''))),
+      );
+    } finally {
+      if (mounted) setState(() => _isSendingToCamp = false);
     }
   }
 
@@ -439,6 +477,44 @@ class _MatchCardState extends State<_MatchCard> {
                     label: 'dashboard.scoutOpponent'.tr(),
                   ),
                 ],
+                Builder(builder: (context) {
+                  final club = context.watch<GameProvider>().activeClub;
+                  if (club == null) return const SizedBox.shrink();
+                  final tacticAlreadyHidden = club.tacticHiddenForMatchId == f.id;
+                  final campAlreadyActive = club.campActiveForMatchId == f.id;
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 10),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: GlassButton(
+                            height: 44,
+                            isLoading: _isHidingTactics,
+                            onPressed: (_isHidingTactics || tacticAlreadyHidden || !club.hasTacticHideAvailable)
+                                ? null
+                                : () => _hideTactics(context),
+                            label: tacticAlreadyHidden
+                                ? 'dashboard.tacticsHiddenActive'.tr()
+                                : 'dashboard.hideTactics'.tr(),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: GlassButton(
+                            height: 44,
+                            isLoading: _isSendingToCamp,
+                            onPressed: (_isSendingToCamp || campAlreadyActive || !club.hasCampAvailable)
+                                ? null
+                                : () => _sendToCamp(context),
+                            label: campAlreadyActive
+                                ? 'dashboard.campActive'.tr()
+                                : 'dashboard.sendToCamp'.tr(),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
               ],
             ),
           ),

@@ -21,6 +21,7 @@ export interface ClubRow {
   training_facility_level: number | null;
   sponsor_level: number | null;
   user_id: string | null;
+  camp_active_for_match_id?: string | null;
 }
 
 interface ClubTactic {
@@ -520,7 +521,7 @@ export async function resolveMatch(
 
   const { data: clubRows, error: clubsError } = await supabase
     .from('clubs')
-    .select('id,budget,stadium_capacity,ticket_price,training_facility_level,sponsor_level,user_id')
+    .select('id,budget,stadium_capacity,ticket_price,training_facility_level,sponsor_level,user_id,camp_active_for_match_id')
     .in('id', clubIds);
   if (clubsError) throw new Error(`Kulüp bilgileri alınamadı: ${clubsError.message}`);
 
@@ -578,7 +579,13 @@ export async function resolveMatch(
   const homeBench = homeClubPlayers.filter((p) => !homeStartingIds.has(p.id) && p.injury_duration_weeks <= 0 && !p.is_suspended);
   const awayBench = awayClubPlayers.filter((p) => !awayStartingIds.has(p.id) && p.injury_duration_weeks <= 0 && !p.is_suspended);
 
-  const { homeXG, awayXG, homePossession, pressIntensityAvg } = makeExpectedGoals(homeRoster, awayRoster, homeTactic, awayTactic);
+  const { homeXG: baseHomeXG, awayXG: baseAwayXG, homePossession, pressIntensityAvg } = makeExpectedGoals(homeRoster, awayRoster, homeTactic, awayTactic);
+  // Team Camp: a one-shot +5% performance bonus for the club's next match,
+  // consumed here regardless of the match outcome.
+  const homeCamped = homeClub.camp_active_for_match_id === matchRow.id;
+  const awayCamped = awayClub.camp_active_for_match_id === matchRow.id;
+  const homeXG = homeCamped ? baseHomeXG * 1.05 : baseHomeXG;
+  const awayXG = awayCamped ? baseAwayXG * 1.05 : baseAwayXG;
   const homeScore = rollGoals(homeXG);
   const awayScore = rollGoals(awayXG);
   // High-press matches are more physical - a small extra bump to injury
@@ -598,6 +605,14 @@ export async function resolveMatch(
     // Someone else (the other trigger path) already resolved this match
     // between our SELECT and UPDATE - not an error, just a no-op.
     return { alreadyPlayed: true };
+  }
+
+  // Consume the one-shot camp bonus now that it has been applied above.
+  if (homeCamped) {
+    await supabase.from('clubs').update({ camp_active_for_match_id: null }).eq('id', homeClub.id);
+  }
+  if (awayCamped) {
+    await supabase.from('clubs').update({ camp_active_for_match_id: null }).eq('id', awayClub.id);
   }
 
   const timelineEvents: Array<Record<string, unknown>> = [];

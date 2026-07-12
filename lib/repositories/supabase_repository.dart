@@ -20,6 +20,7 @@ import '../models/financial_transaction.dart';
 import '../models/tactics.dart';
 import '../models/player_pack.dart';
 import '../models/diamond_product.dart';
+import '../models/consumable_product.dart';
 import 'repository_interface.dart';
 
 class SupabaseRepository implements GameRepository {
@@ -51,7 +52,7 @@ class SupabaseRepository implements GameRepository {
   }
 
   static const _clubSelectColumns =
-      'id,name,league_id,budget,blocked_budget,stadium_capacity,ticket_price,ticket_price_level,training_facility_level,sponsor_level,last_maintenance_date,sponsor_upgrade_completes_at,development_upgrade_type,development_target_value,development_completes_at,development_ad_uses';
+      'id,name,league_id,budget,blocked_budget,stadium_capacity,ticket_price,ticket_price_level,training_facility_level,sponsor_level,last_maintenance_date,sponsor_upgrade_completes_at,development_upgrade_type,development_target_value,development_completes_at,development_ad_uses,tactic_hidden_for_match_id,free_tactic_hides_this_season,tactic_hide_charges,camp_active_for_match_id,free_camp_uses_this_season,camp_charges';
 
   /// Loads every club the current user owns (up to 4, one per league).
   Future<List<ClubInfo>> loadMyClubs() async {
@@ -982,6 +983,53 @@ class SupabaseRepository implements GameRepository {
     return _wrap(() async {
       final data = await _client.rpc('scout_opponent', params: {'p_match_id': matchId});
       return OpponentScoutReport.fromMap(Map<String, dynamic>.from(data as Map<String, dynamic>));
+    });
+  }
+
+  @override
+  Future<List<ConsumableProduct>> loadConsumableProducts() async {
+    return _wrap(() async {
+      final data = await _client
+          .from('consumable_products')
+          .select('id,name,diamond_cost,effect_type,grant_quantity')
+          .order('sort_order', ascending: true);
+
+      if (data is! List<dynamic>) return <ConsumableProduct>[];
+      return data.cast<Map<String, dynamic>>().map(ConsumableProduct.fromMap).toList();
+    });
+  }
+
+  @override
+  Future<ClubInfo?> purchaseConsumable({required String productId, String? clubId}) async {
+    return _wrap(() async {
+      final data = await _client.rpc('purchase_consumable', params: {
+        'p_product_id': productId,
+        if (clubId != null) 'p_club_id': clubId,
+      });
+      if (data == null) return null;
+      return ClubInfo.fromMap(Map<String, dynamic>.from(data as Map<String, dynamic>));
+    });
+  }
+
+  @override
+  Future<ClubInfo?> hideTacticsForNextMatch({String? clubId}) async {
+    return _wrap(() async {
+      final data = await _client.rpc('hide_tactics_for_next_match', params: {
+        if (clubId != null) 'p_club_id': clubId,
+      });
+      if (data == null) return null;
+      return ClubInfo.fromMap(Map<String, dynamic>.from(data as Map<String, dynamic>));
+    });
+  }
+
+  @override
+  Future<ClubInfo?> sendTeamToCamp({String? clubId}) async {
+    return _wrap(() async {
+      final data = await _client.rpc('send_team_to_camp', params: {
+        if (clubId != null) 'p_club_id': clubId,
+      });
+      if (data == null) return null;
+      return ClubInfo.fromMap(Map<String, dynamic>.from(data as Map<String, dynamic>));
     });
   }
 }

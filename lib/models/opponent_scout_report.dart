@@ -80,11 +80,13 @@ class OpponentScoutReport {
   final String clubId;
   final List<ScoutedPlayer> players;
   final ScoutedTactics? tactics;
+  final bool tacticsHidden;
 
   OpponentScoutReport({
     required this.clubId,
     required this.players,
     required this.tactics,
+    this.tacticsHidden = false,
   });
 
   factory OpponentScoutReport.fromMap(Map<String, dynamic> map) {
@@ -94,6 +96,7 @@ class OpponentScoutReport {
       clubId: map['club_id'] as String,
       players: playersRaw.map((e) => ScoutedPlayer.fromMap(e as Map<String, dynamic>)).toList(),
       tactics: tacticsRaw != null ? ScoutedTactics.fromMap(tacticsRaw) : null,
+      tacticsHidden: (map['tactics_hidden'] as bool?) ?? false,
     );
   }
 }

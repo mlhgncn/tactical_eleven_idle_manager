@@ -269,10 +269,17 @@
     "home": "EV SAHİBİ",
     "away": "DEPLASMAN",
     "you": "Sen",
-    "scoutOpponent": "Rakibi İncele"
+    "scoutOpponent": "Rakibi İncele",
+    "hideTactics": "Taktik Gizle",
+    "tacticsHiddenActive": "Taktik Gizli",
+    "tacticsHiddenSuccess": "Taktikleriniz bir sonraki maç için gizlendi.",
+    "sendToCamp": "Kampa Gönder",
+    "campActive": "Kamp Aktif",
+    "campSentSuccess": "Takımınız bir sonraki maç için kampa gönderildi (+%5 performans)."
   },
   "opponentScout": {
     "tacticsTitle": "Rakip Taktiği",
+    "tacticsHidden": "Rakip taktiklerini gizledi.",
     "noTactics": "Rakip henüz taktik belirlememiş.",
     "formationLabel": "Diziliş",
     "mentalityLabel": "Mentalite",
@@ -359,7 +366,9 @@
     "buyDiamondsTitle": "Elmas Satın Al",
     "purchaseUnavailable": "Bu cihazda satın alma şu anda kullanılamıyor.",
     "packGuaranteedLine": "1 garantili oyuncu: {ability}+ güç",
-    "packRandomLine": "{count} rastgele oyuncu: {min}-{max} güç"
+    "packRandomLine": "{count} rastgele oyuncu: {min}-{max} güç",
+    "consumablesTitle": "Maç Hazırlıkları",
+    "consumablePurchaseSuccess": "{name} satın alındı."
   },
   "development": {
     "upgradeStadium": "Stadyum genişletme",

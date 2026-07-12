@@ -18,6 +18,7 @@ import 'package:tactical_eleven_idle_manager/models/match_result.dart';
 import 'package:tactical_eleven_idle_manager/models/financial_transaction.dart';
 import 'package:tactical_eleven_idle_manager/models/player_pack.dart';
 import 'package:tactical_eleven_idle_manager/models/diamond_product.dart';
+import 'package:tactical_eleven_idle_manager/models/consumable_product.dart';
 import 'package:tactical_eleven_idle_manager/providers/game_provider.dart';
 import 'package:tactical_eleven_idle_manager/repositories/repository_interface.dart';
 import 'package:tactical_eleven_idle_manager/screens/auth_screen.dart';
@@ -294,6 +295,18 @@ class _FakeGameRepository implements GameRepository {
 
   @override
   Future<List<DiamondProduct>> loadDiamondProducts() async => <DiamondProduct>[];
+
+  @override
+  Future<List<ConsumableProduct>> loadConsumableProducts() async => <ConsumableProduct>[];
+
+  @override
+  Future<ClubInfo?> purchaseConsumable({required String productId, String? clubId}) async => null;
+
+  @override
+  Future<ClubInfo?> hideTacticsForNextMatch({String? clubId}) async => null;
+
+  @override
+  Future<ClubInfo?> sendTeamToCamp({String? clubId}) async => null;
 
   @override
   Future<Map<String, dynamic>> verifyIapPurchase({

@@ -269,10 +269,17 @@
     "home": "HOME",
     "away": "AWAY",
     "you": "You",
-    "scoutOpponent": "Scout Opponent"
+    "scoutOpponent": "Scout Opponent",
+    "hideTactics": "Hide Tactics",
+    "tacticsHiddenActive": "Tactics Hidden",
+    "tacticsHiddenSuccess": "Your tactics have been hidden for the next match.",
+    "sendToCamp": "Send to Camp",
+    "campActive": "Camp Active",
+    "campSentSuccess": "Your team has been sent to camp for the next match (+5% performance)."
   },
   "opponentScout": {
     "tacticsTitle": "Opponent Tactics",
+    "tacticsHidden": "Opponent has hidden their tactics.",
     "noTactics": "Opponent hasn't set a tactic yet.",
     "formationLabel": "Formation",
     "mentalityLabel": "Mentality",
@@ -359,7 +366,9 @@
     "buyDiamondsTitle": "Buy Diamonds",
     "purchaseUnavailable": "Purchases are currently unavailable on this device.",
     "packGuaranteedLine": "1 guaranteed player: {ability}+ power",
-    "packRandomLine": "{count} random players: {min}-{max} power"
+    "packRandomLine": "{count} random players: {min}-{max} power",
+    "consumablesTitle": "Match Preparations",
+    "consumablePurchaseSuccess": "{name} purchased."
   },
   "development": {
     "upgradeStadium": "Stadium expansion",

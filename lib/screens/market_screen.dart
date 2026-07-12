@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:provider/provider.dart';
 
+import '../models/consumable_product.dart';
 import '../models/diamond_product.dart';
 import '../models/player_fm.dart';
 import '../models/player_pack.dart';
@@ -24,6 +25,7 @@ class _MarketScreenState extends State<MarketScreen> {
   bool _isLoadingStore = true;
   String? _purchasingProductId;
   String? _openingPackId;
+  String? _purchasingConsumableId;
 
   @override
   void initState() {
@@ -149,6 +151,24 @@ class _MarketScreenState extends State<MarketScreen> {
     );
   }
 
+  Future<void> _buyConsumable(ConsumableProduct product) async {
+    setState(() => _purchasingConsumableId = product.id);
+    try {
+      await context.read<GameProvider>().purchaseConsumable(productId: product.id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('market.consumablePurchaseSuccess'.tr(namedArgs: {'name': product.name})), backgroundColor: AppColors.green),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString().replaceAll('Exception: ', ''))),
+      );
+    } finally {
+      if (mounted) setState(() => _purchasingConsumableId = null);
+    }
+  }
+
   @override
   void dispose() {
     _purchaseService.onPurchaseVerified = null;
@@ -161,6 +181,7 @@ class _MarketScreenState extends State<MarketScreen> {
     final diamonds = provider.diamonds;
     final packs = provider.playerPacks;
     final products = provider.diamondProducts;
+    final consumables = provider.consumableProducts;
 
     return Scaffold(
       appBar: AppBar(title: Text('dashboard.market'.tr())),
@@ -197,6 +218,22 @@ class _MarketScreenState extends State<MarketScreen> {
               isLoading: _openingPackId == pack.id,
               onOpen: () => _openPack(pack),
             ),
+          const SizedBox(height: 24),
+          Text('market.consumablesTitle'.tr(), style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          if (consumables.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Text('market.packsLoading'.tr(), style: const TextStyle(color: AppColors.textMuted)),
+            )
+          else
+            for (final consumable in consumables)
+              _ConsumableProductCard(
+                product: consumable,
+                canAfford: diamonds >= consumable.diamondCost,
+                isLoading: _purchasingConsumableId == consumable.id,
+                onBuy: () => _buyConsumable(consumable),
+              ),
           const SizedBox(height: 24),
           Text('market.buyDiamondsTitle'.tr(), style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
@@ -337,6 +374,48 @@ class _DiamondProductCard extends StatelessWidget {
               child: isLoading
                   ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
                   : Text(storeProduct?.price ?? '—'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ConsumableProductCard extends StatelessWidget {
+  const _ConsumableProductCard({
+    required this.product,
+    required this.canAfford,
+    required this.isLoading,
+    required this.onBuy,
+  });
+
+  final ConsumableProduct product;
+  final bool canAfford;
+  final bool isLoading;
+  final VoidCallback onBuy;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Icon(
+              product.effectType == 'camp' ? Icons.fitness_center : Icons.visibility_off,
+              color: AppColors.gold,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(product.name, style: Theme.of(context).textTheme.titleMedium),
+            ),
+            ElevatedButton(
+              onPressed: canAfford && !isLoading ? onBuy : null,
+              child: isLoading
+                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                  : Text('${product.diamondCost} 💎'),
             ),
           ],
         ),

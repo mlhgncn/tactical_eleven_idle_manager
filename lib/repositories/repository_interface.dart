@@ -13,6 +13,7 @@ import '../models/tactics.dart';
 import '../models/financial_transaction.dart';
 import '../models/player_pack.dart';
 import '../models/diamond_product.dart';
+import '../models/consumable_product.dart';
 
 abstract class GameRepository {
   String? get currentUserId;
@@ -78,6 +79,10 @@ abstract class GameRepository {
   Future<bool?> loadNotificationPreference();
   Future<MatchResult?> playNextFixture();
   Future<OpponentScoutReport> scoutOpponent(String matchId);
+  Future<List<ConsumableProduct>> loadConsumableProducts();
+  Future<ClubInfo?> purchaseConsumable({required String productId, String? clubId});
+  Future<ClubInfo?> hideTacticsForNextMatch({String? clubId});
+  Future<ClubInfo?> sendTeamToCamp({String? clubId});
   // Admin actions
   Future<bool> isAdmin();
   Future<List<Map<String, dynamic>>> adminListUsers();
