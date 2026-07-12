@@ -235,9 +235,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final profile = context.watch<GameProvider>().profile;
+    final gameProvider = context.watch<GameProvider>();
+    final profile = gameProvider.profile;
     final leagueTitles = profile?.leagueTitles ?? 0;
     final level = profile?.level ?? ProfileLevel.none;
+    final activeClub = gameProvider.activeClub;
+    final hasMaxFacility = activeClub != null &&
+        (activeClub.stadiumCapacity >= 100000 || activeClub.trainingFacilityLevel >= 10);
 
     if (!_usernamePrefilled && profile?.username != null) {
       _usernameController.text = profile!.username!;
@@ -384,6 +388,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       icon: Icons.military_tech,
                       title: 'profile.achievement100WinsTitle'.tr(),
                       progress: '${profile.totalWins}/100',
+                      reward: 100,
                       isComplete: profile.totalWins >= 100,
                       isClaimed: profile.achievement100WinsClaimed,
                       isLoading: _claimingAchievement == '100_wins',
@@ -394,10 +399,48 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       icon: Icons.local_fire_department,
                       title: 'profile.achievementWinStreak10Title'.tr(),
                       progress: '${profile.bestWinStreak}/10',
+                      reward: 50,
                       isComplete: profile.bestWinStreak >= 10,
                       isClaimed: profile.achievementWinStreak10Claimed,
                       isLoading: _claimingAchievement == 'win_streak_10',
                       onClaim: () => _claimAchievement('win_streak_10'),
+                    ),
+                    const SizedBox(height: 10),
+                    _AchievementRow(
+                      icon: Icons.emoji_events,
+                      title: 'profile.achievementUnbeatenChampionTitle'.tr(),
+                      progress: profile.hasUnbeatenTitle
+                          ? 'profile.achievementConditionMet'.tr()
+                          : 'profile.achievementConditionNotMet'.tr(),
+                      reward: 200,
+                      isComplete: profile.hasUnbeatenTitle,
+                      isClaimed: profile.achievementUnbeatenChampionClaimed,
+                      isLoading: _claimingAchievement == 'unbeaten_champion',
+                      onClaim: () => _claimAchievement('unbeaten_champion'),
+                    ),
+                    const SizedBox(height: 10),
+                    _AchievementRow(
+                      icon: Icons.factory,
+                      title: 'profile.achievementMaxFacilityTitle'.tr(),
+                      progress: hasMaxFacility
+                          ? 'profile.achievementConditionMet'.tr()
+                          : 'profile.achievementConditionNotMet'.tr(),
+                      reward: 80,
+                      isComplete: hasMaxFacility,
+                      isClaimed: profile.achievementMaxFacilityClaimed,
+                      isLoading: _claimingAchievement == 'max_facility',
+                      onClaim: () => _claimAchievement('max_facility'),
+                    ),
+                    const SizedBox(height: 10),
+                    _AchievementRow(
+                      icon: Icons.emoji_people,
+                      title: 'profile.achievement45DayStreakTitle'.tr(),
+                      progress: '${profile.longestLoginStreak}/45',
+                      reward: 150,
+                      isComplete: profile.longestLoginStreak >= 45,
+                      isClaimed: profile.achievement45DayStreakClaimed,
+                      isLoading: _claimingAchievement == '45_day_streak',
+                      onClaim: () => _claimAchievement('45_day_streak'),
                     ),
                   ],
                 ),
@@ -553,6 +596,7 @@ class _AchievementRow extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.progress,
+    required this.reward,
     required this.isComplete,
     required this.isClaimed,
     required this.isLoading,
@@ -562,6 +606,7 @@ class _AchievementRow extends StatelessWidget {
   final IconData icon;
   final String title;
   final String progress;
+  final int reward;
   final bool isComplete;
   final bool isClaimed;
   final bool isLoading;
@@ -579,6 +624,16 @@ class _AchievementRow extends StatelessWidget {
             children: [
               Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
               Text(progress, style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+              Row(
+                children: [
+                  const Icon(Icons.diamond, color: AppColors.blue, size: 12),
+                  const SizedBox(width: 3),
+                  Text(
+                    'profile.achievementReward'.tr(namedArgs: {'count': reward.toString()}),
+                    style: const TextStyle(color: AppColors.blue, fontSize: 11.5, fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
             ],
           ),
         ),

@@ -15,6 +15,11 @@ class Profile {
   final int bestWinStreak;
   final bool achievement100WinsClaimed;
   final bool achievementWinStreak10Claimed;
+  final bool hasUnbeatenTitle;
+  final bool achievementUnbeatenChampionClaimed;
+  final bool achievementMaxFacilityClaimed;
+  final int longestLoginStreak;
+  final bool achievement45DayStreakClaimed;
   final int dailyStreakDay;
   final DateTime? lastDailyClaimDate;
   final bool socialInstagramFollowed;
@@ -39,6 +44,11 @@ class Profile {
     this.bestWinStreak = 0,
     this.achievement100WinsClaimed = false,
     this.achievementWinStreak10Claimed = false,
+    this.hasUnbeatenTitle = false,
+    this.achievementUnbeatenChampionClaimed = false,
+    this.achievementMaxFacilityClaimed = false,
+    this.longestLoginStreak = 0,
+    this.achievement45DayStreakClaimed = false,
     this.dailyStreakDay = 0,
     this.lastDailyClaimDate,
     this.socialInstagramFollowed = false,
@@ -77,6 +87,11 @@ class Profile {
       bestWinStreak: (map['best_win_streak'] as num?)?.toInt() ?? 0,
       achievement100WinsClaimed: (map['achievement_100_wins_claimed'] as bool?) ?? false,
       achievementWinStreak10Claimed: (map['achievement_win_streak_10_claimed'] as bool?) ?? false,
+      hasUnbeatenTitle: (map['has_unbeaten_title'] as bool?) ?? false,
+      achievementUnbeatenChampionClaimed: (map['achievement_unbeaten_champion_claimed'] as bool?) ?? false,
+      achievementMaxFacilityClaimed: (map['achievement_max_facility_claimed'] as bool?) ?? false,
+      longestLoginStreak: (map['longest_login_streak'] as num?)?.toInt() ?? 0,
+      achievement45DayStreakClaimed: (map['achievement_45_day_streak_claimed'] as bool?) ?? false,
       dailyStreakDay: (map['daily_streak_day'] as num?)?.toInt() ?? 0,
       lastDailyClaimDate: map['last_daily_claim_date'] != null ? DateTime.tryParse(map['last_daily_claim_date'] as String) : null,
       socialInstagramFollowed: (map['social_instagram_followed'] as bool?) ?? false,

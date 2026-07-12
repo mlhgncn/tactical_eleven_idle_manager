@@ -29,10 +29,14 @@ CREATE TABLE IF NOT EXISTS public.clubs (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS clubs_user_id_unique_partial
-ON public.clubs (user_id)
-WHERE user_id IS NOT NULL;
-
+-- NOTE: no unique index on clubs(user_id) alone here - multi-league
+-- support (see supabase/migrations/20260712130000_multi_league_support.sql)
+-- replaced that with a per-(user_id, league_id) unique index, since a user
+-- can now own one club per league instead of one club total. This
+-- schema.sql runs on every deploy (see .github/workflows/supabase_deploy.yml)
+-- ahead of the migrations folder, so re-adding the old single-club index
+-- here would silently resurrect it on every push and break selecting a
+-- second league's club - it did exactly that once already.
 CREATE TABLE IF NOT EXISTS public.seasons (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     league_id UUID NOT NULL REFERENCES public.leagues(id) ON DELETE CASCADE,
