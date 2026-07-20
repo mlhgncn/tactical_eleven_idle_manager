@@ -31,7 +31,7 @@ class _SetupClubScreenState extends State<SetupClubScreen> {
       if (!mounted) return;
       setState(() => _isLoading = false);
       final joined = await Navigator.of(context).push<bool>(
-        MaterialPageRoute(builder: (_) => LeagueClubPickerScreen(options: options)),
+        MaterialPageRoute(builder: (_) => LeagueClubPickerScreen(options: options, themeCode: _selectedTheme)),
       );
       if (joined == true) _navigateToRoot();
     } catch (error) {
@@ -49,11 +49,12 @@ class _SetupClubScreenState extends State<SetupClubScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final options = await context.read<GameProvider>().previewLeagueByCode(_invitationCodeController.text.trim());
+      final code = _invitationCodeController.text.trim();
+      final options = await context.read<GameProvider>().previewLeagueByCode(code);
       if (!mounted) return;
       setState(() => _isLoading = false);
       final joined = await Navigator.of(context).push<bool>(
-        MaterialPageRoute(builder: (_) => LeagueClubPickerScreen(options: options)),
+        MaterialPageRoute(builder: (_) => LeagueClubPickerScreen(options: options, invitationCode: code)),
       );
       if (joined == true) _navigateToRoot();
     } catch (error) {

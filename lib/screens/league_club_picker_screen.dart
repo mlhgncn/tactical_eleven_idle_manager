@@ -9,9 +9,22 @@ import '../widgets/app_snackbar.dart';
 import 'market_screen.dart';
 
 class LeagueClubPickerScreen extends StatefulWidget {
-  const LeagueClubPickerScreen({super.key, required this.options});
+  const LeagueClubPickerScreen({super.key, required this.options, this.invitationCode, this.themeCode});
 
   final List<LeagueClubOption> options;
+
+  /// When this picker was opened via a join-by-code flow, holding the code
+  /// lets us re-fetch the (shared, possibly-changed-by-someone-else) list
+  /// after a "club just got taken" race so the taken club shows as taken
+  /// instead of the user being able to tap the same stale card again.
+  final String? invitationCode;
+
+  /// When opened via "create/join a league by theme", preview_league_theme
+  /// may have handed back an existing joinable league (shared with other
+  /// users) instead of minting a new one - same race as invitationCode, so
+  /// this is used the same way to re-fetch after a "club just got taken"
+  /// error.
+  final String? themeCode;
 
   @override
   State<LeagueClubPickerScreen> createState() => _LeagueClubPickerScreenState();
@@ -19,6 +32,13 @@ class LeagueClubPickerScreen extends StatefulWidget {
 
 class _LeagueClubPickerScreenState extends State<LeagueClubPickerScreen> {
   bool _isSelecting = false;
+  late List<LeagueClubOption> _options;
+
+  @override
+  void initState() {
+    super.initState();
+    _options = widget.options;
+  }
 
   Future<void> _selectClub(LeagueClubOption option) async {
     if (option.isTaken) return;
@@ -59,6 +79,24 @@ class _LeagueClubPickerScreenState extends State<LeagueClubPickerScreen> {
       }
       Navigator.of(context).pop(true);
     } catch (error) {
+      if (!mounted) return;
+      // Someone else may have taken this club between when the list was
+      // fetched and this tap (two users racing the same shared league,
+      // either via invite code or a joinable same-theme league). Re-fetch
+      // so the card flips to "taken" instead of staying tappable with
+      // stale state.
+      final code = widget.invitationCode;
+      final theme = widget.themeCode;
+      if (code != null || theme != null) {
+        try {
+          final refreshed = code != null
+              ? await context.read<GameProvider>().previewLeagueByCode(code)
+              : await context.read<GameProvider>().previewLeagueTheme(theme!);
+          if (mounted) setState(() => _options = refreshed);
+        } catch (_) {
+          // Keep showing the stale list if the refresh itself fails.
+        }
+      }
       if (!mounted) return;
       setState(() => _isSelecting = false);
       AppSnackBar.showErrorFromException(context, error);
@@ -115,8 +153,8 @@ class _LeagueClubPickerScreenState extends State<LeagueClubPickerScreen> {
   @override
   Widget build(BuildContext context) {
     final diamonds = context.watch<GameProvider>().diamonds;
-    final premiumOptions = widget.options.where((o) => o.isPremiumLocked).toList();
-    final freeOptions = widget.options.where((o) => !o.isPremiumLocked).toList()
+    final premiumOptions = _options.where((o) => o.isPremiumLocked).toList();
+    final freeOptions = _options.where((o) => !o.isPremiumLocked).toList()
       ..sort((a, b) => b.quality.compareTo(a.quality));
 
     return Scaffold(
