@@ -10,6 +10,7 @@ import '../models/player_pack.dart';
 import '../providers/game_provider.dart';
 import '../services/purchase_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/app_snackbar.dart';
 
 class MarketScreen extends StatefulWidget {
   const MarketScreen({super.key});
@@ -74,17 +75,13 @@ class _MarketScreenState extends State<MarketScreen> {
             transactionId: details.purchaseID ?? details.verificationData.serverVerificationData,
           );
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('market.diamondsAddedSuccess'.tr()), backgroundColor: AppColors.green),
-        );
+        AppSnackBar.showSuccess(context, 'market.diamondsAddedSuccess'.tr());
         setState(() => _purchasingProductId = null);
       }
       return true;
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('market.purchaseVerificationFailed'.tr(namedArgs: {'error': error.toString().replaceAll('Exception: ', '')}))),
-        );
+        AppSnackBar.showError(context, 'market.purchaseVerificationFailed'.tr(namedArgs: {'error': error.toString().replaceAll('Exception: ', '')}));
         setState(() => _purchasingProductId = null);
       }
       return false;
@@ -94,9 +91,7 @@ class _MarketScreenState extends State<MarketScreen> {
   Future<void> _buyDiamonds(DiamondProduct product) async {
     final storeProduct = _storeProducts[product.productId];
     if (storeProduct == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('market.productUnavailable'.tr())),
-      );
+      AppSnackBar.show(context, 'market.productUnavailable'.tr());
       return;
     }
     setState(() => _purchasingProductId = product.productId);
@@ -105,9 +100,7 @@ class _MarketScreenState extends State<MarketScreen> {
     } catch (error) {
       if (!mounted) return;
       setState(() => _purchasingProductId = null);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString().replaceAll('Exception: ', ''))),
-      );
+      AppSnackBar.showErrorFromException(context, error);
     }
   }
 
@@ -119,9 +112,7 @@ class _MarketScreenState extends State<MarketScreen> {
       await _showPackResultDialog(pack, newPlayers);
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString().replaceAll('Exception: ', ''))),
-      );
+      AppSnackBar.showErrorFromException(context, error);
     } finally {
       if (mounted) setState(() => _openingPackId = null);
     }
@@ -170,14 +161,10 @@ class _MarketScreenState extends State<MarketScreen> {
     try {
       await context.read<GameProvider>().purchaseConsumable(productId: product.id);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('market.consumablePurchaseSuccess'.tr(namedArgs: {'name': product.name})), backgroundColor: AppColors.green),
-      );
+      AppSnackBar.showSuccess(context, 'market.consumablePurchaseSuccess'.tr(namedArgs: {'name': product.name}));
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString().replaceAll('Exception: ', ''))),
-      );
+      AppSnackBar.showErrorFromException(context, error);
     } finally {
       if (mounted) setState(() => _purchasingConsumableId = null);
     }

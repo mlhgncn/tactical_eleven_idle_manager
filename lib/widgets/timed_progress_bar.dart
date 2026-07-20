@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
+import 'app_snackbar.dart';
 
 /// A live-updating progress bar + countdown for any timed development
 /// (player growth, sponsor/stadium/facility/ticket upgrades). [totalDuration]
@@ -68,15 +69,11 @@ class _TimedProgressBarState extends State<TimedProgressBar> {
       final earned = await onWatchAd();
       if (!mounted) return;
       if (!earned) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Reklam şu anda hazır değil, birazdan tekrar deneyin.')),
-        );
+        AppSnackBar.show(context, 'Reklam şu anda hazır değil, birazdan tekrar deneyin.');
       }
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(error.toString().replaceAll('Exception: ', ''))),
-        );
+        AppSnackBar.showErrorFromException(context, error);
       }
     } finally {
       if (mounted) setState(() => _isWatchingAd = false);

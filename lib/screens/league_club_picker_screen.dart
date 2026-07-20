@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../models/league_club_option.dart';
 import '../providers/game_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/app_snackbar.dart';
 import 'market_screen.dart';
 
 class LeagueClubPickerScreen extends StatefulWidget {
@@ -33,15 +34,34 @@ class _LeagueClubPickerScreenState extends State<LeagueClubPickerScreen> {
 
     setState(() => _isSelecting = true);
     try {
+      // Count existing clubs BEFORE switching, so we know whether this is
+      // the user's 2nd+ club and should explain the switcher - otherwise
+      // the sudden jump to a brand-new, unfamiliar club with an empty feel
+      // reads as "my old club got wiped" even though it's untouched.
+      final hadOtherClubs = context.read<GameProvider>().myClubs.isNotEmpty;
       await context.read<GameProvider>().selectClubForLeague(option.clubId);
       if (!mounted) return;
+      if (hadOtherClubs) {
+        await showDialog<void>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: Text('clubSetup.multiClubInfoTitle'.tr()),
+            content: Text('clubSetup.multiClubInfoBody'.tr()),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: Text('clubSetup.multiClubInfoOk'.tr()),
+              ),
+            ],
+          ),
+        );
+        if (!mounted) return;
+      }
       Navigator.of(context).pop(true);
     } catch (error) {
       if (!mounted) return;
       setState(() => _isSelecting = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString().replaceAll('Exception: ', ''))),
-      );
+      AppSnackBar.showErrorFromException(context, error);
     }
   }
 

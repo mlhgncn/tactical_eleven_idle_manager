@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../providers/game_provider.dart';
 import '../services/ad_service.dart';
+import '../widgets/app_snackbar.dart';
 import '../widgets/timed_progress_bar.dart';
 
 class DevelopmentScreen extends StatelessWidget {
@@ -40,15 +41,11 @@ class DevelopmentScreen extends StatelessWidget {
               targetValue: targetValue,
             );
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(startedMessage), backgroundColor: Colors.green),
-          );
+          AppSnackBar.showSuccess(context, startedMessage);
         }
       } catch (e) {
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
-          );
+          AppSnackBar.showErrorFromException(context, e);
         }
       }
     }

@@ -469,7 +469,7 @@ class GameProvider extends ChangeNotifier {
   }
 
   Future<void> _loadInboxMessages() async {
-    _inboxMessages = await _repository.loadInboxMessages();
+    _inboxMessages = await _repository.loadInboxMessages(clubId: _activeClub?.id);
   }
 
   Future<InboxMessage?> _createInboxMessage(String title, String body) async {
@@ -693,7 +693,7 @@ class GameProvider extends ChangeNotifier {
 
   Future<OpponentScoutReport> scoutOpponent(String matchId) async {
     try {
-      return await _repository.scoutOpponent(matchId);
+      return await _repository.scoutOpponent(matchId, clubId: _activeClub?.id);
     } catch (error) {
       throw Exception(_formatClubActionError(error));
     }
@@ -1095,7 +1095,7 @@ class GameProvider extends ChangeNotifier {
 
     _setBusy(true);
     try {
-      final newPlayers = await _repository.openPlayerPack(packId: packId);
+      final newPlayers = await _repository.openPlayerPack(packId: packId, clubId: _activeClub?.id);
       try {
         AnalyticsService.instance.logEvent('open_player_pack', parameters: {'pack_id': packId});
       } catch (_) {}

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/game_provider.dart';
+import '../../widgets/app_snackbar.dart';
 
 class AdminPushScreen extends StatefulWidget {
   const AdminPushScreen({super.key});
@@ -29,9 +30,9 @@ class _AdminPushScreenState extends State<AdminPushScreen> {
     final provider = context.read<GameProvider>();
     try {
       await provider.repo.adminSendPush(title: _titleController.text.trim(), body: _bodyController.text.trim(), targetUserId: _targetController.text.trim().isEmpty ? null : _targetController.text.trim());
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Bildirim kuyruğa alındı')));
+      AppSnackBar.showSuccess(context, 'Bildirim kuyruğa alındı');
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: ${e.toString().replaceAll('Exception: ', '')}')));
+      AppSnackBar.showErrorFromException(context, e);
     }
     setState(() => _loading = false);
   }

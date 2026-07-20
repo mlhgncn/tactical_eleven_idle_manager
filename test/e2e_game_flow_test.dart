@@ -230,7 +230,7 @@ class _FakeGameRepository implements GameRepository {
   Future<ClubInfo?> withdrawFromBank({required String depositId}) async => null;
 
   @override
-  Future<List<InboxMessage>> loadInboxMessages() async => List<InboxMessage>.from(_inboxMessages);
+  Future<List<InboxMessage>> loadInboxMessages({String? clubId}) async => List<InboxMessage>.from(_inboxMessages);
 
   @override
   Future<InboxMessage?> addInboxMessage({required String title, required String body}) async => null;
@@ -302,7 +302,7 @@ class _FakeGameRepository implements GameRepository {
   Future<List<PlayerPack>> loadPlayerPacks() async => <PlayerPack>[];
 
   @override
-  Future<List<PlayerFM>> openPlayerPack({required String packId}) async => <PlayerFM>[];
+  Future<List<PlayerFM>> openPlayerPack({required String packId, String? clubId}) async => <PlayerFM>[];
 
   @override
   Future<List<DiamondProduct>> loadDiamondProducts() async => <DiamondProduct>[];
@@ -445,7 +445,7 @@ class _FakeGameRepository implements GameRepository {
   }
 
   @override
-  Future<OpponentScoutReport> scoutOpponent(String matchId) async {
+  Future<OpponentScoutReport> scoutOpponent(String matchId, {String? clubId}) async {
     return OpponentScoutReport(clubId: 'opponent-club-1', players: const [], tactics: null);
   }
 

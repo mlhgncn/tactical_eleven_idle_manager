@@ -39,7 +39,7 @@ abstract class GameRepository {
   Future<PlayerFM?> startPlayerDevelopment({required String playerId});
   Future<PlayerFM?> reducePlayerDevelopmentTimeWithAd({required String playerId});
   Future<ClubInfo?> reduceClubDevelopmentTimeWithAd({required String clubId});
-  Future<List<InboxMessage>> loadInboxMessages();
+  Future<List<InboxMessage>> loadInboxMessages({String? clubId});
   Future<InboxMessage?> addInboxMessage({required String title, required String body});
   Future<Map<String, dynamic>?> awardAdReward({required String rewardType, int? amount});
   Future<List<TransferMarketItem>> loadTransferMarket();
@@ -63,7 +63,7 @@ abstract class GameRepository {
   Future<List<TransferOffer>> loadIncomingTransferOffers(String clubId);
   Future<List<TransferOffer>> loadOutgoingTransferOffers(String clubId);
   Future<List<PlayerPack>> loadPlayerPacks();
-  Future<List<PlayerFM>> openPlayerPack({required String packId});
+  Future<List<PlayerFM>> openPlayerPack({required String packId, String? clubId});
   Future<List<DiamondProduct>> loadDiamondProducts();
   Future<Map<String, dynamic>> verifyIapPurchase({
     required String receiptData,
@@ -81,7 +81,7 @@ abstract class GameRepository {
   Future<void> updateNotificationPreference(bool enabled);
   Future<bool?> loadNotificationPreference();
   Future<MatchResult?> playNextFixture();
-  Future<OpponentScoutReport> scoutOpponent(String matchId);
+  Future<OpponentScoutReport> scoutOpponent(String matchId, {String? clubId});
   Future<List<ConsumableProduct>> loadConsumableProducts();
   Future<ClubInfo?> purchaseConsumable({required String productId, String? clubId});
   Future<ClubInfo?> hideTacticsForNextMatch({String? clubId});

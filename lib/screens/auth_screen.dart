@@ -8,6 +8,7 @@ import '../services/auth_repository.dart';
 import '../services/auth_service.dart';
 import '../services/analytics_service.dart';
 import '../theme/app_assets.dart';
+import '../widgets/app_snackbar.dart';
 import '../widgets/themed_button.dart';
 
 class AuthScreen extends StatefulWidget {
@@ -177,9 +178,7 @@ class _AuthScreenState extends State<AuthScreen> {
 
   void _showSnackbar(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
-    );
+    AppSnackBar.show(context, message);
   }
 
   @override

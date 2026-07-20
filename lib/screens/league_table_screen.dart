@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../models/profile.dart';
 import '../providers/game_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/app_snackbar.dart';
 import '../widgets/club_badge.dart';
 import '../widgets/level_frame.dart';
 import 'club_roster_sheet.dart';
@@ -74,9 +75,7 @@ class LeagueTableScreen extends StatelessWidget {
                         borderRadius: BorderRadius.circular(8),
                         onTap: () {
                           Clipboard.setData(ClipboardData(text: code));
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('leagueTable.inviteCodeCopied'.tr())),
-                          );
+                          AppSnackBar.showSuccess(context, 'leagueTable.inviteCodeCopied'.tr());
                         },
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),

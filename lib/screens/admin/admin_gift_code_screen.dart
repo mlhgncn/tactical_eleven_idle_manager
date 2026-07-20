@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/game_provider.dart';
+import '../../widgets/app_snackbar.dart';
 
 class AdminGiftCodeScreen extends StatefulWidget {
   const AdminGiftCodeScreen({super.key});
@@ -27,9 +28,9 @@ class _AdminGiftCodeScreenState extends State<AdminGiftCodeScreen> {
     final provider = context.read<GameProvider>();
     try {
       await provider.repo.adminCreateGiftCode(code: _codeController.text.trim(), amount: int.parse(_amountController.text.trim()));
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Hediye kodu oluşturuldu')));
+      AppSnackBar.showSuccess(context, 'Hediye kodu oluşturuldu');
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: ${e.toString().replaceAll('Exception: ', '')}')));
+      AppSnackBar.showErrorFromException(context, e);
     }
     setState(() => _loading = false);
   }

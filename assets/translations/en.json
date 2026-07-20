@@ -50,6 +50,9 @@
       "italy": "Italy"
     },
     "pickClubTitle": "Choose Your Club",
+    "multiClubInfoTitle": "Your New Club Is Ready",
+    "multiClubInfoBody": "Your other club hasn't been deleted — its data is untouched. Use the club switcher in the main menu to move between your clubs.",
+    "multiClubInfoOk": "Got It",
     "premiumSectionTitle": "Elite Clubs",
     "freeSectionTitle": "Other Clubs",
     "qualityLabel": "Power: {quality}",
@@ -472,6 +475,8 @@
   },
   "inbox": {
     "empty": "Your inbox is empty.",
+    "justNow": "Just now",
+    "minutesAgo": "{count}m ago",
     "markFailed": "Could not mark message: {error}",
     "markedAsRead": "Message marked as read.",
     "markedAsUnread": "Message marked as unread.",

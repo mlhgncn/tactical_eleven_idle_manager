@@ -390,16 +390,25 @@ class SupabaseRepository implements GameRepository {
     });
   }
 
-  Future<List<InboxMessage>> loadInboxMessages() async {
+  Future<List<InboxMessage>> loadInboxMessages({String? clubId}) async {
     return _wrap(() async {
       final userId = currentUserId;
       if (userId == null) return <InboxMessage>[];
 
-      final data = await _client
+      var query = _client
           .from('inbox_messages')
           .select('id,title,body,is_read,created_at,related_player_id')
-          .eq('recipient_id', userId)
-          .order('created_at', ascending: false);
+          .eq('recipient_id', userId);
+
+      // club_id NULL covers account-level messages (bans, etc.) and rows
+      // inserted before this column existed - always show those alongside
+      // whichever club's own messages, so switching active club doesn't
+      // hide messages that predate per-club tracking.
+      if (clubId != null) {
+        query = query.or('club_id.eq.$clubId,club_id.is.null');
+      }
+
+      final data = await query.order('created_at', ascending: false);
 
       if (data is! List<dynamic>) return <InboxMessage>[];
 
@@ -496,9 +505,12 @@ class SupabaseRepository implements GameRepository {
     });
   }
 
-  Future<List<PlayerFM>> openPlayerPack({required String packId}) async {
+  Future<List<PlayerFM>> openPlayerPack({required String packId, String? clubId}) async {
     return _wrap(() async {
-      final data = await _client.rpc('open_player_pack', params: {'p_pack_id': packId});
+      final data = await _client.rpc('open_player_pack', params: {
+        'p_pack_id': packId,
+        if (clubId != null) 'p_club_id': clubId,
+      });
       if (data is! List<dynamic>) return <PlayerFM>[];
       return data.cast<Map<String, dynamic>>().map(PlayerFM.fromMap).toList();
     });
@@ -1092,9 +1104,12 @@ class SupabaseRepository implements GameRepository {
   }
 
   @override
-  Future<OpponentScoutReport> scoutOpponent(String matchId) async {
+  Future<OpponentScoutReport> scoutOpponent(String matchId, {String? clubId}) async {
     return _wrap(() async {
-      final data = await _client.rpc('scout_opponent', params: {'p_match_id': matchId});
+      final data = await _client.rpc('scout_opponent', params: {
+        'p_match_id': matchId,
+        if (clubId != null) 'p_club_id': clubId,
+      });
       return OpponentScoutReport.fromMap(Map<String, dynamic>.from(data as Map<String, dynamic>));
     });
   }

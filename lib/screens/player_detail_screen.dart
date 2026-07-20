@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../models/player_fm.dart';
 import '../providers/game_provider.dart';
 import '../services/ad_service.dart';
+import '../widgets/app_snackbar.dart';
 import '../widgets/player_card.dart';
 import '../widgets/themed_button.dart';
 import '../widgets/timed_progress_bar.dart';
@@ -130,14 +131,10 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                           try {
                             await provider.startPlayerDevelopment(playerId: player.id);
                             if (!mounted) return;
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('playerDetail.devStarted'.tr())),
-                            );
+                            AppSnackBar.showSuccess(context, 'playerDetail.devStarted'.tr());
                           } catch (error) {
                             if (!mounted) return;
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text(error.toString().replaceAll('Exception: ', ''))),
-                            );
+                            AppSnackBar.showErrorFromException(context, error);
                           } finally {
                             if (mounted) {
                               setState(() => isUpdating = false);
@@ -202,9 +199,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                       } catch (error) {
                         if (!mounted) return;
                         setState(() => isReleasing = false);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text(error.toString().replaceAll('Exception: ', ''))),
-                        );
+                        AppSnackBar.showErrorFromException(context, error);
                       }
                     },
               style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
@@ -246,14 +241,10 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                               try {
                                 await provider.respondToTransferOffer(offerId: offer.id, accept: true);
                                 if (!mounted) return;
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('transferMarket.offerAccepted'.tr())),
-                                );
+                                AppSnackBar.showSuccess(context, 'transferMarket.offerAccepted'.tr());
                               } catch (error) {
                                 if (!mounted) return;
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text(error.toString().replaceAll('Exception: ', ''))),
-                                );
+                                AppSnackBar.showErrorFromException(context, error);
                               }
                             },
                             label: 'transferOffer.accept'.tr(),
@@ -266,14 +257,10 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                               try {
                                 await provider.respondToTransferOffer(offerId: offer.id, accept: false);
                                 if (!mounted) return;
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('transferMarket.offerRejected'.tr())),
-                                );
+                                AppSnackBar.showSuccess(context, 'transferMarket.offerRejected'.tr());
                               } catch (error) {
                                 if (!mounted) return;
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text(error.toString().replaceAll('Exception: ', ''))),
-                                );
+                                AppSnackBar.showErrorFromException(context, error);
                               }
                             },
                             label: 'transferOffer.reject'.tr(),
@@ -310,14 +297,10 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                         try {
                           await provider.withdrawTransferListing(playerId: player.id);
                           if (!mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('playerDetail.removedFromMarket'.tr())),
-                          );
+                          AppSnackBar.showSuccess(context, 'playerDetail.removedFromMarket'.tr());
                         } catch (error) {
                           if (!mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(error.toString())),
-                          );
+                          AppSnackBar.showErrorFromException(context, error);
                         } finally {
                           if (mounted) setState(() => isWithdrawing = false);
                         }
@@ -353,9 +336,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                   : () async {
                       final askingPrice = int.tryParse(_askingPriceController.text.trim());
                       if (askingPrice == null || askingPrice <= 0) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('playerDetail.enterValidPrice'.tr())),
-                        );
+                        AppSnackBar.show(context, 'playerDetail.enterValidPrice'.tr());
                         return;
                       }
                       setState(() => isListing = true);
@@ -365,14 +346,10 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                           askingPrice: askingPrice,
                         );
                         if (!mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('playerDetail.listedOnMarket'.tr())),
-                        );
+                        AppSnackBar.showSuccess(context, 'playerDetail.listedOnMarket'.tr());
                       } catch (error) {
                         if (!mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text(error.toString())),
-                        );
+                        AppSnackBar.showErrorFromException(context, error);
                       } finally {
                         if (mounted) setState(() => isListing = false);
                       }

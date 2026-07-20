@@ -7,6 +7,7 @@ import 'package:easy_localization/easy_localization.dart';
 import '../services/auth_service.dart';
 import '../services/notification_service.dart';
 import '../theme/app_assets.dart';
+import '../widgets/app_snackbar.dart';
 
 import '../providers/game_provider.dart';
 import 'club_finance_screen.dart';
@@ -52,9 +53,7 @@ class _RootShellState extends State<RootShell> {
     // Wire notification service to show UI SnackBars
     NotificationService.instance.onSendNotification = (title, body) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$title: $body')),
-      );
+      AppSnackBar.show(context, '$title: $body');
     };
 
     // App-wide check for the "30 minutes to kickoff" reminder, independent
@@ -130,11 +129,7 @@ class _RootShellState extends State<RootShell> {
 
   void _onItemTapped(int index, {required bool hasActiveClub}) {
     if (index == 4 && !hasActiveClub) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('navigation.transfer_required'.tr()),
-        ),
-      );
+      AppSnackBar.show(context, 'navigation.transfer_required'.tr());
       return;
     }
 

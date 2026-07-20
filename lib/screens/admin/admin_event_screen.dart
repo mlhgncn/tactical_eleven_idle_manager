@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/game_provider.dart';
+import '../../widgets/app_snackbar.dart';
 
 class AdminEventScreen extends StatefulWidget {
   const AdminEventScreen({super.key});
@@ -27,9 +28,9 @@ class _AdminEventScreenState extends State<AdminEventScreen> {
     final provider = context.read<GameProvider>();
     try {
       await provider.repo.adminCreateEvent(title: _titleController.text.trim(), body: _bodyController.text.trim());
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Etkinlik oluşturuldu')));
+      AppSnackBar.showSuccess(context, 'Etkinlik oluşturuldu');
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: ${e.toString().replaceAll('Exception: ', '')}')));
+      AppSnackBar.showErrorFromException(context, e);
     }
     setState(() => _loading = false);
   }

@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../models/club_info.dart';
 import '../providers/game_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/app_snackbar.dart';
 import 'setup_club_screen.dart';
 
 /// Shown once, right after entering the app, when the active club's league
@@ -67,9 +68,7 @@ class _SeasonEndScreenState extends State<SeasonEndScreen> {
     } catch (error) {
       if (!mounted) return;
       setState(() => _isSubmitting = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString().replaceAll('Exception: ', ''))),
-      );
+      AppSnackBar.showErrorFromException(context, error);
     }
   }
 
@@ -84,9 +83,7 @@ class _SeasonEndScreenState extends State<SeasonEndScreen> {
     } catch (error) {
       if (!mounted) return;
       setState(() => _isSubmitting = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString().replaceAll('Exception: ', ''))),
-      );
+      AppSnackBar.showErrorFromException(context, error);
     }
   }
 

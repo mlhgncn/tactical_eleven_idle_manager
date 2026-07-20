@@ -8,6 +8,7 @@ import '../providers/game_provider.dart';
 import '../services/ad_service.dart';
 import '../theme/app_assets.dart';
 import '../theme/app_theme.dart';
+import '../widgets/app_snackbar.dart';
 import '../widgets/timed_progress_bar.dart';
 import 'player_detail_screen.dart';
 
@@ -358,9 +359,7 @@ class SquadScreen extends StatelessWidget {
     );
     provider.saveTactics(updated).catchError((error) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('squad.formationSaveFailed'.tr(namedArgs: {'error': error.toString()}))),
-        );
+        AppSnackBar.showError(context, 'squad.formationSaveFailed'.tr(namedArgs: {'error': error.toString()}));
       }
     });
   }
@@ -396,11 +395,7 @@ class SquadScreen extends StatelessWidget {
 
   void _swapIntoLineup(BuildContext context, GameProvider provider, List<PlayerFM?> starters, PlayerFM benchPlayer) {
     if (benchPlayer.hasActiveInjury) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('squad.cannotAddToLineup'.tr(namedArgs: {'name': benchPlayer.name, 'reason': benchPlayer.injuryDisplayLabel})),
-        ),
-      );
+      AppSnackBar.show(context, 'squad.cannotAddToLineup'.tr(namedArgs: {'name': benchPlayer.name, 'reason': benchPlayer.injuryDisplayLabel}));
       return;
     }
     showModalBottomSheet(
@@ -458,9 +453,7 @@ class SquadScreen extends StatelessWidget {
   void _resetLineup(BuildContext context, GameProvider provider, List<PlayerFM> squad, List<_FormationSlot> slots) {
     final autoPicked = _pickStartingXI(squad, slots);
     _saveLineup(context, provider, autoPicked);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('squad.lineupReset'.tr())),
-    );
+    AppSnackBar.showSuccess(context, 'squad.lineupReset'.tr());
   }
 
   void _saveLineup(BuildContext context, GameProvider provider, List<PlayerFM?> newLineup) {
@@ -485,9 +478,7 @@ class SquadScreen extends StatelessWidget {
     );
     provider.saveTactics(updated).catchError((error) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('squad.lineupSaveFailed'.tr(namedArgs: {'error': error.toString()}))),
-        );
+        AppSnackBar.showError(context, 'squad.lineupSaveFailed'.tr(namedArgs: {'error': error.toString()}));
       }
     });
   }

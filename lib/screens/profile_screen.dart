@@ -10,6 +10,7 @@ import '../models/profile.dart';
 import '../providers/game_provider.dart';
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/app_snackbar.dart';
 import '../widgets/level_frame.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -55,9 +56,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _updateUsername() async {
     final newUsername = _usernameController.text.trim();
     if (newUsername.length < 3) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('auth.username_short'.tr())),
-      );
+      AppSnackBar.show(context, 'auth.username_short'.tr());
       return;
     }
 
@@ -65,14 +64,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       await context.read<GameProvider>().updateUsername(newUsername);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('profile.usernameUpdated'.tr())),
-      );
+      AppSnackBar.showSuccess(context, 'profile.usernameUpdated'.tr());
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString().replaceAll('Exception: ', ''))),
-      );
+      AppSnackBar.showErrorFromException(context, error);
     } finally {
       if (mounted) setState(() => _isUpdatingUsername = false);
     }
@@ -81,9 +76,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _updateEmail() async {
     final newEmail = _emailController.text.trim();
     if (newEmail.isEmpty || !newEmail.contains('@')) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('profile.invalidEmail'.tr())),
-      );
+      AppSnackBar.show(context, 'profile.invalidEmail'.tr());
       return;
     }
 
@@ -91,14 +84,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       await _authService.updateEmail(newEmail);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('profile.emailUpdateSent'.tr())),
-      );
+      AppSnackBar.showSuccess(context, 'profile.emailUpdateSent'.tr());
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString().replaceAll('Exception: ', ''))),
-      );
+      AppSnackBar.showErrorFromException(context, error);
     } finally {
       if (mounted) setState(() => _isUpdatingEmail = false);
     }
@@ -107,15 +96,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _updatePassword() async {
     final newPassword = _passwordController.text;
     if (newPassword.length < 6) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('profile.passwordTooShort'.tr())),
-      );
+      AppSnackBar.show(context, 'profile.passwordTooShort'.tr());
       return;
     }
     if (newPassword != _confirmPasswordController.text) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('profile.passwordsMismatch'.tr())),
-      );
+      AppSnackBar.show(context, 'profile.passwordsMismatch'.tr());
       return;
     }
 
@@ -125,14 +110,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (!mounted) return;
       _passwordController.clear();
       _confirmPasswordController.clear();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('profile.passwordUpdated'.tr())),
-      );
+      AppSnackBar.showSuccess(context, 'profile.passwordUpdated'.tr());
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString().replaceAll('Exception: ', ''))),
-      );
+      AppSnackBar.showErrorFromException(context, error);
     } finally {
       if (mounted) setState(() => _isUpdatingPassword = false);
     }
@@ -149,14 +130,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final extension = picked.path.split('.').last.toLowerCase();
       await context.read<GameProvider>().uploadAndSetAvatar(bytes, extension);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('profile.avatarUpdated'.tr())),
-      );
+      AppSnackBar.showSuccess(context, 'profile.avatarUpdated'.tr());
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString().replaceAll('Exception: ', ''))),
-      );
+      AppSnackBar.showErrorFromException(context, error);
     } finally {
       if (mounted) setState(() => _isUploadingAvatar = false);
     }
@@ -167,14 +144,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       await context.read<GameProvider>().claimAchievementReward(achievement);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('profile.achievementClaimed'.tr()), backgroundColor: AppColors.green),
-      );
+      AppSnackBar.showSuccess(context, 'profile.achievementClaimed'.tr());
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString().replaceAll('Exception: ', ''))),
-      );
+      AppSnackBar.showErrorFromException(context, error);
     } finally {
       if (mounted) setState(() => _claimingAchievement = null);
     }
@@ -190,14 +163,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final message = diamonds > 0
           ? 'profile.dailyClaimedDiamonds'.tr(namedArgs: {'count': diamonds.toString()})
           : 'profile.dailyClaimedGp'.tr(namedArgs: {'count': gp.toString()});
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message), backgroundColor: AppColors.green),
-      );
+      AppSnackBar.showSuccess(context, message);
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString().replaceAll('Exception: ', ''))),
-      );
+      AppSnackBar.showErrorFromException(context, error);
     } finally {
       if (mounted) setState(() => _isClaimingDaily = false);
     }
@@ -213,14 +182,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       await context.read<GameProvider>().claimSocialReward(platform);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('profile.socialRewardClaimed'.tr()), backgroundColor: AppColors.green),
-      );
+      AppSnackBar.showSuccess(context, 'profile.socialRewardClaimed'.tr());
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString().replaceAll('Exception: ', ''))),
-      );
+      AppSnackBar.showErrorFromException(context, error);
     } finally {
       if (mounted) setState(() => _claimingSocial = null);
     }

@@ -561,6 +561,18 @@ export async function resolveMatch(
   const awayTactic = tacticMap.get(matchRow.away_club_id) ?? { ...DEFAULT_TACTIC };
 
   const allPlayers: PlayerRow[] = playerRows ?? [];
+
+  // A red card is a 1-match ban - since nothing else ever clears
+  // is_suspended, clear it for anyone carrying it into this match (their
+  // ban has now been served) before picking today's lineup/bench.
+  const suspendedIds = allPlayers.filter((p) => p.is_suspended).map((p) => p.id);
+  if (suspendedIds.length > 0) {
+    await supabase.from('players').update({ is_suspended: false }).in('id', suspendedIds);
+    for (const p of allPlayers) {
+      if (suspendedIds.includes(p.id)) p.is_suspended = false;
+    }
+  }
+
   const homeClubPlayers = allPlayers.filter((p) => p.club_id === matchRow.home_club_id);
   const awayClubPlayers = allPlayers.filter((p) => p.club_id === matchRow.away_club_id);
 
@@ -663,6 +675,13 @@ export async function resolveMatch(
           side === 'home' ? matchRow.home_club_id : matchRow.away_club_id, player.id, null,
           `${player.name} ${cardType === 'red_card' ? 'kırmızı kart gördü' : 'sarı kart gördü'}.`,
         ));
+        // Only a red card is an actual disciplinary suspension (next-match
+        // ban) - this used to never fire at all, while every injury below
+        // was incorrectly marking is_suspended, so injured (not suspended)
+        // players displayed a "Cezalı" (suspended) label in the UI.
+        if (cardType === 'red_card') {
+          await supabase.from('players').update({ is_suspended: true }).eq('id', player.id);
+        }
       }
     }
   }
@@ -675,7 +694,6 @@ export async function resolveMatch(
     await supabase.from('players').update({
       injury_duration_weeks: injury.duration,
       injury_type: injury.injuryType,
-      is_suspended: true,
       fitness: nextFitness,
       morale: nextMorale,
     }).eq('id', player.id);

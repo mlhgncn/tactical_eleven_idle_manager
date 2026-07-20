@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../providers/game_provider.dart';
 import '../services/auth_service.dart';
 import '../services/notification_service.dart';
+import '../widgets/app_snackbar.dart';
 import 'profile_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -159,9 +160,7 @@ class _SettingsBodyState extends State<_SettingsBody> {
       Navigator.of(context).pushNamedAndRemoveUntil('/setup-club', (route) => false);
     } catch (error) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(error.toString().replaceAll('Exception: ', ''))),
-        );
+        AppSnackBar.showErrorFromException(context, error);
       }
     } finally {
       if (mounted) setState(() => _isLeaving = false);
@@ -198,9 +197,7 @@ class _SettingsBodyState extends State<_SettingsBody> {
       Navigator.of(context).pushNamedAndRemoveUntil('/auth', (route) => false);
     } catch (error) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(error.toString().replaceAll('Exception: ', ''))),
-        );
+        AppSnackBar.showErrorFromException(context, error);
       }
     } finally {
       if (mounted) setState(() => _isDeletingAccount = false);

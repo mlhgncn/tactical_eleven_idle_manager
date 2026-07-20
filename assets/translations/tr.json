@@ -50,6 +50,9 @@
       "italy": "İtalya"
     },
     "pickClubTitle": "Kulübünü Seç",
+    "multiClubInfoTitle": "Yeni Kulübün Hazır",
+    "multiClubInfoBody": "Diğer kulübün silinmedi, veriler yerinde duruyor. Kulüpler arasında geçiş yapmak için ana menüdeki kulüp değiştiriciyi kullanabilirsin.",
+    "multiClubInfoOk": "Anladım",
     "premiumSectionTitle": "Elit Kulüpler",
     "freeSectionTitle": "Diğer Kulüpler",
     "qualityLabel": "Güç: {quality}",
@@ -472,6 +475,8 @@
   },
   "inbox": {
     "empty": "Gelen kutunuz boş.",
+    "justNow": "Az önce",
+    "minutesAgo": "{count} dk önce",
     "markFailed": "Mesaj işaretlenemedi: {error}",
     "markedAsRead": "Mesaj okundu olarak işaretlendi.",
     "markedAsUnread": "Mesaj okunmadı olarak işaretlendi.",

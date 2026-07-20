@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../models/bank.dart';
 import '../providers/game_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/app_snackbar.dart';
 import '../widgets/themed_button.dart';
 
 class BankScreen extends StatefulWidget {
@@ -69,14 +70,10 @@ class _BankScreenState extends State<BankScreen> {
     try {
       await context.read<GameProvider>().depositToBank(bankId: bank.id, amount: amount);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('bank.depositSuccess'.tr())),
-      );
+      AppSnackBar.showSuccess(context, 'bank.depositSuccess'.tr());
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString().replaceAll('Exception: ', ''))),
-      );
+      AppSnackBar.showErrorFromException(context, error);
     } finally {
       if (mounted) setState(() => _isBusy = false);
     }
@@ -87,14 +84,10 @@ class _BankScreenState extends State<BankScreen> {
     try {
       await context.read<GameProvider>().withdrawFromBank(depositId: depositId);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('bank.withdrawSuccess'.tr())),
-      );
+      AppSnackBar.showSuccess(context, 'bank.withdrawSuccess'.tr());
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString().replaceAll('Exception: ', ''))),
-      );
+      AppSnackBar.showErrorFromException(context, error);
     } finally {
       if (mounted) setState(() => _isBusy = false);
     }

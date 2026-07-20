@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../providers/game_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/app_snackbar.dart';
 import '../widgets/free_agent_card.dart';
 import '../widgets/transfer_market_card.dart';
 import '../widgets/transfer_offer_card.dart';
@@ -88,14 +89,10 @@ class _TransferMarketScreenState extends State<TransferMarketScreen> {
     try {
       await context.read<GameProvider>().makeTransferOffer(playerId: playerId, offerAmount: amount);
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('transferMarket.offerSent'.tr())),
-      );
+      AppSnackBar.showSuccess(context, 'transferMarket.offerSent'.tr());
     } catch (error) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString().replaceAll('Exception: ', ''))),
-      );
+      AppSnackBar.showErrorFromException(context, error);
     }
   }
 
@@ -280,14 +277,10 @@ class _TransferMarketScreenState extends State<TransferMarketScreen> {
                                         try {
                                           await context.read<GameProvider>().withdrawTransferListing(playerId: item.playerId);
                                           if (!context.mounted) return;
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            SnackBar(content: Text('transferMarket.listingRemoved'.tr())),
-                                          );
+                                          AppSnackBar.showSuccess(context, 'transferMarket.listingRemoved'.tr());
                                         } catch (error) {
                                           if (!context.mounted) return;
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            SnackBar(content: Text(error.toString().replaceAll('Exception: ', ''))),
-                                          );
+                                          AppSnackBar.showErrorFromException(context, error);
                                         }
                                       },
                                       onMakeOffer: (amount) async {
@@ -297,14 +290,10 @@ class _TransferMarketScreenState extends State<TransferMarketScreen> {
                                                 offerAmount: amount,
                                               );
                                           if (!context.mounted) return;
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            SnackBar(content: Text('transferMarket.offerSent'.tr())),
-                                          );
+                                          AppSnackBar.showSuccess(context, 'transferMarket.offerSent'.tr());
                                         } catch (error) {
                                           if (!context.mounted) return;
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            SnackBar(content: Text(error.toString().replaceAll('Exception: ', ''))),
-                                          );
+                                          AppSnackBar.showErrorFromException(context, error);
                                         }
                                       },
                                     );
@@ -344,14 +333,10 @@ class _TransferMarketScreenState extends State<TransferMarketScreen> {
                                         try {
                                           await context.read<GameProvider>().signFreeAgent(playerId: player.id);
                                           if (!context.mounted) return;
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            SnackBar(content: Text('transferMarket.playerJoinedSquad'.tr(namedArgs: {'name': player.name}))),
-                                          );
+                                          AppSnackBar.showSuccess(context, 'transferMarket.playerJoinedSquad'.tr(namedArgs: {'name': player.name}));
                                         } catch (error) {
                                           if (!context.mounted) return;
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            SnackBar(content: Text(error.toString().replaceAll('Exception: ', ''))),
-                                          );
+                                          AppSnackBar.showErrorFromException(context, error);
                                         }
                                       },
                                     );
@@ -391,14 +376,10 @@ class _TransferMarketScreenState extends State<TransferMarketScreen> {
                                               accept: accept,
                                             );
                                         if (!context.mounted) return;
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(content: Text(accept ? 'transferMarket.offerAccepted'.tr() : 'transferMarket.offerRejected'.tr())),
-                                        );
+                                        AppSnackBar.showSuccess(context, accept ? 'transferMarket.offerAccepted'.tr() : 'transferMarket.offerRejected'.tr());
                                       } catch (error) {
                                         if (!context.mounted) return;
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(content: Text(error.toString().replaceAll('Exception: ', ''))),
-                                        );
+                                        AppSnackBar.showErrorFromException(context, error);
                                       }
                                     },
                                   ),
@@ -416,14 +397,10 @@ class _TransferMarketScreenState extends State<TransferMarketScreen> {
                                       try {
                                         await context.read<GameProvider>().withdrawTransferOffer(offerId: offer.id);
                                         if (!context.mounted) return;
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(content: Text('transferMarket.offerWithdrawn'.tr())),
-                                        );
+                                        AppSnackBar.showSuccess(context, 'transferMarket.offerWithdrawn'.tr());
                                       } catch (error) {
                                         if (!context.mounted) return;
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(content: Text(error.toString().replaceAll('Exception: ', ''))),
-                                        );
+                                        AppSnackBar.showErrorFromException(context, error);
                                       }
                                     },
                                     onReoffer: () => _showReofferDialog(context, offer.playerId, offer.playerName, offer.offerAmount),

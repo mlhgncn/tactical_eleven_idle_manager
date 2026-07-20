@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../models/club_info.dart';
 import '../providers/game_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/app_snackbar.dart';
 import 'setup_club_screen.dart';
 
 /// Lists every league (club) the current user owns (up to 4) and lets them
@@ -30,9 +31,7 @@ class _LeagueSelectorScreenState extends State<LeagueSelectorScreen> {
     } catch (error) {
       if (!mounted) return;
       setState(() => _isSwitching = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString().replaceAll('Exception: ', ''))),
-      );
+      AppSnackBar.showErrorFromException(context, error);
     }
   }
 

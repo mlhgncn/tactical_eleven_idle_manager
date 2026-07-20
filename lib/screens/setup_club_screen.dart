@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../providers/game_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/app_snackbar.dart';
 import '../widgets/themed_button.dart';
 import 'league_club_picker_screen.dart';
 
@@ -36,17 +37,13 @@ class _SetupClubScreenState extends State<SetupClubScreen> {
     } catch (error) {
       if (!mounted) return;
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('clubSetup.errors.createLeague'.tr(namedArgs: {'error': error.toString()}))),
-      );
+      AppSnackBar.showError(context, 'clubSetup.errors.createLeague'.tr(namedArgs: {'error': error.toString()}));
     }
   }
 
   Future<void> _joinLeague() async {
     if (_invitationCodeController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('clubSetup.errors.codeRequired'.tr())),
-      );
+      AppSnackBar.show(context, 'clubSetup.errors.codeRequired'.tr());
       return;
     }
     setState(() => _isLoading = true);
@@ -62,9 +59,7 @@ class _SetupClubScreenState extends State<SetupClubScreen> {
     } catch (error) {
       if (!mounted) return;
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('clubSetup.errors.joinLeague'.tr(namedArgs: {'error': error.toString()}))),
-      );
+      AppSnackBar.showError(context, 'clubSetup.errors.joinLeague'.tr(namedArgs: {'error': error.toString()}));
     }
   }
 

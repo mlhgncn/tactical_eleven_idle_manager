@@ -7,6 +7,7 @@ import '../models/player_fm.dart';
 import '../models/tactics.dart';
 import '../providers/game_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/app_snackbar.dart';
 import '../widgets/themed_button.dart';
 
 String _initialsOf(String name) {
@@ -62,14 +63,10 @@ class _TacticsScreenState extends State<TacticsScreen> {
     try {
       await context.read<GameProvider>().saveTactics(_tactics);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('tactics.savedSuccess'.tr()), backgroundColor: AppColors.green),
-      );
+      AppSnackBar.showSuccess(context, 'tactics.savedSuccess'.tr());
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('tactics.saveFailed'.tr(namedArgs: {'error': error.toString()}))),
-      );
+      AppSnackBar.showError(context, 'tactics.saveFailed'.tr(namedArgs: {'error': error.toString()}));
     } finally {
       if (mounted) {
         setState(() => _isSaving = false);

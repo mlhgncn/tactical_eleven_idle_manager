@@ -8,6 +8,7 @@ import '../models/match_fixture.dart';
 import '../providers/game_provider.dart';
 import '../theme/app_assets.dart';
 import '../theme/app_theme.dart';
+import '../widgets/app_snackbar.dart';
 import '../widgets/club_badge.dart';
 import '../widgets/form_strip.dart';
 import '../widgets/themed_button.dart';
@@ -334,9 +335,7 @@ class _MatchCardState extends State<_MatchCard> {
       ));
     } catch (error) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString().replaceAll('Exception: ', ''))),
-      );
+      AppSnackBar.showErrorFromException(context, error);
     } finally {
       if (mounted) setState(() => _isScouting = false);
     }
@@ -347,14 +346,10 @@ class _MatchCardState extends State<_MatchCard> {
     try {
       await context.read<GameProvider>().hideTacticsForNextMatch();
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('dashboard.tacticsHiddenSuccess'.tr())),
-      );
+      AppSnackBar.showSuccess(context, 'dashboard.tacticsHiddenSuccess'.tr());
     } catch (error) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString().replaceAll('Exception: ', ''))),
-      );
+      AppSnackBar.showErrorFromException(context, error);
     } finally {
       if (mounted) setState(() => _isHidingTactics = false);
     }
@@ -365,14 +360,10 @@ class _MatchCardState extends State<_MatchCard> {
     try {
       await context.read<GameProvider>().sendTeamToCamp();
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('dashboard.campSentSuccess'.tr())),
-      );
+      AppSnackBar.showSuccess(context, 'dashboard.campSentSuccess'.tr());
     } catch (error) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString().replaceAll('Exception: ', ''))),
-      );
+      AppSnackBar.showErrorFromException(context, error);
     } finally {
       if (mounted) setState(() => _isSendingToCamp = false);
     }

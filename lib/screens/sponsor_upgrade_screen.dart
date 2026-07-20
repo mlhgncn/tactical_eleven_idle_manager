@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../providers/game_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/app_snackbar.dart';
 import '../widgets/timed_progress_bar.dart';
 
 class SponsorUpgradeScreen extends StatefulWidget {
@@ -28,20 +29,17 @@ class _SponsorUpgradeScreenState extends State<SponsorUpgradeScreen> {
     try {
       await provider.upgradeSponsor();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('sponsor.upgradeStartedSuccess'.tr()),
-            backgroundColor: AppColors.green,
-            duration: const Duration(seconds: 2),
-          ),
+        AppSnackBar.show(
+          context,
+          'sponsor.upgradeStartedSuccess'.tr(),
+          isError: false,
+          duration: const Duration(seconds: 2),
         );
       }
     } catch (e) {
       if (mounted) {
         final msg = e.toString().replaceAll('Exception: ', '');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(msg)),
-        );
+        AppSnackBar.showError(context, msg);
         setState(() {
           _errorMessage = msg;
         });

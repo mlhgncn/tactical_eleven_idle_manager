@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/game_provider.dart';
+import '../../widgets/app_snackbar.dart';
 
 class AdminPlayerEditScreen extends StatefulWidget {
   const AdminPlayerEditScreen({super.key});
@@ -42,9 +43,9 @@ class _AdminPlayerEditScreenState extends State<AdminPlayerEditScreen> {
         currentAbility: _currentAbilityController.text.trim().isEmpty ? null : int.parse(_currentAbilityController.text.trim()),
         potentialAbility: _potentialAbilityController.text.trim().isEmpty ? null : int.parse(_potentialAbilityController.text.trim()),
       );
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Oyuncu güncellendi')));
+      AppSnackBar.showSuccess(context, 'Oyuncu güncellendi');
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: ${e.toString().replaceAll('Exception: ', '')}')));
+      AppSnackBar.showErrorFromException(context, e);
     }
     setState(() => _loading = false);
   }
