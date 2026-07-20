@@ -369,11 +369,12 @@ class SupabaseRepository implements GameRepository {
     });
   }
 
-  Future<BankDeposit?> depositToBank({required String bankId, required int amount}) async {
+  Future<BankDeposit?> depositToBank({required String bankId, required int amount, String? clubId}) async {
     return _wrap(() async {
       final response = await _client.rpc('deposit_to_bank', params: {
         'p_bank_id': bankId,
         'p_amount': amount,
+        if (clubId != null) 'p_club_id': clubId,
       }).single();
       if (response == null) return null;
       return BankDeposit.fromMap(response as Map<String, dynamic>);
@@ -482,10 +483,11 @@ class SupabaseRepository implements GameRepository {
     });
   }
 
-  Future<ClubInfo?> signFreeAgent({required String playerId}) async {
+  Future<ClubInfo?> signFreeAgent({required String playerId, String? clubId}) async {
     return _wrap(() async {
       final updated = await _client.rpc('sign_free_agent', params: {
         'p_player_id': playerId,
+        if (clubId != null) 'p_club_id': clubId,
       }).single();
 
       if (updated == null) return null;
@@ -566,11 +568,12 @@ class SupabaseRepository implements GameRepository {
     });
   }
 
-  Future<TransferOffer?> makeTransferOffer({required String playerId, required int offerAmount}) async {
+  Future<TransferOffer?> makeTransferOffer({required String playerId, required int offerAmount, String? clubId}) async {
     return _wrap(() async {
       final created = await _client.rpc('make_transfer_offer', params: {
         'p_player_id': playerId,
         'p_offer_amount': offerAmount,
+        if (clubId != null) 'p_club_id': clubId,
       }).select('id,player_id,from_club_id,to_club_id,offer_amount,status,created_at,responded_at,player:players(name),from_club:clubs!from_club_id(name),to_club:clubs!to_club_id(name)').single();
 
       if (created == null) return null;

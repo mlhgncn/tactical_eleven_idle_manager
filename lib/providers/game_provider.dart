@@ -156,7 +156,7 @@ class GameProvider extends ChangeNotifier {
 
   Future<void> depositToBank({required String bankId, required int amount}) async {
     try {
-      await _repository.depositToBank(bankId: bankId, amount: amount);
+      await _repository.depositToBank(bankId: bankId, amount: amount, clubId: _activeClub?.id);
       await loadBankData();
       final refreshedClub = await _repository.loadActiveClub(clubId: _activeClub?.id);
       if (refreshedClub != null) _activeClub = refreshedClub;
@@ -1025,7 +1025,7 @@ class GameProvider extends ChangeNotifier {
 
     _setBusy(true);
     try {
-      final offer = await _repository.makeTransferOffer(playerId: playerId, offerAmount: offerAmount);
+      final offer = await _repository.makeTransferOffer(playerId: playerId, offerAmount: offerAmount, clubId: _activeClub?.id);
       try {
         AnalyticsService.instance.logEvent('transfer_offer_made', parameters: {
           'player_id': playerId,
@@ -1074,7 +1074,7 @@ class GameProvider extends ChangeNotifier {
 
     _setBusy(true);
     try {
-      final updatedClub = await _repository.signFreeAgent(playerId: playerId);
+      final updatedClub = await _repository.signFreeAgent(playerId: playerId, clubId: _activeClub?.id);
       if (updatedClub != null) {
         _activeClub = updatedClub;
       }

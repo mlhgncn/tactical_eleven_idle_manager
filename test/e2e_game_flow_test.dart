@@ -224,7 +224,7 @@ class _FakeGameRepository implements GameRepository {
   Future<List<BankDeposit>> loadBankDeposits(String clubId) async => [];
 
   @override
-  Future<BankDeposit?> depositToBank({required String bankId, required int amount}) async => null;
+  Future<BankDeposit?> depositToBank({required String bankId, required int amount, String? clubId}) async => null;
 
   @override
   Future<ClubInfo?> withdrawFromBank({required String depositId}) async => null;
@@ -281,10 +281,10 @@ class _FakeGameRepository implements GameRepository {
   Future<List<PlayerFM>> loadFreeAgents() async => <PlayerFM>[];
 
   @override
-  Future<ClubInfo?> signFreeAgent({required String playerId}) async => null;
+  Future<ClubInfo?> signFreeAgent({required String playerId, String? clubId}) async => null;
 
   @override
-  Future<TransferOffer?> makeTransferOffer({required String playerId, required int offerAmount}) async => null;
+  Future<TransferOffer?> makeTransferOffer({required String playerId, required int offerAmount, String? clubId}) async => null;
 
   @override
   Future<void> respondToTransferOffer({required String offerId, required bool accept}) async {}

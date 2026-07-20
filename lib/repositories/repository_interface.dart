@@ -34,7 +34,7 @@ abstract class GameRepository {
   Future<PlayerFM?> loadPlayerById(String playerId);
   Future<List<Bank>> loadBanks();
   Future<List<BankDeposit>> loadBankDeposits(String clubId);
-  Future<BankDeposit?> depositToBank({required String bankId, required int amount});
+  Future<BankDeposit?> depositToBank({required String bankId, required int amount, String? clubId});
   Future<ClubInfo?> withdrawFromBank({required String depositId});
   Future<PlayerFM?> startPlayerDevelopment({required String playerId});
   Future<PlayerFM?> reducePlayerDevelopmentTimeWithAd({required String playerId});
@@ -56,8 +56,8 @@ abstract class GameRepository {
   Future<void> withdrawTransferListing({required String playerId});
   Future<List<TransferHistoryEntry>> loadTransferHistory(String clubId);
   Future<List<PlayerFM>> loadFreeAgents();
-  Future<ClubInfo?> signFreeAgent({required String playerId});
-  Future<TransferOffer?> makeTransferOffer({required String playerId, required int offerAmount});
+  Future<ClubInfo?> signFreeAgent({required String playerId, String? clubId});
+  Future<TransferOffer?> makeTransferOffer({required String playerId, required int offerAmount, String? clubId});
   Future<void> respondToTransferOffer({required String offerId, required bool accept});
   Future<void> withdrawTransferOffer({required String offerId});
   Future<List<TransferOffer>> loadIncomingTransferOffers(String clubId);
