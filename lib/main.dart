@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:app_tracking_transparency/app_tracking_transparency.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -43,6 +44,15 @@ Future<void> main() async {
     ErrorReportingService.report(details.exception, details.stack, reason: 'FlutterError');
   };
   await AnalyticsService.instance.initialize();
+
+  // Apple requires the ATT prompt to appear before any data that could be
+  // used to track the user is collected - AdMob's SDK reads the IDFA as
+  // soon as it initializes, so this must be requested (and awaited) first.
+  if (Platform.isIOS) {
+    if (await AppTrackingTransparency.trackingAuthorizationStatus == TrackingStatus.notDetermined) {
+      await AppTrackingTransparency.requestTrackingAuthorization();
+    }
+  }
   unawaited(AdService.instance.initialize());
 
   runZonedGuarded(() {
