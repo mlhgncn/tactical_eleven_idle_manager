@@ -68,14 +68,20 @@ class Tactics {
   }
 
   Map<String, dynamic> toMap() {
+    // These four are uuid columns server-side - an empty string (which
+    // fromMap produces for "no player picked yet" when the DB value is
+    // NULL) is not a valid uuid and Postgres rejects it with 22P02
+    // ("invalid input syntax for type uuid") on save. Send NULL instead
+    // whenever no real player id was ever assigned.
+    String? orNull(String value) => value.isEmpty ? null : value;
     return {
       'club_id': clubId,
       'formation': formation.name,
       'mentality': mentality.name,
-      'captain_id': captainId,
-      'penalty_taker_id': penaltyTakerId,
-      'free_kick_taker_id': freeKickTakerId,
-      'corner_taker_id': cornerTakerId,
+      'captain_id': orNull(captainId),
+      'penalty_taker_id': orNull(penaltyTakerId),
+      'free_kick_taker_id': orNull(freeKickTakerId),
+      'corner_taker_id': orNull(cornerTakerId),
       'press_intensity': pressIntensity,
       'tempo': tempo,
       'defensive_line': defensiveLine,
