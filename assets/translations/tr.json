@@ -5,6 +5,18 @@
     "empty": "Henüz sıralamaya girecek kimse yok.",
     "statsLine": "{titles} şampiyonluk · {wins} galibiyet"
   },
+  "weeklyQuests": {
+    "title": "Haftalık Görevler",
+    "dashboardSubtitle": "Ödülleri gör",
+    "subtitle": "Bu hafta tamamla, ödülünü topla. Her pazartesi yenilenir.",
+    "loadFailed": "Görevler yüklenemedi: {error}",
+    "empty": "Bu hafta için görev bulunamadı.",
+    "claimButton": "Talep Et",
+    "claimSuccess": "Ödül alındı: +{gp} GP, +{diamonds} 💎",
+    "metricPlayMatches": "{target} maç oyna",
+    "metricWinMatches": "{target} maç kazan",
+    "metricDevelopPlayers": "{target} oyuncu geliştir"
+  },
   "app": {
     "title": "Tactical Eleven: Idle Manager"
   },

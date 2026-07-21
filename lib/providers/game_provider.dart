@@ -5,6 +5,7 @@ import '../models/club_info.dart';
 import '../models/inbox_message.dart';
 import '../models/leaderboard_entry.dart';
 import '../models/league_club_option.dart';
+import '../models/weekly_quest.dart';
 import '../models/opponent_scout_report.dart';
 import '../models/match_fixture.dart';
 import '../models/match_result.dart';
@@ -1355,6 +1356,22 @@ class GameProvider extends ChangeNotifier {
   /// liderlik tablosuna hiç girmiyor demektir).
   Future<LeaderboardEntry?> loadMyLeaderboardRank() {
     return _repository.loadMyLeaderboardRank();
+  }
+
+  /// Bu haftaki 3 görevi (yoksa oluşturarak) getirir.
+  Future<List<WeeklyQuest>> loadWeeklyQuests() {
+    return _repository.loadWeeklyQuests();
+  }
+
+  /// Tamamlanmış bir haftalık görevin ödülünü talep eder.
+  Future<Map<String, dynamic>> claimWeeklyQuestReward(String questKey) async {
+    final result = await _repository.claimWeeklyQuestReward(questKey: questKey, clubId: _activeClub?.id);
+    final refreshedClub = await _repository.loadActiveClub(clubId: _activeClub?.id);
+    if (refreshedClub != null) _activeClub = refreshedClub;
+    final updatedProfile = await _repository.loadProfile();
+    if (updatedProfile != null) _profile = updatedProfile;
+    notifyListeners();
+    return result;
   }
 
   void _setLoading(bool value) {

@@ -532,6 +532,8 @@ DECLARE
   match_row public.matches%ROWTYPE;
   home_row public.league_standings%ROWTYPE;
   away_row public.league_standings%ROWTYPE;
+  home_owner UUID;
+  away_owner UUID;
 BEGIN
   SELECT * INTO match_row FROM public.matches WHERE id = p_match_id;
   IF NOT FOUND THEN
@@ -588,6 +590,49 @@ BEGIN
   SET position = ranked.rn
   FROM ranked
   WHERE ls.id = ranked.id;
+
+  -- Per-user (not per-club - a club can change owners) total win count and
+  -- win streak, only for clubs with a real owner. A draw/loss resets the
+  -- streak to 0 but never decrements total_wins. This block previously
+  -- existed only in migration 20260712210000 but was missing from this
+  -- schema.sql copy of the function, so every unconditional schema.sql
+  -- deploy silently reverted it back to a version that never tracked wins
+  -- at all - restored here so it stops regressing, and extended to also
+  -- bump this week's quest progress for the win-related quest.
+  SELECT user_id INTO home_owner FROM public.clubs WHERE id = match_row.home_club_id;
+  SELECT user_id INTO away_owner FROM public.clubs WHERE id = match_row.away_club_id;
+
+  IF home_owner IS NOT NULL THEN
+    IF match_row.home_score > match_row.away_score THEN
+      UPDATE public.profiles
+      SET total_wins = total_wins + 1,
+          current_win_streak = current_win_streak + 1,
+          best_win_streak = GREATEST(best_win_streak, current_win_streak + 1)
+      WHERE id = home_owner;
+    ELSE
+      UPDATE public.profiles SET current_win_streak = 0 WHERE id = home_owner;
+    END IF;
+    PERFORM public.increment_weekly_quest_progress(home_owner, 'play_matches', 1);
+    IF match_row.home_score > match_row.away_score THEN
+      PERFORM public.increment_weekly_quest_progress(home_owner, 'win_matches', 1);
+    END IF;
+  END IF;
+
+  IF away_owner IS NOT NULL THEN
+    IF match_row.away_score > match_row.home_score THEN
+      UPDATE public.profiles
+      SET total_wins = total_wins + 1,
+          current_win_streak = current_win_streak + 1,
+          best_win_streak = GREATEST(best_win_streak, current_win_streak + 1)
+      WHERE id = away_owner;
+    ELSE
+      UPDATE public.profiles SET current_win_streak = 0 WHERE id = away_owner;
+    END IF;
+    PERFORM public.increment_weekly_quest_progress(away_owner, 'play_matches', 1);
+    IF match_row.away_score > match_row.home_score THEN
+      PERFORM public.increment_weekly_quest_progress(away_owner, 'win_matches', 1);
+    END IF;
+  END IF;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 

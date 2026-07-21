@@ -11,6 +11,7 @@ import '../models/club_info.dart';
 import '../models/inbox_message.dart';
 import '../models/leaderboard_entry.dart';
 import '../models/league_club_option.dart';
+import '../models/weekly_quest.dart';
 import '../models/match_result.dart';
 import '../models/opponent_scout_report.dart';
 import '../models/player_fm.dart';
@@ -654,6 +655,24 @@ class SupabaseRepository implements GameRepository {
       final data = await _client.rpc('get_my_leaderboard_rank');
       if (data is! List<dynamic> || data.isEmpty) return null;
       return LeaderboardEntry.fromMap(data.first as Map<String, dynamic>);
+    });
+  }
+
+  Future<List<WeeklyQuest>> loadWeeklyQuests() async {
+    return _wrap(() async {
+      final data = await _client.rpc('get_or_init_weekly_quests');
+      if (data is! List<dynamic>) return <WeeklyQuest>[];
+      return data.cast<Map<String, dynamic>>().map(WeeklyQuest.fromMap).toList();
+    });
+  }
+
+  Future<Map<String, dynamic>> claimWeeklyQuestReward({required String questKey, String? clubId}) async {
+    return _wrap(() async {
+      final data = await _client.rpc('claim_weekly_quest_reward', params: {
+        'p_quest_key': questKey,
+        if (clubId != null) 'p_club_id': clubId,
+      });
+      return Map<String, dynamic>.from(data as Map<String, dynamic>);
     });
   }
 

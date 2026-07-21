@@ -5,6 +5,18 @@
     "empty": "No one has made the leaderboard yet.",
     "statsLine": "{titles} titles · {wins} wins"
   },
+  "weeklyQuests": {
+    "title": "Weekly Quests",
+    "dashboardSubtitle": "See rewards",
+    "subtitle": "Complete these this week to claim rewards. Resets every Monday.",
+    "loadFailed": "Could not load quests: {error}",
+    "empty": "No quests found for this week.",
+    "claimButton": "Claim",
+    "claimSuccess": "Reward claimed: +{gp} GP, +{diamonds} 💎",
+    "metricPlayMatches": "Play {target} matches",
+    "metricWinMatches": "Win {target} matches",
+    "metricDevelopPlayers": "Develop {target} players"
+  },
   "app": {
     "title": "Tactical Eleven: Idle Manager"
   },

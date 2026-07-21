@@ -3,6 +3,7 @@ import '../models/club_info.dart';
 import '../models/inbox_message.dart';
 import '../models/leaderboard_entry.dart';
 import '../models/league_club_option.dart';
+import '../models/weekly_quest.dart';
 import '../models/match_result.dart';
 import '../models/opponent_scout_report.dart';
 import '../models/player_fm.dart';
@@ -96,6 +97,8 @@ abstract class GameRepository {
   Future<InboxMessage?> markMessageAsUnread(String messageId);
   Future<List<LeaderboardEntry>> loadGlobalLeaderboard({int limit = 50, int offset = 0});
   Future<LeaderboardEntry?> loadMyLeaderboardRank();
+  Future<List<WeeklyQuest>> loadWeeklyQuests();
+  Future<Map<String, dynamic>> claimWeeklyQuestReward({required String questKey, String? clubId});
   // Admin actions
   Future<bool> isAdmin();
   Future<List<Map<String, dynamic>>> adminListUsers();

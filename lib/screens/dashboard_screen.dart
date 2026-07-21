@@ -16,6 +16,7 @@ import 'market_screen.dart';
 import 'match_detail_screen.dart';
 import 'match_schedule_screen.dart';
 import 'opponent_scout_screen.dart';
+import 'weekly_quests_screen.dart';
 import 'squad_screen.dart';
 import 'transfer_market_screen.dart';
 import 'league_table_screen.dart';
@@ -151,6 +152,13 @@ class DashboardScreen extends StatelessWidget {
                   title: 'dashboard.market'.tr(),
                   subtitle: 'dashboard.diamondCount'.tr(namedArgs: {'count': provider.diamonds.toString()}),
                   onTap: () => _push(context, const MarketScreen()),
+                ),
+                _QuickAction(
+                  icon: Icons.flag_circle_outlined,
+                  color: AppColors.gold,
+                  title: 'weeklyQuests.title'.tr(),
+                  subtitle: 'weeklyQuests.dashboardSubtitle'.tr(),
+                  onTap: () => _push(context, const WeeklyQuestsScreen(), title: 'weeklyQuests.title'.tr()),
                 ),
               ],
             ),

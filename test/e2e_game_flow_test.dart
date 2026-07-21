@@ -8,6 +8,7 @@ import 'package:tactical_eleven_idle_manager/models/club_info.dart';
 import 'package:tactical_eleven_idle_manager/models/inbox_message.dart';
 import 'package:tactical_eleven_idle_manager/models/leaderboard_entry.dart';
 import 'package:tactical_eleven_idle_manager/models/league_club_option.dart';
+import 'package:tactical_eleven_idle_manager/models/weekly_quest.dart';
 import 'package:tactical_eleven_idle_manager/models/opponent_scout_report.dart';
 import 'package:tactical_eleven_idle_manager/models/player_fm.dart';
 import 'package:tactical_eleven_idle_manager/models/profile.dart';
@@ -348,6 +349,13 @@ class _FakeGameRepository implements GameRepository {
 
   @override
   Future<LeaderboardEntry?> loadMyLeaderboardRank() async => null;
+
+  @override
+  Future<List<WeeklyQuest>> loadWeeklyQuests() async => const [];
+
+  @override
+  Future<Map<String, dynamic>> claimWeeklyQuestReward({required String questKey, String? clubId}) async =>
+      const {'gp_awarded': 0, 'diamonds_awarded': 0};
 
   @override
   Future<Map<String, dynamic>> verifyIapPurchase({
