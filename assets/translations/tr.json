@@ -171,6 +171,7 @@
     "transfer": "Transfer",
     "loadFailed": "Kadro yüklenemedi.",
     "avgPowerSubtitle": "İlk 11 · Ortalama güç {power}",
+    "dragHint": "Oyuncuları sürükleyip bırakarak yerlerini değiştirebilirsin",
     "benchSectionTitle": "YEDEK KULÜBESİ",
     "seeAllBench": "Tümü ›",
     "noBenchPlayers": "Yedek oyuncu yok.",

@@ -171,6 +171,7 @@
     "transfer": "Transfer",
     "loadFailed": "Could not load squad.",
     "avgPowerSubtitle": "Starting XI · Average power {power}",
+    "dragHint": "Drag and drop players to swap their positions",
     "benchSectionTitle": "BENCH",
     "seeAllBench": "All ›",
     "noBenchPlayers": "No bench players.",

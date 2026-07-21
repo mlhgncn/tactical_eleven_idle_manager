@@ -268,7 +268,13 @@ class SquadScreen extends StatelessWidget {
                   context,
                   MaterialPageRoute(builder: (_) => PlayerDetailScreen(player: player)),
                 ),
+                onDropOnSlot: (fromIndex, benchPlayer, toIndex) =>
+                    _handleDrop(context, provider, starters, fromIndex, benchPlayer, toIndex),
               ),
+            ),
+            const SizedBox(height: 6),
+            Center(
+              child: Text('squad.dragHint'.tr(), style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
             ),
             const SizedBox(height: 20),
             Row(
@@ -294,6 +300,7 @@ class SquadScreen extends StatelessWidget {
                       itemBuilder: (context, index) => _BenchToken(
                         player: bench[index],
                         onTap: () => _swapIntoLineup(context, provider, starters, bench[index]),
+                        isDraggable: !bench[index].hasActiveInjury,
                       ),
                     ),
             ),
@@ -446,6 +453,38 @@ class SquadScreen extends StatelessWidget {
     );
   }
 
+  /// Drag-and-drop landed on formation slot [toIndex]. Exactly one of
+  /// [fromSlotIndex] (dragged from another pitch slot) or [benchPlayer]
+  /// (dragged from the bench strip) is non-null. Pitch-to-pitch swaps the
+  /// two starters; bench-to-pitch replaces the target slot's starter with
+  /// the bench player (the displaced starter falls back to the bench,
+  /// same as the existing tap-to-swap flow).
+  void _handleDrop(
+    BuildContext context,
+    GameProvider provider,
+    List<PlayerFM?> starters,
+    int? fromSlotIndex,
+    PlayerFM? benchPlayer,
+    int toIndex,
+  ) {
+    final newLineup = List<PlayerFM?>.from(starters);
+    if (fromSlotIndex != null) {
+      if (fromSlotIndex == toIndex) return;
+      final tmp = newLineup[toIndex];
+      newLineup[toIndex] = newLineup[fromSlotIndex];
+      newLineup[fromSlotIndex] = tmp;
+    } else if (benchPlayer != null) {
+      if (benchPlayer.hasActiveInjury) {
+        AppSnackBar.show(context, 'squad.cannotAddToLineup'.tr(namedArgs: {'name': benchPlayer.name, 'reason': benchPlayer.injuryDisplayLabel}));
+        return;
+      }
+      newLineup[toIndex] = benchPlayer;
+    } else {
+      return;
+    }
+    _saveLineup(context, provider, newLineup);
+  }
+
   /// "Sıfırla" - discards any manually set lineup and re-picks the best
   /// available XI for the current formation, purely by current_ability per
   /// slot (same greedy algorithm _resolveStartingXI already falls back to
@@ -520,6 +559,17 @@ class _FormationPill extends StatelessWidget {
   }
 }
 
+/// A dragged token carries either a pitch slot index (moving a starter to
+/// another slot) or a bench player (bringing them into the lineup) - never
+/// both. Used as the payload type for both Draggable and DragTarget so
+/// drops can tell the two sources apart.
+class _DragPayload {
+  const _DragPayload.fromSlot(this.slotIndex) : benchPlayer = null;
+  const _DragPayload.fromBench(this.benchPlayer) : slotIndex = null;
+  final int? slotIndex;
+  final PlayerFM? benchPlayer;
+}
+
 class _Pitch extends StatelessWidget {
   const _Pitch({
     required this.slots,
@@ -527,6 +577,7 @@ class _Pitch extends StatelessWidget {
     required this.topRatedId,
     required this.captainId,
     required this.onTapPlayer,
+    required this.onDropOnSlot,
   });
 
   final List<_FormationSlot> slots;
@@ -534,6 +585,7 @@ class _Pitch extends StatelessWidget {
   final String? topRatedId;
   final String? captainId;
   final ValueChanged<PlayerFM> onTapPlayer;
+  final void Function(int? fromSlotIndex, PlayerFM? benchPlayer, int toIndex) onDropOnSlot;
 
   @override
   Widget build(BuildContext context) {
@@ -552,24 +604,87 @@ class _Pitch extends StatelessWidget {
               children: [
                 Positioned.fill(child: CustomPaint(painter: _PitchMarkingsPainter())),
                 for (var i = 0; i < slots.length; i++)
-                  if (starters[i] != null)
-                    Positioned(
-                      left: slots[i].x * width - 28,
-                      top: slots[i].y * height - 28,
-                      width: 56,
-                      height: 72,
-                      child: _PlayerToken(
-                        player: starters[i]!,
-                        slotGroup: slots[i].group,
-                        isGoalkeeper: slots[i].group == 'GK',
-                        isTopRated: starters[i]!.id == topRatedId,
-                        isCaptain: starters[i]!.id == captainId,
-                        onTap: () => onTapPlayer(starters[i]!),
-                      ),
+                  Positioned(
+                    left: slots[i].x * width - 28,
+                    top: slots[i].y * height - 28,
+                    width: 56,
+                    height: 72,
+                    child: DragTarget<_DragPayload>(
+                      onWillAcceptWithDetails: (details) => true,
+                      onAcceptWithDetails: (details) =>
+                          onDropOnSlot(details.data.slotIndex, details.data.benchPlayer, i),
+                      builder: (context, candidateData, rejectedData) {
+                        final isHovering = candidateData.isNotEmpty;
+                        if (starters[i] == null) {
+                          // Empty slot - only ever reachable via a formation
+                          // with fewer eligible players than slots; still a
+                          // valid drop target so a bench player can fill it.
+                          return _EmptySlotPlaceholder(isHovering: isHovering);
+                        }
+                        return LongPressDraggable<_DragPayload>(
+                          data: _DragPayload.fromSlot(i),
+                          feedback: Opacity(
+                            opacity: 0.85,
+                            child: _PlayerToken(
+                              player: starters[i]!,
+                              slotGroup: slots[i].group,
+                              isGoalkeeper: slots[i].group == 'GK',
+                              isTopRated: starters[i]!.id == topRatedId,
+                              isCaptain: starters[i]!.id == captainId,
+                              onTap: () {},
+                            ),
+                          ),
+                          childWhenDragging: Opacity(
+                            opacity: 0.3,
+                            child: _PlayerToken(
+                              player: starters[i]!,
+                              slotGroup: slots[i].group,
+                              isGoalkeeper: slots[i].group == 'GK',
+                              isTopRated: starters[i]!.id == topRatedId,
+                              isCaptain: starters[i]!.id == captainId,
+                              onTap: () {},
+                            ),
+                          ),
+                          child: AnimatedScale(
+                            duration: const Duration(milliseconds: 120),
+                            scale: isHovering ? 1.12 : 1.0,
+                            child: _PlayerToken(
+                              player: starters[i]!,
+                              slotGroup: slots[i].group,
+                              isGoalkeeper: slots[i].group == 'GK',
+                              isTopRated: starters[i]!.id == topRatedId,
+                              isCaptain: starters[i]!.id == captainId,
+                              onTap: () => onTapPlayer(starters[i]!),
+                            ),
+                          ),
+                        );
+                      },
                     ),
+                  ),
               ],
             );
           },
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptySlotPlaceholder extends StatelessWidget {
+  const _EmptySlotPlaceholder({required this.isHovering});
+  final bool isHovering;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 120),
+        width: isHovering ? 40 : 32,
+        height: isHovering ? 40 : 32,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.white.withValues(alpha: isHovering ? 0.25 : 0.1),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.4), style: BorderStyle.solid),
         ),
       ),
     );
@@ -700,53 +815,63 @@ class _PlayerToken extends StatelessWidget {
 }
 
 class _BenchToken extends StatelessWidget {
-  const _BenchToken({required this.player, required this.onTap});
+  const _BenchToken({required this.player, required this.onTap, this.isDraggable = true});
   final PlayerFM player;
   final VoidCallback onTap;
+  final bool isDraggable;
+
+  Widget _card(BuildContext context) {
+    final injured = player.hasActiveInjury;
+    return Container(
+      width: 76,
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [AppColors.cardTop, AppColors.cardBottom]),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: injured ? AppColors.red.withValues(alpha: 0.4) : AppColors.cardBorder),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: injured ? AppColors.red.withValues(alpha: 0.22) : AppColors.cardBottom,
+              border: Border.all(color: injured ? AppColors.red : AppColors.cardBorder),
+            ),
+            alignment: Alignment.center,
+            child: Text(_initialsOf(player.name), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white)),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            _firstNameOf(player.name),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
+          ),
+          Text(
+            injured ? player.injuryDisplayLabel : '${player.position} · ${player.currentAbility}',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(color: injured ? AppColors.red : AppColors.textMuted, fontSize: 10),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final injured = player.hasActiveInjury;
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 76,
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [AppColors.cardTop, AppColors.cardBottom]),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: injured ? AppColors.red.withValues(alpha: 0.4) : AppColors.cardBorder),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: injured ? AppColors.red.withValues(alpha: 0.22) : AppColors.cardBottom,
-                border: Border.all(color: injured ? AppColors.red : AppColors.cardBorder),
-              ),
-              alignment: Alignment.center,
-              child: Text(_initialsOf(player.name), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white)),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              _firstNameOf(player.name),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
-            ),
-            Text(
-              injured ? player.injuryDisplayLabel : '${player.position} · ${player.currentAbility}',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(color: injured ? AppColors.red : AppColors.textMuted, fontSize: 10),
-            ),
-          ],
-        ),
-      ),
+    final card = GestureDetector(onTap: onTap, child: _card(context));
+    if (!isDraggable) return card;
+
+    return LongPressDraggable<_DragPayload>(
+      data: _DragPayload.fromBench(player),
+      feedback: Opacity(opacity: 0.85, child: Material(color: Colors.transparent, child: _card(context))),
+      childWhenDragging: Opacity(opacity: 0.3, child: _card(context)),
+      child: card,
     );
   }
 }
