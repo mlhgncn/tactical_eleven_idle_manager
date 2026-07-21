@@ -12,6 +12,7 @@ import '../widgets/app_snackbar.dart';
 import '../widgets/club_badge.dart';
 import '../widgets/form_strip.dart';
 import '../widgets/themed_button.dart';
+import 'academy_screen.dart';
 import 'market_screen.dart';
 import 'match_detail_screen.dart';
 import 'match_schedule_screen.dart';
@@ -159,6 +160,13 @@ class DashboardScreen extends StatelessWidget {
                   title: 'weeklyQuests.title'.tr(),
                   subtitle: 'weeklyQuests.dashboardSubtitle'.tr(),
                   onTap: () => _push(context, const WeeklyQuestsScreen(), title: 'weeklyQuests.title'.tr()),
+                ),
+                _QuickAction(
+                  icon: Icons.school,
+                  color: AppColors.green,
+                  title: 'academy.title'.tr(),
+                  subtitle: club.isAcademyProducing ? 'academy.producingSubtitle'.tr() : 'academy.readySubtitle'.tr(),
+                  onTap: () => _push(context, const AcademyScreen(), title: 'academy.title'.tr()),
                 ),
               ],
             ),

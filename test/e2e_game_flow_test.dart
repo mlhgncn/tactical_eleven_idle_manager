@@ -351,6 +351,12 @@ class _FakeGameRepository implements GameRepository {
   Future<LeaderboardEntry?> loadMyLeaderboardRank() async => null;
 
   @override
+  Future<ClubInfo?> startAcademyProduction({String? clubId}) async => null;
+
+  @override
+  Future<ClubInfo?> reduceAcademyTimeWithAd({String? clubId}) async => null;
+
+  @override
   Future<List<WeeklyQuest>> loadWeeklyQuests() async => const [];
 
   @override

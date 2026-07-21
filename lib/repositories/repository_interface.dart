@@ -87,6 +87,8 @@ abstract class GameRepository {
   Future<List<ConsumableProduct>> loadConsumableProducts();
   Future<ClubInfo?> purchaseConsumable({required String productId, String? clubId});
   Future<ClubInfo?> hideTacticsForNextMatch({String? clubId});
+  Future<ClubInfo?> startAcademyProduction({String? clubId});
+  Future<ClubInfo?> reduceAcademyTimeWithAd({String? clubId});
   Future<ClubInfo?> sendTeamToCamp({String? clubId});
   Future<Profile?> updateAvatarUrl(String avatarUrl);
   Future<String> uploadAvatarImage(List<int> bytes, String fileExtension);

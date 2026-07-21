@@ -5,6 +5,17 @@
     "empty": "No one has made the leaderboard yet.",
     "statsLine": "{titles} titles · {wins} wins"
   },
+  "academy": {
+    "title": "Academy",
+    "producingSubtitle": "In progress...",
+    "readySubtitle": "Produce a player",
+    "cardTitle": "Youth Talent Academy",
+    "description": "The academy raises young players (age 15-18) with low current ability but high potential. It's free, only costs time. A higher facility level both speeds up production and improves player quality.",
+    "inProgressLabel": "A young talent is being raised",
+    "waitTimeLabel": "Production time: ~{hours}h",
+    "facilityHint": "Upgrade your facility to shorten the wait and raise the quality of the player produced.",
+    "startAction": "Start Production"
+  },
   "weeklyQuests": {
     "title": "Weekly Quests",
     "dashboardSubtitle": "See rewards",

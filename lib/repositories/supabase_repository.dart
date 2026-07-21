@@ -55,7 +55,7 @@ class SupabaseRepository implements GameRepository {
   }
 
   static const _clubSelectColumns =
-      'id,name,league_id,budget,blocked_budget,stadium_capacity,ticket_price,ticket_price_level,training_facility_level,sponsor_level,last_maintenance_date,sponsor_upgrade_completes_at,development_upgrade_type,development_target_value,development_completes_at,development_ad_uses,tactic_hidden_for_match_id,free_tactic_hides_this_season,tactic_hide_charges,camp_active_for_match_id,free_camp_uses_this_season,camp_charges,pending_season_end_season_id';
+      'id,name,league_id,budget,blocked_budget,stadium_capacity,ticket_price,ticket_price_level,training_facility_level,sponsor_level,last_maintenance_date,sponsor_upgrade_completes_at,development_upgrade_type,development_target_value,development_completes_at,development_ad_uses,tactic_hidden_for_match_id,free_tactic_hides_this_season,tactic_hide_charges,camp_active_for_match_id,free_camp_uses_this_season,camp_charges,pending_season_end_season_id,academy_completes_at,academy_ad_uses';
 
   static const _profileSelectColumns =
       'id,full_name,avatar_url,email,language,fcm_token,username,league_titles,diamonds,total_wins,current_win_streak,best_win_streak,achievement_100_wins_claimed,achievement_win_streak_10_claimed,has_unbeaten_title,achievement_unbeaten_champion_claimed,achievement_max_facility_claimed,longest_login_streak,achievement_45_day_streak_claimed,daily_streak_day,last_daily_claim_date,social_instagram_followed,social_x_followed,social_tiktok_followed,social_engagement_claimed,created_at,updated_at';
@@ -1185,6 +1185,28 @@ class SupabaseRepository implements GameRepository {
   Future<ClubInfo?> hideTacticsForNextMatch({String? clubId}) async {
     return _wrap(() async {
       final data = await _client.rpc('hide_tactics_for_next_match', params: {
+        if (clubId != null) 'p_club_id': clubId,
+      });
+      if (data == null) return null;
+      return ClubInfo.fromMap(Map<String, dynamic>.from(data as Map<String, dynamic>));
+    });
+  }
+
+  @override
+  Future<ClubInfo?> startAcademyProduction({String? clubId}) async {
+    return _wrap(() async {
+      final data = await _client.rpc('start_academy_production', params: {
+        if (clubId != null) 'p_club_id': clubId,
+      });
+      if (data == null) return null;
+      return ClubInfo.fromMap(Map<String, dynamic>.from(data as Map<String, dynamic>));
+    });
+  }
+
+  @override
+  Future<ClubInfo?> reduceAcademyTimeWithAd({String? clubId}) async {
+    return _wrap(() async {
+      final data = await _client.rpc('reduce_academy_time_with_ad', params: {
         if (clubId != null) 'p_club_id': clubId,
       });
       if (data == null) return null;

@@ -5,6 +5,17 @@
     "empty": "Henüz sıralamaya girecek kimse yok.",
     "statsLine": "{titles} şampiyonluk · {wins} galibiyet"
   },
+  "academy": {
+    "title": "Akademi",
+    "producingSubtitle": "Üretimde...",
+    "readySubtitle": "Yeni oyuncu üret",
+    "cardTitle": "Genç Yetenek Akademisi",
+    "description": "Akademi, düşük güçte ama yüksek potansiyelli genç oyuncular (15-18 yaş) yetiştirir. Ücretsizdir, sadece zaman ister. Tesis seviyeniz yükseldikçe üretim hem hızlanır hem de oyuncu kalitesi artar.",
+    "inProgressLabel": "Akademide bir yetenek yetişiyor",
+    "waitTimeLabel": "Üretim süresi: ~{hours} saat",
+    "facilityHint": "Tesisi yükselterek süreyi kısaltabilir, oyuncu kalitesini artırabilirsin.",
+    "startAction": "Üretimi Başlat"
+  },
   "weeklyQuests": {
     "title": "Haftalık Görevler",
     "dashboardSubtitle": "Ödülleri gör",

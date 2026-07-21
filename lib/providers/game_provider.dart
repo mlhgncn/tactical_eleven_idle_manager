@@ -1159,6 +1159,39 @@ class GameProvider extends ChangeNotifier {
     }
   }
 
+  /// Akademide yeni bir genç oyuncu üretim sürecini başlatır.
+  Future<void> startAcademyProduction() async {
+    if (_activeClub == null) throw Exception('Aktif kulüp bulunamadı.');
+    if (_isBusy) return;
+
+    _setBusy(true);
+    try {
+      final updated = await _repository.startAcademyProduction(clubId: _activeClub!.id);
+      if (updated != null) _activeClub = updated;
+      try {
+        AnalyticsService.instance.logEvent('start_academy_production');
+      } catch (_) {}
+      notifyListeners();
+    } finally {
+      _setBusy(false);
+    }
+  }
+
+  /// Reklam izleyerek akademi üretim süresini %25 kısaltır (en fazla 2 kez).
+  Future<void> reduceAcademyTimeWithAd() async {
+    if (_activeClub == null) throw Exception('Aktif kulüp bulunamadı.');
+    if (_isBusy) return;
+
+    _setBusy(true);
+    try {
+      final updated = await _repository.reduceAcademyTimeWithAd(clubId: _activeClub!.id);
+      if (updated != null) _activeClub = updated;
+      notifyListeners();
+    } finally {
+      _setBusy(false);
+    }
+  }
+
   /// StoreKit satın alımı tamamlandıktan sonra makbuzu sunucuda doğrular
   /// ve elmas bakiyesini günceller. Asla client tarafında elmas eklemez -
   /// bakiye yalnızca Apple'dan gerçekten doğrulanmış bir işlemden sonra artar.
