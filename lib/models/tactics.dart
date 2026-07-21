@@ -1,3 +1,5 @@
+import 'dart:ui' show Offset;
+
 enum Formation { f442, f433, f352, f532, f442b, f4231, f4141 }
 enum Mentality { defensive, balanced, attacking }
 
@@ -29,6 +31,11 @@ class Tactics {
   // One player id per formation slot, in slot order - null means "no manual
   // lineup set, auto-pick the best XI for the current formation".
   List<String>? startingElevenIds;
+  // Free-position lineup placement: player id -> where they were actually
+  // dropped on the pitch (0-1 oransal koordinatlar). Null/missing entry
+  // for a starter means "use the fixed formation slot position for them"
+  // - the two systems coexist per-player, not all-or-nothing.
+  Map<String, Offset>? startingElevenPositions;
 
   Tactics({
     required this.clubId,
@@ -44,12 +51,18 @@ class Tactics {
     this.offsideTrap = false,
     this.timeWasting = false,
     this.startingElevenIds,
+    this.startingElevenPositions,
   })  : freeKickTakerId = freeKickTakerId ?? penaltyTakerId,
         cornerTakerId = cornerTakerId ?? penaltyTakerId;
 
   factory Tactics.fromMap(Map<String, dynamic> map) {
     final penaltyTaker = map['penalty_taker_id'] as String? ?? '';
     final rawStartingEleven = map['starting_eleven_ids'] as List<dynamic>?;
+    final rawPositions = map['starting_eleven_positions'] as Map<String, dynamic>?;
+    final parsedPositions = rawPositions?.map((playerId, value) {
+      final entry = value as Map<String, dynamic>;
+      return MapEntry(playerId, Offset((entry['x'] as num).toDouble(), (entry['y'] as num).toDouble()));
+    });
     return Tactics(
       clubId: map['club_id'] as String,
       formation: Formation.values.firstWhere((value) => value.name == map['formation'] as String, orElse: () => Formation.f442),
@@ -64,6 +77,7 @@ class Tactics {
       offsideTrap: (map['offside_trap'] as bool?) ?? false,
       timeWasting: (map['time_wasting'] as bool?) ?? false,
       startingElevenIds: rawStartingEleven?.map((e) => e as String).toList(),
+      startingElevenPositions: parsedPositions,
     );
   }
 
@@ -88,6 +102,9 @@ class Tactics {
       'offside_trap': offsideTrap,
       'time_wasting': timeWasting,
       'starting_eleven_ids': startingElevenIds,
+      'starting_eleven_positions': startingElevenPositions?.map(
+        (playerId, offset) => MapEntry(playerId, {'x': offset.dx, 'y': offset.dy}),
+      ),
     };
   }
 }

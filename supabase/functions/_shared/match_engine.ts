@@ -26,6 +26,11 @@ export interface ClubRow {
   camp_active_for_match_id?: string | null;
 }
 
+interface PitchPosition {
+  x: number;
+  y: number;
+}
+
 interface ClubTactic {
   club_id: string;
   mentality: string | null;
@@ -38,6 +43,7 @@ interface ClubTactic {
   free_kick_taker_id: string | null;
   corner_taker_id: string | null;
   starting_eleven_ids: string[] | null;
+  starting_eleven_positions: Record<string, PitchPosition> | null;
 }
 
 interface TacticSnapshot {
@@ -51,6 +57,11 @@ interface TacticSnapshot {
   freeKickTakerId: string | null;
   cornerTakerId: string | null;
   startingElevenIds: string[] | null;
+  // Free-position lineup placement: player_id -> {x, y} on the pitch
+  // (0-1 oransal koordinatlar, squad_screen.dart'taki pitch ile aynı
+  // eksen yönü: y küçüldükçe rakip kaleye yaklaşılır). Null/eksikse o
+  // oyuncu için (ya da hepsi için) sabit formasyon slotuna düşülür.
+  startingElevenPositions: Record<string, PitchPosition> | null;
 }
 
 const DEFAULT_TACTIC: TacticSnapshot = {
@@ -64,6 +75,7 @@ const DEFAULT_TACTIC: TacticSnapshot = {
   freeKickTakerId: null,
   cornerTakerId: null,
   startingElevenIds: null,
+  startingElevenPositions: null,
 };
 
 export interface PlayerRow {
@@ -114,6 +126,20 @@ const FORMATION_SLOT_GROUPS: Record<string, PositionGroup[]> = {
 const POSITION_GROUP_ORDER: PositionGroup[] = ['GK', 'DEF', 'MID', 'FOR'];
 const POSITION_MISMATCH_PENALTIES = [0, 0.15, 0.30, 0.50];
 
+// Serbest konumlandırılmış bir oyuncunun efektif grubu, sahadaki gerçek
+// y-koordinatının hangi üçte birine düştüğüne göre belirlenir (y=0 rakip
+// kalesine yakın, y=1 kendi kalesine yakın - squad_screen.dart'taki pitch
+// ile aynı eksen). Kaleci bu hesaba HİÇ dahil edilmez - kalecinin kendi
+// doğal mevkisi GK ise, saha üzerinde nereye sürüklenmiş olursa olsun grup
+// hep GK kalır (kural: kaleci sürüklenemez zaten UI'da, ama backend de bu
+// varsayıma güvenmeyip kendi garantisini veriyor).
+function effectiveGroupFromPosition(player: PlayerRow, position: PitchPosition): PositionGroup {
+  if (positionGroup(player.position) === 'GK') return 'GK';
+  if (position.y < 0.33) return 'FOR';
+  if (position.y < 0.66) return 'MID';
+  return 'DEF';
+}
+
 // lib/screens/squad_screen.dart'taki effectiveAbilityInSlot ile birebir
 // aynı formül: bir oyuncu kendi doğal mevki grubu dışında bir slotta
 // oynatılırsa, mesafeye göre kademeli güç kaybeder.
@@ -131,24 +157,46 @@ interface RosterEntry {
   effectiveAbility: number;
 }
 
-// Kulübün starting_eleven_ids + formation bilgisinden, sahadaki 11 kişinin
-// gerçek slot atamasını ve mevki-uyuşmazlığı cezası uygulanmış efektif
-// ability'sini üretir - artık kadronun tamamı değil, SADECE sahadaki 11
-// kişi maça dahil oluyor, ve mevki dışı oynatılan oyuncu burada (UI'daki
-// squad_screen.dart ile birebir aynı formülle) güç kaybediyor. Taktik hiç
-// kaydedilmemişse eski davranışa (tüm uygun kadro, kendi doğal mevkisinde,
-// cezasız) düşer. Kaydedilmiş bir XI'de sakat/cezalı/kulüpten ayrılmış biri
-// varsa, o slot tek başına en iyi uygun yedekle (aynı slot grubunda,
-// current_ability'ye göre en yüksek, henüz sahada olmayan) değiştirilir -
-// tüm XI'yi atıp kadronun tamamına düşmek yerine.
+// Kulübün starting_eleven_ids + formation (+ varsa serbest
+// starting_eleven_positions) bilgisinden, sahadaki 11 kişinin gerçek slot
+// atamasını ve mevki-uyuşmazlığı cezası uygulanmış efektif ability'sini
+// üretir - artık kadronun tamamı değil, SADECE sahadaki 11 kişi maça dahil
+// oluyor, ve mevki dışı oynatılan oyuncu burada (UI'daki squad_screen.dart
+// ile birebir aynı formülle) güç kaybediyor.
+//
+// Bir oyuncunun starting_eleven_positions'ta kayıtlı (x,y) konumu varsa,
+// slot grubu artık formasyonun sabit dizilimi yerine o gerçek konumdan
+// (effectiveGroupFromPosition) hesaplanır - kullanıcı sahada serbestçe
+// sürükleyip bıraktığı yer gerçekten oyunu etkiler. Konumu kayıtlı
+// olmayan oyuncular (positions map'i hiç yoksa, ya da o oyuncu için eski
+// bir kayıttan kalma eksik veri varsa) sabit formasyon slotuna düşer -
+// iki sistem aynı XI içinde bile bir arada çalışabilir, geçiş güvenlidir.
+//
+// Taktik hiç kaydedilmemişse eski davranışa (tüm uygun kadro, kendi doğal
+// mevkisinde, cezasız) düşer. Kaydedilmiş bir XI'de sakat/cezalı/kulüpten
+// ayrılmış biri varsa, o slot tek başına en iyi uygun yedekle (aynı slot
+// grubunda, current_ability'ye göre en yüksek, henüz sahada olmayan)
+// değiştirilir - tüm XI'yi atıp kadronun tamamına düşmek yerine. Serbest
+// pozisyonlu bir slotta değişim olursa, yedek AYNI (x,y) konumuna
+// yerleştirilmiş sayılır (grup zaten o konumdan yeniden hesaplanacağı
+// için ekstra bir taşıma mantığı gerekmez).
 function buildEffectiveRoster(
   clubPlayers: PlayerRow[],
   formation: string | null,
   startingElevenIds: string[] | null | undefined,
+  startingElevenPositions?: Record<string, PitchPosition> | null,
 ): RosterEntry[] {
   const slotGroups = FORMATION_SLOT_GROUPS[(formation ?? 'f442').toLowerCase()];
   const playerMap = new Map(clubPlayers.map((p) => [p.id, p]));
   const isAvailable = (p: PlayerRow) => p.injury_duration_weeks <= 0 && !p.is_suspended;
+  const positions = startingElevenPositions ?? {};
+
+  const groupForSlot = (slotGroup: PositionGroup, fallbackId: string | undefined): PositionGroup => {
+    const pos = fallbackId ? positions[fallbackId] : undefined;
+    if (!pos) return slotGroup;
+    const player = fallbackId ? playerMap.get(fallbackId) : undefined;
+    return player ? effectiveGroupFromPosition(player, pos) : slotGroup;
+  };
 
   if (slotGroups && startingElevenIds && startingElevenIds.length === slotGroups.length) {
     const roster: RosterEntry[] = [];
@@ -156,16 +204,22 @@ function buildEffectiveRoster(
     let sawKnownPlayer = false;
 
     for (let i = 0; i < slotGroups.length; i += 1) {
-      const slotGroup = slotGroups[i];
+      const fallbackSlotGroup = slotGroups[i];
       let player = playerMap.get(startingElevenIds[i]);
       if (player) sawKnownPlayer = true;
+
+      // Resolve the group BEFORE any replacement lookup, from the
+      // originally-intended player's saved position if there is one -
+      // this is the group a like-for-like replacement should be sought
+      // in, same as the fixed-slot system always did with slotGroups[i].
+      const targetGroup = groupForSlot(fallbackSlotGroup, startingElevenIds[i]);
 
       if (!player || !isAvailable(player)) {
         // Best available bench replacement for this slot: same position
         // group, not already used elsewhere in this XI, highest
         // current_ability first.
         const replacement = clubPlayers
-          .filter((p) => !usedIds.has(p.id) && isAvailable(p) && positionGroup(p.position) === slotGroup)
+          .filter((p) => !usedIds.has(p.id) && isAvailable(p) && positionGroup(p.position) === targetGroup)
           .sort((a, b) => b.current_ability - a.current_ability)[0];
         player = replacement;
       }
@@ -174,8 +228,8 @@ function buildEffectiveRoster(
       usedIds.add(player.id);
       roster.push({
         player,
-        effectiveGroup: slotGroup,
-        effectiveAbility: effectiveAbilityInSlot(player, slotGroup),
+        effectiveGroup: targetGroup,
+        effectiveAbility: effectiveAbilityInSlot(player, targetGroup),
       });
     }
 
@@ -542,7 +596,7 @@ export async function resolveMatch(
 
   const { data: tactics, error: tacticsError } = await supabase
     .from('tactics')
-    .select('club_id,mentality,formation,press_intensity,tempo,defensive_line,offside_trap,time_wasting,free_kick_taker_id,corner_taker_id,starting_eleven_ids')
+    .select('club_id,mentality,formation,press_intensity,tempo,defensive_line,offside_trap,time_wasting,free_kick_taker_id,corner_taker_id,starting_eleven_ids,starting_eleven_positions')
     .in('club_id', clubIds);
   if (tacticsError) throw new Error(`Taktikler okunamadı: ${tacticsError.message}`);
 
@@ -558,6 +612,7 @@ export async function resolveMatch(
     freeKickTakerId: row.free_kick_taker_id ?? null,
     cornerTakerId: row.corner_taker_id ?? null,
     startingElevenIds: row.starting_eleven_ids ?? null,
+    startingElevenPositions: row.starting_eleven_positions ?? null,
   }));
   const homeTactic = tacticMap.get(matchRow.home_club_id) ?? { ...DEFAULT_TACTIC };
   const awayTactic = tacticMap.get(matchRow.away_club_id) ?? { ...DEFAULT_TACTIC };
@@ -581,8 +636,8 @@ export async function resolveMatch(
   // Sahadaki 11 kişinin gerçek slot ataması ve mevki-uyuşmazlığı cezası
   // uygulanmış efektif ability'si - artık kadronun tamamı değil, SADECE bu
   // 11 kişi maça dahil oluyor (bkz. buildEffectiveRoster).
-  const homeRoster = buildEffectiveRoster(homeClubPlayers, homeTactic.formation, homeTactic.startingElevenIds);
-  const awayRoster = buildEffectiveRoster(awayClubPlayers, awayTactic.formation, awayTactic.startingElevenIds);
+  const homeRoster = buildEffectiveRoster(homeClubPlayers, homeTactic.formation, homeTactic.startingElevenIds, homeTactic.startingElevenPositions);
+  const awayRoster = buildEffectiveRoster(awayClubPlayers, awayTactic.formation, awayTactic.startingElevenIds, awayTactic.startingElevenPositions);
   const homePlayers = homeRoster.map((r) => r.player);
   const awayPlayers = awayRoster.map((r) => r.player);
   // Yedek kulübesi: kadroda olup sahadaki 11'de (homePlayers/awayPlayers)

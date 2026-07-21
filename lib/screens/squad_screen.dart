@@ -192,6 +192,32 @@ int effectiveAbilityInSlot(PlayerFM player, String slotGroup) {
   return (player.currentAbility * (1 - penalty)).round();
 }
 
+/// A freely-dropped player's group is derived from where they actually
+/// landed on the pitch (mirrors match_engine.ts's effectiveGroupFromPosition
+/// exactly, same thirds) - EXCEPT a goalkeeper, who always stays GK
+/// regardless of y (they can't be dragged in the UI anyway, but the match
+/// engine enforces this independently too).
+String effectiveGroupFromY(PlayerFM player, double y) {
+  if (player.positionGroup == 'GK') return 'GK';
+  if (y < 0.33) return 'FOR';
+  if (y < 0.66) return 'MID';
+  return 'DEF';
+}
+
+/// Resolves where starter [player] should render: their saved free
+/// position if one exists, otherwise the fixed slot coordinate for
+/// [slot]. Returns (x, y, group) - group already accounts for the
+/// GK-always-GK rule and the free-position y-threshold above.
+(double x, double y, String group) _effectiveSlotFor(
+  PlayerFM player,
+  _FormationSlot slot,
+  Map<String, Offset>? freePositions,
+) {
+  final free = freePositions?[player.id];
+  if (free == null) return (slot.x, slot.y, slot.group);
+  return (free.dx, free.dy, effectiveGroupFromY(player, free.dy));
+}
+
 class SquadScreen extends StatelessWidget {
   const SquadScreen({super.key});
 
@@ -218,7 +244,11 @@ class SquadScreen extends StatelessWidget {
     final ratedStarters = starters.whereType<PlayerFM>().toList();
     final effectiveAbilities = <String, int>{
       for (var i = 0; i < slots.length; i++)
-        if (starters[i] != null) starters[i]!.id: effectiveAbilityInSlot(starters[i]!, slots[i].group),
+        if (starters[i] != null)
+          starters[i]!.id: effectiveAbilityInSlot(
+            starters[i]!,
+            _effectiveSlotFor(starters[i]!, slots[i], tactics?.startingElevenPositions).$3,
+          ),
     };
     final avgPower = ratedStarters.isEmpty
         ? 0
@@ -264,12 +294,13 @@ class SquadScreen extends StatelessWidget {
                 starters: starters,
                 topRatedId: topRatedId,
                 captainId: tactics?.captainId,
+                freePositions: tactics?.startingElevenPositions,
                 onTapPlayer: (player) => Navigator.push(
                   context,
                   MaterialPageRoute(builder: (_) => PlayerDetailScreen(player: player)),
                 ),
-                onDropOnSlot: (fromIndex, benchPlayer, toIndex) =>
-                    _handleDrop(context, provider, starters, fromIndex, benchPlayer, toIndex),
+                onFreeDrop: (fromIndex, benchPlayer, x, y) =>
+                    _handleFreeDrop(context, provider, starters, slots, fromIndex, benchPlayer, x, y),
               ),
             ),
             const SizedBox(height: 6),
@@ -453,36 +484,68 @@ class SquadScreen extends StatelessWidget {
     );
   }
 
-  /// Drag-and-drop landed on formation slot [toIndex]. Exactly one of
-  /// [fromSlotIndex] (dragged from another pitch slot) or [benchPlayer]
-  /// (dragged from the bench strip) is non-null. Pitch-to-pitch swaps the
-  /// two starters; bench-to-pitch replaces the target slot's starter with
-  /// the bench player (the displaced starter falls back to the bench,
-  /// same as the existing tap-to-swap flow).
-  void _handleDrop(
+  /// Drag-and-drop landed at a free point (x, y) on the pitch. Exactly one
+  /// of [fromSlotIndex] (dragged from another starter's spot) or
+  /// [benchPlayer] (dragged from the bench strip) is non-null.
+  ///
+  /// Pitch-to-pitch: the dragged player's saved free position becomes
+  /// (x, y); nobody else's position changes (unlike the old fixed-slot
+  /// swap, there's no "other slot" to swap into - the dropped player just
+  /// moves to wherever they were dropped).
+  ///
+  /// Bench-to-pitch: needs an actual slot index to replace (the lineup is
+  /// still an 11-element starting_eleven_ids list under the hood), so we
+  /// pick whichever current starter is CLOSEST to the drop point and swap
+  /// them out to the bench - the bench player takes over that slot's
+  /// identity and gets the drop point as their free position.
+  void _handleFreeDrop(
     BuildContext context,
     GameProvider provider,
     List<PlayerFM?> starters,
+    List<_FormationSlot> slots,
     int? fromSlotIndex,
     PlayerFM? benchPlayer,
-    int toIndex,
+    double x,
+    double y,
   ) {
     final newLineup = List<PlayerFM?>.from(starters);
+    final positions = Map<String, Offset>.from(provider.tactics?.startingElevenPositions ?? {});
+
+    int targetIndex;
     if (fromSlotIndex != null) {
-      if (fromSlotIndex == toIndex) return;
-      final tmp = newLineup[toIndex];
-      newLineup[toIndex] = newLineup[fromSlotIndex];
-      newLineup[fromSlotIndex] = tmp;
+      targetIndex = fromSlotIndex;
     } else if (benchPlayer != null) {
       if (benchPlayer.hasActiveInjury) {
         AppSnackBar.show(context, 'squad.cannotAddToLineup'.tr(namedArgs: {'name': benchPlayer.name, 'reason': benchPlayer.injuryDisplayLabel}));
         return;
       }
-      newLineup[toIndex] = benchPlayer;
+      // Nearest current starter (by squared distance in the same 0-1
+      // coordinate space) gets replaced - keeps this feeling like "I
+      // dropped the bench player roughly where an existing starter is"
+      // rather than picking an arbitrary slot.
+      targetIndex = 0;
+      double bestDistance = double.infinity;
+      for (var i = 0; i < starters.length; i++) {
+        if (starters[i] == null) continue;
+        final (sx, sy, _) = _effectiveSlotFor(starters[i]!, slots[i], provider.tactics?.startingElevenPositions);
+        final distance = (sx - x) * (sx - x) + (sy - y) * (sy - y);
+        if (distance < bestDistance) {
+          bestDistance = distance;
+          targetIndex = i;
+        }
+      }
+      final displaced = newLineup[targetIndex];
+      if (displaced != null) positions.remove(displaced.id);
+      newLineup[targetIndex] = benchPlayer;
     } else {
       return;
     }
-    _saveLineup(context, provider, newLineup);
+
+    final movedPlayer = newLineup[targetIndex];
+    if (movedPlayer == null || movedPlayer.positionGroup == 'GK') return;
+    positions[movedPlayer.id] = Offset(x, y);
+
+    _saveLineup(context, provider, newLineup, positions: positions);
   }
 
   /// "Sıfırla" - discards any manually set lineup and re-picks the best
@@ -491,15 +554,24 @@ class SquadScreen extends StatelessWidget {
   /// automatically - this just lets the user trigger it on demand).
   void _resetLineup(BuildContext context, GameProvider provider, List<PlayerFM> squad, List<_FormationSlot> slots) {
     final autoPicked = _pickStartingXI(squad, slots);
-    _saveLineup(context, provider, autoPicked);
+    // Reset clears free positions too - back to the formation's default
+    // slot layout, not just a different set of players in the old spots.
+    _saveLineup(context, provider, autoPicked, positions: const {});
     AppSnackBar.showSuccess(context, 'squad.lineupReset'.tr());
   }
 
-  void _saveLineup(BuildContext context, GameProvider provider, List<PlayerFM?> newLineup) {
+  void _saveLineup(BuildContext context, GameProvider provider, List<PlayerFM?> newLineup, {Map<String, Offset>? positions}) {
     final current = provider.tactics;
     if (current == null) return;
     final ids = newLineup.map((p) => p?.id).toList();
     if (ids.any((id) => id == null)) return;
+    final newIds = ids.cast<String>().toSet();
+    // Whatever positions map we're saving (untouched, freshly built by a
+    // drop, or explicitly cleared by reset), drop any entry for a player
+    // who's no longer in the XI - stale coordinates for a benched player
+    // would otherwise sit around unused in the JSONB forever.
+    final resolvedPositions = Map<String, Offset>.from(positions ?? current.startingElevenPositions ?? {})
+      ..removeWhere((playerId, _) => !newIds.contains(playerId));
     final updated = Tactics(
       clubId: current.clubId,
       formation: current.formation,
@@ -514,6 +586,7 @@ class SquadScreen extends StatelessWidget {
       offsideTrap: current.offsideTrap,
       timeWasting: current.timeWasting,
       startingElevenIds: ids.cast<String>(),
+      startingElevenPositions: resolvedPositions.isEmpty ? null : resolvedPositions,
     );
     provider.saveTactics(updated).catchError((error) {
       if (context.mounted) {
@@ -560,9 +633,9 @@ class _FormationPill extends StatelessWidget {
 }
 
 /// A dragged token carries either a pitch slot index (moving a starter to
-/// another slot) or a bench player (bringing them into the lineup) - never
-/// both. Used as the payload type for both Draggable and DragTarget so
-/// drops can tell the two sources apart.
+/// a free-form point on the pitch) or a bench player (bringing them into
+/// the lineup) - never both. Used as the payload type for both Draggable
+/// and DragTarget so drops can tell the two sources apart.
 class _DragPayload {
   const _DragPayload.fromSlot(this.slotIndex) : benchPlayer = null;
   const _DragPayload.fromBench(this.benchPlayer) : slotIndex = null;
@@ -576,16 +649,22 @@ class _Pitch extends StatelessWidget {
     required this.starters,
     required this.topRatedId,
     required this.captainId,
+    required this.freePositions,
     required this.onTapPlayer,
-    required this.onDropOnSlot,
+    required this.onFreeDrop,
   });
 
   final List<_FormationSlot> slots;
   final List<PlayerFM?> starters;
   final String? topRatedId;
   final String? captainId;
+  final Map<String, Offset>? freePositions;
   final ValueChanged<PlayerFM> onTapPlayer;
-  final void Function(int? fromSlotIndex, PlayerFM? benchPlayer, int toIndex) onDropOnSlot;
+
+  /// Drop landed at oransal ([x], [y]) on the pitch (already clamped to
+  /// 0-1). Exactly one of fromSlotIndex/benchPlayer is non-null, same
+  /// contract as the old onDropOnSlot.
+  final void Function(int? fromSlotIndex, PlayerFM? benchPlayer, double x, double y) onFreeDrop;
 
   @override
   Widget build(BuildContext context) {
@@ -600,91 +679,99 @@ class _Pitch extends StatelessWidget {
           builder: (context, constraints) {
             final width = constraints.maxWidth;
             final height = constraints.maxHeight;
+
+            Offset resolveLocalOffset(DragTargetDetails<_DragPayload> details, RenderBox box) {
+              final local = box.globalToLocal(details.offset);
+              // details.offset is the feedback widget's top-left, not the
+              // pointer - nudge by half the 56x72 token size so the drop
+              // point matches where the token's center actually lands.
+              final x = ((local.dx + 28) / width).clamp(0.02, 0.98);
+              final y = ((local.dy + 36) / height).clamp(0.02, 0.98);
+              return Offset(x, y);
+            }
+
             return Stack(
               children: [
                 Positioned.fill(child: CustomPaint(painter: _PitchMarkingsPainter())),
-                for (var i = 0; i < slots.length; i++)
-                  Positioned(
-                    left: slots[i].x * width - 28,
-                    top: slots[i].y * height - 28,
-                    width: 56,
-                    height: 72,
-                    child: DragTarget<_DragPayload>(
+                Positioned.fill(
+                  child: Builder(
+                    builder: (context) => DragTarget<_DragPayload>(
                       onWillAcceptWithDetails: (details) => true,
-                      onAcceptWithDetails: (details) =>
-                          onDropOnSlot(details.data.slotIndex, details.data.benchPlayer, i),
-                      builder: (context, candidateData, rejectedData) {
-                        final isHovering = candidateData.isNotEmpty;
-                        if (starters[i] == null) {
-                          // Empty slot - only ever reachable via a formation
-                          // with fewer eligible players than slots; still a
-                          // valid drop target so a bench player can fill it.
-                          return _EmptySlotPlaceholder(isHovering: isHovering);
-                        }
-                        return LongPressDraggable<_DragPayload>(
-                          data: _DragPayload.fromSlot(i),
-                          feedback: Opacity(
-                            opacity: 0.85,
-                            child: _PlayerToken(
-                              player: starters[i]!,
-                              slotGroup: slots[i].group,
-                              isGoalkeeper: slots[i].group == 'GK',
-                              isTopRated: starters[i]!.id == topRatedId,
-                              isCaptain: starters[i]!.id == captainId,
-                              onTap: () {},
-                            ),
-                          ),
-                          childWhenDragging: Opacity(
-                            opacity: 0.3,
-                            child: _PlayerToken(
-                              player: starters[i]!,
-                              slotGroup: slots[i].group,
-                              isGoalkeeper: slots[i].group == 'GK',
-                              isTopRated: starters[i]!.id == topRatedId,
-                              isCaptain: starters[i]!.id == captainId,
-                              onTap: () {},
-                            ),
-                          ),
-                          child: AnimatedScale(
-                            duration: const Duration(milliseconds: 120),
-                            scale: isHovering ? 1.12 : 1.0,
-                            child: _PlayerToken(
-                              player: starters[i]!,
-                              slotGroup: slots[i].group,
-                              isGoalkeeper: slots[i].group == 'GK',
-                              isTopRated: starters[i]!.id == topRatedId,
-                              isCaptain: starters[i]!.id == captainId,
-                              onTap: () => onTapPlayer(starters[i]!),
-                            ),
-                          ),
-                        );
+                      onAcceptWithDetails: (details) {
+                        final box = context.findRenderObject() as RenderBox;
+                        final offset = resolveLocalOffset(details, box);
+                        onFreeDrop(details.data.slotIndex, details.data.benchPlayer, offset.dx, offset.dy);
                       },
+                      builder: (context, candidateData, rejectedData) => const SizedBox.expand(),
                     ),
                   ),
+                ),
+                for (var i = 0; i < slots.length; i++)
+                  if (starters[i] != null)
+                    Builder(builder: (context) {
+                      final player = starters[i]!;
+                      final (x, y, group) = _effectiveSlotFor(player, slots[i], freePositions);
+                      final isGoalkeeper = group == 'GK';
+                      return Positioned(
+                        left: x * width - 28,
+                        top: y * height - 36,
+                        width: 56,
+                        height: 72,
+                        child: IgnorePointer(
+                          ignoring: false,
+                          child: isGoalkeeper
+                              // The goalkeeper is never draggable - both the
+                              // match engine and this UI treat GK as fixed,
+                              // so there's nothing to gain from letting the
+                              // user move them and a lot to get wrong (empty
+                              // goal, weird effective-group edge cases).
+                              ? _PlayerToken(
+                                  player: player,
+                                  slotGroup: group,
+                                  isGoalkeeper: true,
+                                  isTopRated: player.id == topRatedId,
+                                  isCaptain: player.id == captainId,
+                                  onTap: () => onTapPlayer(player),
+                                )
+                              : LongPressDraggable<_DragPayload>(
+                                  data: _DragPayload.fromSlot(i),
+                                  feedback: Opacity(
+                                    opacity: 0.85,
+                                    child: _PlayerToken(
+                                      player: player,
+                                      slotGroup: group,
+                                      isGoalkeeper: false,
+                                      isTopRated: player.id == topRatedId,
+                                      isCaptain: player.id == captainId,
+                                      onTap: () {},
+                                    ),
+                                  ),
+                                  childWhenDragging: Opacity(
+                                    opacity: 0.3,
+                                    child: _PlayerToken(
+                                      player: player,
+                                      slotGroup: group,
+                                      isGoalkeeper: false,
+                                      isTopRated: player.id == topRatedId,
+                                      isCaptain: player.id == captainId,
+                                      onTap: () {},
+                                    ),
+                                  ),
+                                  child: _PlayerToken(
+                                    player: player,
+                                    slotGroup: group,
+                                    isGoalkeeper: false,
+                                    isTopRated: player.id == topRatedId,
+                                    isCaptain: player.id == captainId,
+                                    onTap: () => onTapPlayer(player),
+                                  ),
+                                ),
+                        ),
+                      );
+                    }),
               ],
             );
           },
-        ),
-      ),
-    );
-  }
-}
-
-class _EmptySlotPlaceholder extends StatelessWidget {
-  const _EmptySlotPlaceholder({required this.isHovering});
-  final bool isHovering;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 120),
-        width: isHovering ? 40 : 32,
-        height: isHovering ? 40 : 32,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: Colors.white.withValues(alpha: isHovering ? 0.25 : 0.1),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.4), style: BorderStyle.solid),
         ),
       ),
     );
