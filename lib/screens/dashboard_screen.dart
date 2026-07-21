@@ -13,6 +13,7 @@ import '../widgets/club_badge.dart';
 import '../widgets/form_strip.dart';
 import '../widgets/themed_button.dart';
 import 'market_screen.dart';
+import 'match_detail_screen.dart';
 import 'match_schedule_screen.dart';
 import 'opponent_scout_screen.dart';
 import 'squad_screen.dart';
@@ -51,6 +52,10 @@ class DashboardScreen extends StatelessWidget {
         : standings.indexOf(myStanding) + 1;
 
     final recentForm = _recentForm(provider, club.id);
+    final lastPlayed = provider.fixtures.where((f) => f.status == 'Tamamlandı').fold<MatchFixture?>(null, (latest, f) {
+      if (latest == null) return f;
+      return f.kickoff.isAfter(latest.kickoff) ? f : latest;
+    });
     final leagueName = (provider.seasonState?['league'] as Map?)?['name'] as String? ?? 'dashboard.defaultLeagueName'.tr();
     final pendingOffers = provider.pendingIncomingOfferCount;
 
@@ -65,18 +70,45 @@ class DashboardScreen extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
             child: _card(
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text('dashboard.formLabel'.tr(), style: const TextStyle(color: AppColors.textMuted, fontWeight: FontWeight.bold, fontSize: 11, letterSpacing: 1)),
-                  const SizedBox(width: 12),
-                  Expanded(child: FormStrip(results: recentForm, size: 26)),
-                  if (myPosition != null)
-                    Column(
-                      children: [
-                        Text('$myPosition.', style: const TextStyle(color: AppColors.goldLight, fontWeight: FontWeight.bold, fontSize: 22)),
-                        Text('dashboard.positionLabel'.tr(), style: const TextStyle(color: AppColors.textMuted, fontSize: 9.5)),
-                      ],
+                  Row(
+                    children: [
+                      Text('dashboard.formLabel'.tr(), style: const TextStyle(color: AppColors.textMuted, fontWeight: FontWeight.bold, fontSize: 11, letterSpacing: 1)),
+                      const SizedBox(width: 12),
+                      Expanded(child: FormStrip(results: recentForm, size: 26)),
+                      if (myPosition != null)
+                        Column(
+                          children: [
+                            Text('$myPosition.', style: const TextStyle(color: AppColors.goldLight, fontWeight: FontWeight.bold, fontSize: 22)),
+                            Text('dashboard.positionLabel'.tr(), style: const TextStyle(color: AppColors.textMuted, fontSize: 9.5)),
+                          ],
+                        ),
+                    ],
+                  ),
+                  if (lastPlayed != null) ...[
+                    const Divider(height: 20, color: AppColors.cardBorder),
+                    InkWell(
+                      onTap: () => _push(context, MatchDetailScreen(fixture: lastPlayed), title: 'matchDetail.title'.tr()),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.play_circle_outline, color: AppColors.goldLight, size: 20),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'dashboard.watchLastMatch'.tr(namedArgs: {
+                                'opponent': lastPlayed.opponentName,
+                                'score': '${lastPlayed.homeScore}-${lastPlayed.awayScore}',
+                              }),
+                              style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600, fontSize: 13),
+                            ),
+                          ),
+                          const Icon(Icons.chevron_right, color: AppColors.textMuted, size: 18),
+                        ],
+                      ),
                     ),
+                  ],
                 ],
               ),
             ),

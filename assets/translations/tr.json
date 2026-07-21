@@ -258,6 +258,7 @@
     "defaultLeagueName": "Lig",
     "formLabel": "FORM",
     "positionLabel": "SIRA",
+    "watchLastMatch": "Son maç: {opponent} ({score}) — İzle",
     "playerCount": "{count} oyuncu",
     "setUp": "Ayarla",
     "offerCount": "{count} teklif",
@@ -549,7 +550,12 @@
     "vsLabel": "vs",
     "notPlayedYet": "Bu maç henüz oynanmadı.",
     "noEventsRecorded": "Bu maç için önemli olay kaydedilmedi.",
-    "matchSummary": "MAÇ ÖZETİ"
+    "matchSummary": "MAÇ ÖZETİ",
+    "liveLabel": "CANLI",
+    "finishedLabel": "MAÇ SONU",
+    "kickoffCountdown": "Maç {minutes} dakika sonra başlıyor",
+    "skipToEnd": "Sonuca Atla",
+    "replayNotice": "Maç sonucu simüle edildi, olaylar canlı gibi yeniden oynatılıyor."
   },
   "bank": {
     "title": "Banka",

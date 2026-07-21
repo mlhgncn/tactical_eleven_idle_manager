@@ -258,6 +258,7 @@
     "defaultLeagueName": "League",
     "formLabel": "FORM",
     "positionLabel": "RANK",
+    "watchLastMatch": "Last match: {opponent} ({score}) — Watch",
     "playerCount": "{count} players",
     "setUp": "Set Up",
     "offerCount": "{count} offers",
@@ -549,7 +550,12 @@
     "vsLabel": "vs",
     "notPlayedYet": "This match hasn't been played yet.",
     "noEventsRecorded": "No notable events were recorded for this match.",
-    "matchSummary": "MATCH SUMMARY"
+    "matchSummary": "MATCH SUMMARY",
+    "liveLabel": "LIVE",
+    "finishedLabel": "FULL TIME",
+    "kickoffCountdown": "Match starts in {minutes} minutes",
+    "skipToEnd": "Skip to Result",
+    "replayNotice": "This match was simulated - events are being replayed as if live."
   },
   "bank": {
     "title": "Bank",
