@@ -274,7 +274,7 @@ DROP POLICY IF EXISTS players_select_policy ON public.players;
 CREATE POLICY players_select_policy ON public.players FOR SELECT TO authenticated
   USING (
     club_id IS NULL
-    OR club_id = (SELECT id FROM public.clubs WHERE user_id = auth.uid() LIMIT 1)
+    OR club_id IN (SELECT id FROM public.clubs WHERE user_id = auth.uid())
     OR EXISTS (SELECT 1 FROM public.transfer_market tm WHERE tm.player_id = players.id)
   );
 
