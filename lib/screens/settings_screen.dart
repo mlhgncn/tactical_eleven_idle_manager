@@ -8,6 +8,8 @@ import '../services/notification_service.dart';
 import '../widgets/app_snackbar.dart';
 import 'profile_screen.dart';
 
+final _authService = AuthService();
+
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
@@ -108,16 +110,26 @@ class _SettingsBodyState extends State<_SettingsBody> {
           label: Text('settings.leave_team'.tr()),
         ),
         const SizedBox(height: 12),
-        OutlinedButton.icon(
-          style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
-          onPressed: () async {
-            await AuthService().signOut();
-            if (!context.mounted) return;
-            Navigator.of(context).pushNamedAndRemoveUntil('/auth', (route) => false);
-          },
-          icon: const Icon(Icons.logout),
-          label: Text('navigation.logout_tooltip'.tr()),
-        ),
+        // Anonymous accounts have no password to sign back in with - signing
+        // out would strand the player's club permanently unreachable. Send
+        // them to Profile to claim a real account first instead of exposing
+        // sign-out at all.
+        if (_authService.isAnonymous)
+          Text(
+            'settings.guest_logout_notice'.tr(),
+            style: const TextStyle(color: Colors.orange, fontSize: 12.5),
+          )
+        else
+          OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
+            onPressed: () async {
+              await _authService.signOut();
+              if (!context.mounted) return;
+              Navigator.of(context).pushNamedAndRemoveUntil('/auth', (route) => false);
+            },
+            icon: const Icon(Icons.logout),
+            label: Text('navigation.logout_tooltip'.tr()),
+          ),
         const SizedBox(height: 24),
         OutlinedButton.icon(
           style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
@@ -192,7 +204,7 @@ class _SettingsBodyState extends State<_SettingsBody> {
     setState(() => _isDeletingAccount = true);
     try {
       await context.read<GameProvider>().deleteAccount();
-      await AuthService().signOut();
+      await _authService.signOut();
       if (!context.mounted) return;
       Navigator.of(context).pushNamedAndRemoveUntil('/auth', (route) => false);
     } catch (error) {

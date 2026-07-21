@@ -106,6 +106,7 @@ class MyApp extends StatelessWidget {
         initialRoute: '/auth',
         routes: {
           '/auth': (_) => AuthScreen(),
+          '/login': (_) => LoginScreen(),
           '/email-verification': (_) => const EmailVerificationScreen(),
           '/setup-club': (_) => SetupClubScreen(),
           '/league-selector': (_) => const LeagueSelectorScreen(),

@@ -23,6 +23,10 @@ class AuthService implements AuthRepository {
     );
   }
 
+  Future<dynamic> signInAnonymously() {
+    return _supabase.auth.signInAnonymously();
+  }
+
   Future<void> signOut() {
     return _supabase.auth.signOut();
   }
@@ -35,6 +39,15 @@ class AuthService implements AuthRepository {
     await _supabase.auth.updateUser(UserAttributes(password: newPassword));
   }
 
+  // Setting email+password together is what turns an anonymous auth.users
+  // row into a real one - same UUID throughout, so the club/players/profile
+  // already tied to that id carry straight over. Supabase sends a
+  // confirmation email; the account is fully claimed once it's confirmed.
+  Future<void> claimAccount(String email, String password) async {
+    await _supabase.auth.updateUser(UserAttributes(email: email, password: password));
+  }
+
   String? get currentUserId => _supabase.auth.currentUser?.id;
   String? get currentUserEmail => _supabase.auth.currentUser?.email;
+  bool get isAnonymous => _supabase.auth.currentUser?.isAnonymous ?? false;
 }

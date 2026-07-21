@@ -35,6 +35,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _usernamePrefilled = false;
   bool _isUploadingAvatar = false;
   bool _isClaimingDaily = false;
+  bool _isClaimingAccount = false;
   String? _claimingAchievement;
   String? _claimingSocial;
 
@@ -119,6 +120,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
       AppSnackBar.showErrorFromException(context, error);
     } finally {
       if (mounted) setState(() => _isUpdatingPassword = false);
+    }
+  }
+
+  Future<void> _claimAccount() async {
+    final email = _emailController.text.trim();
+    if (email.isEmpty || !email.contains('@')) {
+      AppSnackBar.show(context, 'profile.invalidEmail'.tr());
+      return;
+    }
+    final password = _passwordController.text;
+    if (password.length < 6) {
+      AppSnackBar.show(context, 'profile.passwordTooShort'.tr());
+      return;
+    }
+    if (password != _confirmPasswordController.text) {
+      AppSnackBar.show(context, 'profile.passwordsMismatch'.tr());
+      return;
+    }
+
+    setState(() => _isClaimingAccount = true);
+    try {
+      await _authService.claimAccount(email, password);
+      if (!mounted) return;
+      _passwordController.clear();
+      _confirmPasswordController.clear();
+      AppSnackBar.showSuccess(context, 'profile.accountClaimed'.tr());
+    } catch (error) {
+      if (!mounted) return;
+      AppSnackBar.showErrorFromException(context, error);
+    } finally {
+      if (mounted) setState(() => _isClaimingAccount = false);
     }
   }
 
@@ -475,67 +507,119 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('profile.emailAddressTitle'.tr(), style: Theme.of(context).textTheme.titleMedium),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _emailController,
-                    keyboardType: TextInputType.emailAddress,
-                    decoration: InputDecoration(labelText: 'auth.email'.tr()),
-                  ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: _isUpdatingEmail ? null : _updateEmail,
-                      child: _isUpdatingEmail
-                          ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                          : Text('profile.updateEmailButton'.tr()),
+          if (_authService.isAnonymous) ...[
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('profile.claimAccountTitle'.tr(), style: Theme.of(context).textTheme.titleMedium),
+                    const SizedBox(height: 8),
+                    Text(
+                      'profile.claimAccountDescription'.tr(),
+                      style: const TextStyle(fontSize: 12.5, color: AppColors.textMuted, height: 1.4),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _emailController,
+                      keyboardType: TextInputType.emailAddress,
+                      decoration: InputDecoration(labelText: 'auth.email'.tr()),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _passwordController,
+                      obscureText: true,
+                      decoration: InputDecoration(labelText: 'profile.newPasswordLabel'.tr()),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _confirmPasswordController,
+                      obscureText: true,
+                      decoration: InputDecoration(labelText: 'profile.confirmNewPasswordLabel'.tr()),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _isClaimingAccount ? null : _claimAccount,
+                        child: _isClaimingAccount
+                            ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                            : Text('profile.claimAccountButton'.tr()),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pushNamed('/login'),
+                      child: Text('profile.signInDifferentAccount'.tr()),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 16),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('profile.changePasswordTitle'.tr(), style: Theme.of(context).textTheme.titleMedium),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _passwordController,
-                    obscureText: true,
-                    decoration: InputDecoration(labelText: 'profile.newPasswordLabel'.tr()),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _confirmPasswordController,
-                    obscureText: true,
-                    decoration: InputDecoration(labelText: 'profile.confirmNewPasswordLabel'.tr()),
-                  ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: _isUpdatingPassword ? null : _updatePassword,
-                      child: _isUpdatingPassword
-                          ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                          : Text('profile.updatePasswordButton'.tr()),
+          ] else ...[
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('profile.emailAddressTitle'.tr(), style: Theme.of(context).textTheme.titleMedium),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _emailController,
+                      keyboardType: TextInputType.emailAddress,
+                      decoration: InputDecoration(labelText: 'auth.email'.tr()),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _isUpdatingEmail ? null : _updateEmail,
+                        child: _isUpdatingEmail
+                            ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                            : Text('profile.updateEmailButton'.tr()),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
+            const SizedBox(height: 16),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('profile.changePasswordTitle'.tr(), style: Theme.of(context).textTheme.titleMedium),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _passwordController,
+                      obscureText: true,
+                      decoration: InputDecoration(labelText: 'profile.newPasswordLabel'.tr()),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _confirmPasswordController,
+                      obscureText: true,
+                      decoration: InputDecoration(labelText: 'profile.confirmNewPasswordLabel'.tr()),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _isUpdatingPassword ? null : _updatePassword,
+                        child: _isUpdatingPassword
+                            ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                            : Text('profile.updatePasswordButton'.tr()),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );

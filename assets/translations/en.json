@@ -60,7 +60,8 @@
     "username_required": "Please enter a username.",
     "username_short": "Username must be at least 3 characters.",
     "verification_failed": "User verification could not be completed.",
-    "generic_error": "Error: {error}"
+    "generic_error": "Error: {error}",
+    "loginExistingAccountNotice": "If you've already saved an account, you can sign in here."
   },
   "settings": {
     "title": "Settings",
@@ -78,7 +79,8 @@
     "delete_account": "Delete Account",
     "delete_account_confirm_title": "Are you sure you want to permanently delete your account?",
     "delete_account_confirm_body": "This action cannot be undone. Your profile, diamond balance, and purchase history will be permanently deleted. Your club will revert to bot control. Do you want to continue?",
-    "delete_account_confirm_action": "Yes, Delete My Account"
+    "delete_account_confirm_action": "Yes, Delete My Account",
+    "guest_logout_notice": "You're playing as a guest. Save your account from the Profile screen before signing out, or you won't be able to reach your club again."
   },
   "clubSetup": {
     "title": "Start Managing",
@@ -576,6 +578,11 @@
     "newPasswordLabel": "New Password",
     "confirmNewPasswordLabel": "New Password (Confirm)",
     "updatePasswordButton": "Update Password",
+    "claimAccountTitle": "Save Your Account",
+    "claimAccountDescription": "You're currently playing as a guest. Add an email and password to make your account permanent - you'll be able to get back to your club even on a new phone.",
+    "claimAccountButton": "Save Account",
+    "signInDifferentAccount": "Sign in with a different account",
+    "accountClaimed": "Your account has been saved. We've sent a confirmation link to your email.",
     "avatarUpdated": "Profile picture updated.",
     "levelNone": "Starting Level",
     "levelSilver": "Silver Level",

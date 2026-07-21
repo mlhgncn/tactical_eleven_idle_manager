@@ -60,7 +60,8 @@
     "username_required": "Kullanıcı adı giriniz.",
     "username_short": "Kullanıcı adı en az 3 karakter olmalıdır.",
     "verification_failed": "Kullanıcı doğrulaması tamamlanamadı.",
-    "generic_error": "Hata: {error}"
+    "generic_error": "Hata: {error}",
+    "loginExistingAccountNotice": "Daha önce kaydettiğin bir hesabın varsa, buradan giriş yapabilirsin."
   },
   "settings": {
     "title": "Ayarlar",
@@ -78,7 +79,8 @@
     "delete_account": "Hesabı Sil",
     "delete_account_confirm_title": "Hesabını kalıcı olarak silmek istediğine emin misin?",
     "delete_account_confirm_body": "Bu işlem geri alınamaz. Profilin, elmas bakiyen ve satın alma geçmişin kalıcı olarak silinecek. Kulübün bot kontrolüne devredilecek. Devam etmek istiyor musun?",
-    "delete_account_confirm_action": "Evet, Hesabımı Sil"
+    "delete_account_confirm_action": "Evet, Hesabımı Sil",
+    "guest_logout_notice": "Misafir hesabındasın. Çıkış yapmadan önce Profil ekranından hesabını kaydet, yoksa kulübüne bir daha erişemezsin."
   },
   "clubSetup": {
     "title": "Menajerliğe Başla",
@@ -576,6 +578,11 @@
     "newPasswordLabel": "Yeni Şifre",
     "confirmNewPasswordLabel": "Yeni Şifre (Tekrar)",
     "updatePasswordButton": "Şifreyi Güncelle",
+    "claimAccountTitle": "Hesabını Kaydet",
+    "claimAccountDescription": "Şu an misafir olarak oynuyorsun. İlerlemeni kaybetmemek için e-posta ve şifre ekleyerek hesabını kalıcı hale getir - telefon değiştirsen bile kulübüne geri dönebilirsin.",
+    "claimAccountButton": "Hesabı Kaydet",
+    "signInDifferentAccount": "Başka bir hesapla giriş yap",
+    "accountClaimed": "Hesabın kaydedildi. Onay için e-postana bir bağlantı gönderdik.",
     "avatarUpdated": "Profil fotoğrafı güncellendi.",
     "levelNone": "Başlangıç Seviyesi",
     "levelSilver": "Gümüş Seviye",

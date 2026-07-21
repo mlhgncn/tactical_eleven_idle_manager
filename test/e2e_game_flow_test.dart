@@ -61,6 +61,15 @@ class _FakeAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<dynamic> signInAnonymously() async {
+    _currentUserId = 'test-user-1';
+    return _FakeAuthResponse(
+      user: _FakeUser(id: currentUserId!),
+      session: _FakeSession(user: _FakeUser(id: currentUserId!)),
+    );
+  }
+
+  @override
   Future<void> signOut() async {
     _currentUserId = null;
   }
@@ -72,7 +81,13 @@ class _FakeAuthRepository implements AuthRepository {
   Future<void> updatePassword(String newPassword) async {}
 
   @override
+  Future<void> claimAccount(String email, String password) async {}
+
+  @override
   String? get currentUserEmail => 'test@example.com';
+
+  @override
+  bool get isAnonymous => true;
 }
 
 class _FakeAuthResponse {
@@ -587,25 +602,13 @@ void main() {
     );
     print('TEST: pumpWidget completed');
 
+    // AuthScreen no longer shows a login/signup form (App Store guideline
+    // 5.1.1 - non-account-based features must be reachable without forcing
+    // registration): it silently signs in anonymously and drops straight
+    // into club setup.
     await tester.pumpAndSettle(const Duration(seconds: 2));
     print('TEST: pumpAndSettle completed');
-    expect(find.text('Giriş Yap'), findsWidgets);
 
-    await tester.tap(find.text('Henüz hesabın yok mu? Kayıt ol'));
-    await tester.pumpAndSettle(const Duration(seconds: 1));
-    expect(find.text('Kayıt Ol'), findsWidgets);
-
-    final textFields = find.byType(TextFormField);
-    expect(textFields, findsWidgets);
-
-    await tester.enterText(textFields.at(0), 'testuser');
-    await tester.enterText(textFields.at(1), 'test@example.com');
-    await tester.enterText(textFields.at(2), 'password123');
-    await tester.pumpAndSettle(const Duration(milliseconds: 300));
-
-    await tester.tap(find.widgetWithText(GoldButton, 'Kayıt Ol'));
-    await tester.pumpAndSettle(const Duration(seconds: 1));
-    
     expect(find.text('Menajerliğe Başla'), findsOneWidget);
 
     await tester.tap(find.widgetWithText(GoldButton, 'Lig Oluştur'));
