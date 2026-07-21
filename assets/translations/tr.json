@@ -1,4 +1,10 @@
 {
+  "leaderboard": {
+    "title": "Liderlik Tablosu",
+    "loadFailed": "Liderlik tablosu yüklenemedi: {error}",
+    "empty": "Henüz sıralamaya girecek kimse yok.",
+    "statsLine": "{titles} şampiyonluk · {wins} galibiyet"
+  },
   "app": {
     "title": "Tactical Eleven: Idle Manager"
   },

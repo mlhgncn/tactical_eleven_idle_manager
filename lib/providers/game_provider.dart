@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/bank.dart';
 import '../models/club_info.dart';
 import '../models/inbox_message.dart';
+import '../models/leaderboard_entry.dart';
 import '../models/league_club_option.dart';
 import '../models/opponent_scout_report.dart';
 import '../models/match_fixture.dart';
@@ -1342,6 +1343,18 @@ class GameProvider extends ChangeNotifier {
   /// Puan durumu ekranından herhangi bir kulübün güncel kadrosunu getirir.
   Future<OpponentScoutReport> viewClubRoster(String clubId) {
     return _repository.viewClubRoster(clubId);
+  }
+
+  /// Lig şampiyonluğu sayısına (eşitlikte toplam galibiyete) göre sıralı
+  /// sunucu geneli liderlik tablosu.
+  Future<List<LeaderboardEntry>> loadGlobalLeaderboard({int limit = 50, int offset = 0}) {
+    return _repository.loadGlobalLeaderboard(limit: limit, offset: offset);
+  }
+
+  /// Kullanıcının kendi sırasını döner (username set edilmemişse null -
+  /// liderlik tablosuna hiç girmiyor demektir).
+  Future<LeaderboardEntry?> loadMyLeaderboardRank() {
+    return _repository.loadMyLeaderboardRank();
   }
 
   void _setLoading(bool value) {

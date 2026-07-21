@@ -1,4 +1,10 @@
 {
+  "leaderboard": {
+    "title": "Leaderboard",
+    "loadFailed": "Could not load the leaderboard: {error}",
+    "empty": "No one has made the leaderboard yet.",
+    "statsLine": "{titles} titles · {wins} wins"
+  },
   "app": {
     "title": "Tactical Eleven: Idle Manager"
   },

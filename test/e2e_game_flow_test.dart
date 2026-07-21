@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tactical_eleven_idle_manager/models/bank.dart';
 import 'package:tactical_eleven_idle_manager/models/club_info.dart';
 import 'package:tactical_eleven_idle_manager/models/inbox_message.dart';
+import 'package:tactical_eleven_idle_manager/models/leaderboard_entry.dart';
 import 'package:tactical_eleven_idle_manager/models/league_club_option.dart';
 import 'package:tactical_eleven_idle_manager/models/opponent_scout_report.dart';
 import 'package:tactical_eleven_idle_manager/models/player_fm.dart';
@@ -341,6 +342,12 @@ class _FakeGameRepository implements GameRepository {
 
   @override
   Future<InboxMessage?> markMessageAsUnread(String messageId) async => null;
+
+  @override
+  Future<List<LeaderboardEntry>> loadGlobalLeaderboard({int limit = 50, int offset = 0}) async => const [];
+
+  @override
+  Future<LeaderboardEntry?> loadMyLeaderboardRank() async => null;
 
   @override
   Future<Map<String, dynamic>> verifyIapPurchase({

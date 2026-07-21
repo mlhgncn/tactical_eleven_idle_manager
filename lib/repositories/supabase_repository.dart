@@ -9,6 +9,7 @@ import '../services/error_reporting_service.dart';
 import '../models/bank.dart';
 import '../models/club_info.dart';
 import '../models/inbox_message.dart';
+import '../models/leaderboard_entry.dart';
 import '../models/league_club_option.dart';
 import '../models/match_result.dart';
 import '../models/opponent_scout_report.dart';
@@ -635,6 +636,25 @@ class SupabaseRepository implements GameRepository {
     final data = await _client.rpc('get_club_owner_usernames', params: {'p_club_ids': ids});
     if (data is! List<dynamic>) return const [];
     return data.cast<Map<String, dynamic>>();
+  }
+
+  Future<List<LeaderboardEntry>> loadGlobalLeaderboard({int limit = 50, int offset = 0}) async {
+    return _wrap(() async {
+      final data = await _client.rpc('get_global_leaderboard', params: {
+        'p_limit': limit,
+        'p_offset': offset,
+      });
+      if (data is! List<dynamic>) return <LeaderboardEntry>[];
+      return data.cast<Map<String, dynamic>>().map(LeaderboardEntry.fromMap).toList();
+    });
+  }
+
+  Future<LeaderboardEntry?> loadMyLeaderboardRank() async {
+    return _wrap(() async {
+      final data = await _client.rpc('get_my_leaderboard_rank');
+      if (data is! List<dynamic> || data.isEmpty) return null;
+      return LeaderboardEntry.fromMap(data.first as Map<String, dynamic>);
+    });
   }
 
   Future<List<Map<String, dynamic>>> loadFixturesForClub(String clubId) async {
