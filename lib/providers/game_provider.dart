@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/bank.dart';
 import '../models/club_info.dart';
+import '../models/cup_match.dart';
 import '../models/inbox_message.dart';
 import '../models/leaderboard_entry.dart';
 import '../models/league_club_option.dart';
@@ -1190,6 +1191,11 @@ class GameProvider extends ChangeNotifier {
     } finally {
       _setBusy(false);
     }
+  }
+
+  /// Kullanıcının herhangi bir kulübünün yer aldığı kupa maçlarını (geçmiş+gelecek) getirir.
+  Future<List<CupMatch>> loadMyCupMatches() {
+    return _repository.loadMyCupMatches();
   }
 
   /// StoreKit satın alımı tamamlandıktan sonra makbuzu sunucuda doğrular

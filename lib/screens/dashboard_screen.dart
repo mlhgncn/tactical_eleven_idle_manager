@@ -13,6 +13,7 @@ import '../widgets/club_badge.dart';
 import '../widgets/form_strip.dart';
 import '../widgets/themed_button.dart';
 import 'academy_screen.dart';
+import 'cup_screen.dart';
 import 'market_screen.dart';
 import 'match_detail_screen.dart';
 import 'match_schedule_screen.dart';
@@ -167,6 +168,13 @@ class DashboardScreen extends StatelessWidget {
                   title: 'academy.title'.tr(),
                   subtitle: club.isAcademyProducing ? 'academy.producingSubtitle'.tr() : 'academy.readySubtitle'.tr(),
                   onTap: () => _push(context, const AcademyScreen(), title: 'academy.title'.tr()),
+                ),
+                _QuickAction(
+                  icon: Icons.emoji_events_outlined,
+                  color: AppColors.red,
+                  title: 'cup.title'.tr(),
+                  subtitle: 'cup.dashboardSubtitle'.tr(),
+                  onTap: () => _push(context, const CupScreen(), title: 'cup.title'.tr()),
                 ),
               ],
             ),

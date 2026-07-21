@@ -10,7 +10,9 @@ export interface MatchRow {
   home_club_id: string;
   away_club_id: string;
   match_date: string;
-  season_id: string;
+  // Null for cup matches - they don't belong to a league season, so form
+  // (recent standings) and league_standings updates are skipped for them.
+  season_id: string | null;
 }
 
 export interface ClubRow {
@@ -729,11 +731,16 @@ export async function resolveMatch(
   // Recent-performance standings, fetched BEFORE this match's result is
   // applied (update_standings_after_match runs later below) - so the
   // multiplier reflects form coming into this match, not including it.
-  const { data: standingsRows } = await supabase
-    .from('league_standings')
-    .select('club_id,wins,draws,played')
-    .in('club_id', clubIds)
-    .eq('season_id', matchRow.season_id);
+  // Cup matches have no season_id, so there's no standings row to read -
+  // form multiplier is neutral (1.0x) for them, which is fine since a
+  // knockout cup has no "table" concept anyway.
+  const standingsRows = matchRow.season_id
+    ? (await supabase
+        .from('league_standings')
+        .select('club_id,wins,draws,played')
+        .in('club_id', clubIds)
+        .eq('season_id', matchRow.season_id)).data
+    : null;
   const standingsMap = new Map<string, { wins: number; draws: number; played: number }>(
     (standingsRows ?? []).map((s: { club_id: string; wins: number; draws: number; played: number }) => [
       s.club_id,
@@ -773,8 +780,10 @@ export async function resolveMatch(
     }
   }
 
-  const { error: standingsError } = await supabase.rpc('update_standings_after_match', { p_match_id: matchRow.id });
-  if (standingsError) throw new Error(`Puan durumu güncellenirken hata oluştu: ${standingsError.message}`);
+  if (matchRow.season_id) {
+    const { error: standingsError } = await supabase.rpc('update_standings_after_match', { p_match_id: matchRow.id });
+    if (standingsError) throw new Error(`Puan durumu güncellenirken hata oluştu: ${standingsError.message}`);
+  }
 
   // Lineup-neglect tracking: a valid saved XI (right length, all slots
   // filled by known/available players) resets the counter; anything else

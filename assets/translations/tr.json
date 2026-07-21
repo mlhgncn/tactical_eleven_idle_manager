@@ -5,6 +5,17 @@
     "empty": "Henüz sıralamaya girecek kimse yok.",
     "statsLine": "{titles} şampiyonluk · {wins} galibiyet"
   },
+  "cup": {
+    "title": "Kupa",
+    "dashboardSubtitle": "Turnuvayı gör",
+    "loadFailed": "Kupa maçları yüklenemedi: {error}",
+    "empty": "Henüz bir kupa maçında yer almadınız. Her ayın başında yeni turnuva başlar.",
+    "roundOf16": "SON 16",
+    "quarterFinal": "ÇEYREK FİNAL",
+    "semiFinal": "YARI FİNAL",
+    "final": "FİNAL",
+    "roundN": "{n}. TUR"
+  },
   "academy": {
     "title": "Akademi",
     "producingSubtitle": "Üretimde...",

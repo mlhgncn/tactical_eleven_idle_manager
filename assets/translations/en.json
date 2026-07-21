@@ -5,6 +5,17 @@
     "empty": "No one has made the leaderboard yet.",
     "statsLine": "{titles} titles · {wins} wins"
   },
+  "cup": {
+    "title": "Cup",
+    "dashboardSubtitle": "See the bracket",
+    "loadFailed": "Could not load cup matches: {error}",
+    "empty": "You haven't taken part in a cup match yet. A new tournament starts at the beginning of each month.",
+    "roundOf16": "ROUND OF 16",
+    "quarterFinal": "QUARTER-FINAL",
+    "semiFinal": "SEMI-FINAL",
+    "final": "FINAL",
+    "roundN": "ROUND {n}"
+  },
   "academy": {
     "title": "Academy",
     "producingSubtitle": "In progress...",

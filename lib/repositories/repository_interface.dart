@@ -1,5 +1,6 @@
 import '../models/bank.dart';
 import '../models/club_info.dart';
+import '../models/cup_match.dart';
 import '../models/inbox_message.dart';
 import '../models/leaderboard_entry.dart';
 import '../models/league_club_option.dart';
@@ -89,6 +90,7 @@ abstract class GameRepository {
   Future<ClubInfo?> hideTacticsForNextMatch({String? clubId});
   Future<ClubInfo?> startAcademyProduction({String? clubId});
   Future<ClubInfo?> reduceAcademyTimeWithAd({String? clubId});
+  Future<List<CupMatch>> loadMyCupMatches();
   Future<ClubInfo?> sendTeamToCamp({String? clubId});
   Future<Profile?> updateAvatarUrl(String avatarUrl);
   Future<String> uploadAvatarImage(List<int> bytes, String fileExtension);

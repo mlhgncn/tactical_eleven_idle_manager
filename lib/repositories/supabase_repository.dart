@@ -8,6 +8,7 @@ import '../services/error_reporting_service.dart';
 
 import '../models/bank.dart';
 import '../models/club_info.dart';
+import '../models/cup_match.dart';
 import '../models/inbox_message.dart';
 import '../models/leaderboard_entry.dart';
 import '../models/league_club_option.dart';
@@ -1211,6 +1212,15 @@ class SupabaseRepository implements GameRepository {
       });
       if (data == null) return null;
       return ClubInfo.fromMap(Map<String, dynamic>.from(data as Map<String, dynamic>));
+    });
+  }
+
+  @override
+  Future<List<CupMatch>> loadMyCupMatches() async {
+    return _wrap(() async {
+      final data = await _client.rpc('get_my_cup_matches');
+      if (data is! List<dynamic>) return <CupMatch>[];
+      return data.cast<Map<String, dynamic>>().map(CupMatch.fromMap).toList();
     });
   }
 
