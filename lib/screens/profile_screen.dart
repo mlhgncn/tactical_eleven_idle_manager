@@ -437,36 +437,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       label: 'Instagram',
                       isFollowed: profile.socialInstagramFollowed,
                       isLoading: _claimingSocial == 'instagram',
-                      onTap: () => _openSocialAndClaim('instagram', 'https://instagram.com'),
+                      onTap: () => _openSocialAndClaim('instagram', 'https://www.instagram.com/tacticaleleven'),
                     ),
-                    const SizedBox(height: 8),
-                    _SocialRow(
-                      icon: Icons.alternate_email,
-                      label: 'X (Twitter)',
-                      isFollowed: profile.socialXFollowed,
-                      isLoading: _claimingSocial == 'x',
-                      onTap: () => _openSocialAndClaim('x', 'https://x.com'),
-                    ),
-                    const SizedBox(height: 8),
-                    _SocialRow(
-                      icon: Icons.music_note,
-                      label: 'TikTok',
-                      isFollowed: profile.socialTiktokFollowed,
-                      isLoading: _claimingSocial == 'tiktok',
-                      onTap: () => _openSocialAndClaim('tiktok', 'https://tiktok.com'),
-                    ),
-                    if (!profile.socialEngagementClaimed) ...[
-                      const SizedBox(height: 8),
-                      SizedBox(
-                        width: double.infinity,
-                        child: OutlinedButton(
-                          onPressed: _claimingSocial == 'engagement' ? null : () => _openSocialAndClaim('engagement', 'https://instagram.com'),
-                          child: _claimingSocial == 'engagement'
-                              ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                              : Text('profile.socialEngagementButton'.tr()),
-                        ),
-                      ),
-                    ],
                   ],
                 ),
               ),
