@@ -7,6 +7,7 @@ import '../models/inbox_message.dart';
 import '../models/leaderboard_entry.dart';
 import '../models/league_club_option.dart';
 import '../models/referral_info.dart';
+import '../models/tactic_preset.dart';
 import '../models/weekly_quest.dart';
 import '../models/opponent_scout_report.dart';
 import '../models/match_fixture.dart';
@@ -1047,12 +1048,12 @@ class GameProvider extends ChangeNotifier {
     }
   }
 
-  /// Kendi oyuncuna gelen bir teklifi kabul veya reddeder.
+  /// Kendi oyuncuna gelen (ya da kendi verdiğin teklife karşı gelen) bir teklifi kabul veya reddeder.
   Future<void> respondToTransferOffer({required String offerId, required bool accept}) async {
     if (_isBusy) return;
     _setBusy(true);
     try {
-      await _repository.respondToTransferOffer(offerId: offerId, accept: accept);
+      await _repository.respondToTransferOffer(offerId: offerId, accept: accept, clubId: _activeClub?.id);
       await refreshGameState();
     } finally {
       _setBusy(false);
@@ -1066,6 +1067,24 @@ class GameProvider extends ChangeNotifier {
     try {
       await _repository.withdrawTransferOffer(offerId: offerId);
       await refreshGameState();
+    } finally {
+      _setBusy(false);
+    }
+  }
+
+  /// Bekleyen bir teklife farklı bir tutarla karşı teklif verir. Karşı taraf
+  /// bot ise (satıcı ya da alıcı), otomatik olarak anında tepki verebilir
+  /// (kabul/red/yeni bir bot karşı teklifi) - bu yüzden dönen tekliften
+  /// sonucu kontrol ediyoruz.
+  Future<void> counterTransferOffer({required String offerId, required int counterAmount}) async {
+    if (_isBusy) return;
+    _setBusy(true);
+    try {
+      final offer = await _repository.counterTransferOffer(offerId: offerId, counterAmount: counterAmount, clubId: _activeClub?.id);
+      await refreshGameState();
+      if (offer != null && offer.status == 'rejected') {
+        throw Exception('Karşı teklif reddedildi.');
+      }
     } finally {
       _setBusy(false);
     }
@@ -1342,6 +1361,66 @@ class GameProvider extends ChangeNotifier {
     } finally {
       _setBusy(false);
     }
+  }
+
+  List<TacticPreset> _tacticPresets = <TacticPreset>[];
+  List<TacticPreset> get tacticPresets => List.unmodifiable(_tacticPresets);
+
+  /// Kayıtlı taktik şablonlarını (formasyon/mentalite/slider kombinasyonları) yükler.
+  Future<void> loadTacticPresets() async {
+    final activeClub = _activeClub;
+    if (activeClub == null) {
+      _tacticPresets = <TacticPreset>[];
+      notifyListeners();
+      return;
+    }
+    try {
+      _tacticPresets = await _repository.loadTacticPresets(activeClub.id);
+    } catch (_) {
+      _tacticPresets = <TacticPreset>[];
+    }
+    notifyListeners();
+  }
+
+  /// Mevcut taktik ayarlarını (starting XI ve set-piece atıcıları HARİÇ) adlandırılmış bir şablon olarak kaydeder.
+  Future<void> saveTacticPreset({
+    required String name,
+    required Formation formation,
+    required Mentality mentality,
+    required int pressIntensity,
+    required int tempo,
+    required int defensiveLine,
+    required bool offsideTrap,
+    required bool timeWasting,
+  }) async {
+    final activeClub = _activeClub;
+    if (activeClub == null) throw Exception('Aktif kulüp bulunamadı.');
+    await _repository.saveTacticPreset(
+      clubId: activeClub.id,
+      name: name,
+      formation: formation,
+      mentality: mentality,
+      pressIntensity: pressIntensity,
+      tempo: tempo,
+      defensiveLine: defensiveLine,
+      offsideTrap: offsideTrap,
+      timeWasting: timeWasting,
+    );
+    await loadTacticPresets();
+  }
+
+  /// Bir şablonu aktif kulübün taktiğine uygular (starting XI/set-piece atıcılarına dokunmadan).
+  Future<void> applyTacticPreset(String presetId) async {
+    final activeClub = _activeClub;
+    if (activeClub == null) throw Exception('Aktif kulüp bulunamadı.');
+    final updated = await _repository.applyTacticPreset(presetId: presetId, clubId: activeClub.id);
+    if (updated != null) _tactics = updated;
+    notifyListeners();
+  }
+
+  Future<void> deleteTacticPreset(String presetId) async {
+    await _repository.deleteTacticPreset(presetId);
+    await loadTacticPresets();
   }
 
   Future<void> markMessageAsRead(String messageId) async {

@@ -5,6 +5,7 @@ import '../models/inbox_message.dart';
 import '../models/leaderboard_entry.dart';
 import '../models/league_club_option.dart';
 import '../models/referral_info.dart';
+import '../models/tactic_preset.dart';
 import '../models/weekly_quest.dart';
 import '../models/match_result.dart';
 import '../models/opponent_scout_report.dart';
@@ -56,14 +57,29 @@ abstract class GameRepository {
   Future<Tactics?> loadTactics(String clubId);
   Future<Tactics?> saveTacticsForClub(String clubId, Tactics tactics);
   Future<Tactics?> saveTactics(String clubId, Tactics tactics);
+  Future<List<TacticPreset>> loadTacticPresets(String clubId);
+  Future<TacticPreset?> saveTacticPreset({
+    required String clubId,
+    required String name,
+    required Formation formation,
+    required Mentality mentality,
+    required int pressIntensity,
+    required int tempo,
+    required int defensiveLine,
+    required bool offsideTrap,
+    required bool timeWasting,
+  });
+  Future<Tactics?> applyTacticPreset({required String presetId, String? clubId});
+  Future<void> deleteTacticPreset(String presetId);
   Future<TransferMarketItem?> listPlayerForTransfer({required String playerId, required int askingPrice});
   Future<void> withdrawTransferListing({required String playerId});
   Future<List<TransferHistoryEntry>> loadTransferHistory(String clubId);
   Future<List<PlayerFM>> loadFreeAgents();
   Future<ClubInfo?> signFreeAgent({required String playerId, String? clubId});
   Future<TransferOffer?> makeTransferOffer({required String playerId, required int offerAmount, String? clubId});
-  Future<void> respondToTransferOffer({required String offerId, required bool accept});
+  Future<void> respondToTransferOffer({required String offerId, required bool accept, String? clubId});
   Future<void> withdrawTransferOffer({required String offerId});
+  Future<TransferOffer?> counterTransferOffer({required String offerId, required int counterAmount, String? clubId});
   Future<List<TransferOffer>> loadIncomingTransferOffers(String clubId);
   Future<List<TransferOffer>> loadOutgoingTransferOffers(String clubId);
   Future<List<PlayerPack>> loadPlayerPacks();

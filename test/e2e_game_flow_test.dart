@@ -10,6 +10,7 @@ import 'package:tactical_eleven_idle_manager/models/inbox_message.dart';
 import 'package:tactical_eleven_idle_manager/models/leaderboard_entry.dart';
 import 'package:tactical_eleven_idle_manager/models/league_club_option.dart';
 import 'package:tactical_eleven_idle_manager/models/referral_info.dart';
+import 'package:tactical_eleven_idle_manager/models/tactic_preset.dart';
 import 'package:tactical_eleven_idle_manager/models/weekly_quest.dart';
 import 'package:tactical_eleven_idle_manager/models/opponent_scout_report.dart';
 import 'package:tactical_eleven_idle_manager/models/player_fm.dart';
@@ -273,6 +274,29 @@ class _FakeGameRepository implements GameRepository {
   Future<Tactics?> saveTactics(String clubId, Tactics tactics) async => null;
 
   @override
+  Future<List<TacticPreset>> loadTacticPresets(String clubId) async => const [];
+
+  @override
+  Future<TacticPreset?> saveTacticPreset({
+    required String clubId,
+    required Formation formation,
+    required Mentality mentality,
+    required String name,
+    required int pressIntensity,
+    required int tempo,
+    required int defensiveLine,
+    required bool offsideTrap,
+    required bool timeWasting,
+  }) async =>
+      null;
+
+  @override
+  Future<Tactics?> applyTacticPreset({required String presetId, String? clubId}) async => null;
+
+  @override
+  Future<void> deleteTacticPreset(String presetId) async {}
+
+  @override
   Future<TransferMarketItem?> listPlayerForTransfer({required String playerId, required int askingPrice}) async => null;
 
   @override
@@ -291,7 +315,10 @@ class _FakeGameRepository implements GameRepository {
   Future<TransferOffer?> makeTransferOffer({required String playerId, required int offerAmount, String? clubId}) async => null;
 
   @override
-  Future<void> respondToTransferOffer({required String offerId, required bool accept}) async {}
+  Future<void> respondToTransferOffer({required String offerId, required bool accept, String? clubId}) async {}
+
+  @override
+  Future<TransferOffer?> counterTransferOffer({required String offerId, required int counterAmount, String? clubId}) async => null;
 
   @override
   Future<void> withdrawTransferOffer({required String offerId}) async {}
@@ -605,7 +632,11 @@ void main() {
     await tester.tap(find.text('Taktik'));
     await tester.pumpAndSettle(const Duration(milliseconds: 500));
     expect(find.text('OYUN ANLAYIŞI'), findsOneWidget);
-    await tester.drag(find.text('OYUN ANLAYIŞI'), const Offset(0, -500));
+    await tester.scrollUntilVisible(
+      find.widgetWithText(GoldButton, 'TAKTİĞİ KAYDET'),
+      500,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(GoldButton, 'TAKTİĞİ KAYDET'));
     await tester.pumpAndSettle(const Duration(milliseconds: 500));

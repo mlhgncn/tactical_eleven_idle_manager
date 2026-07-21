@@ -210,6 +210,15 @@
     "saveFailed": "Could not save tactics: {error}",
     "subtitleWithOpponent": "Game plan for the match against {opponent}",
     "subtitleNoOpponent": "Game plan for the next match",
+    "presetsTitle": "TACTIC PRESETS",
+    "noPresetsYet": "You don't have any saved presets yet. Adjust the settings below and save one.",
+    "savePresetAction": "Save These Settings as a Preset",
+    "savePresetTitle": "Save Preset",
+    "presetNameLabel": "Preset Name",
+    "presetSaved": "Preset saved.",
+    "presetApplied": "Applied preset \"{name}\".",
+    "deletePresetTitle": "Delete Preset",
+    "deletePresetBody": "Delete the preset \"{name}\"?",
     "gameApproach": "GAME APPROACH",
     "mentalityDefensive": "Defensive",
     "mentalityAttacking": "Attacking",
@@ -239,6 +248,7 @@
   },
   "common": {
     "cancel": "Cancel",
+    "delete": "Delete",
     "noDataYet": "No data yet."
   },
   "transferMarket": {
@@ -287,7 +297,13 @@
     "accept": "Accept",
     "reject": "Reject",
     "withdrawAction": "Withdraw Offer",
-    "reofferAction": "Make New Offer"
+    "reofferAction": "Make New Offer",
+    "counterAction": "Make Counter-Offer",
+    "counterDialogTitle": "Counter-Offer",
+    "counterAmountLabel": "New Amount (GP)",
+    "counterSent": "Counter-offer sent.",
+    "roundLabel": "Round {round}",
+    "waitingOnOtherSide": "Waiting for a response..."
   },
   "playerCard": {
     "power": "POW",

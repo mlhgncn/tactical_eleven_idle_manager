@@ -8,6 +8,7 @@ class TransferOfferCard extends StatelessWidget {
   final Future<void> Function(bool accept)? onRespond;
   final Future<void> Function()? onWithdraw;
   final Future<void> Function()? onReoffer;
+  final Future<void> Function(int counterAmount)? onCounter;
 
   const TransferOfferCard({
     super.key,
@@ -16,7 +17,41 @@ class TransferOfferCard extends StatelessWidget {
     this.onRespond,
     this.onWithdraw,
     this.onReoffer,
+    this.onCounter,
   });
+
+  /// Bu kartı görüntüleyen kulübün pazarlıktaki rolü - isIncoming
+  /// (oyuncu bu kulübe ait, teklif dışarıdan geldi) = seller, aksi halde buyer.
+  String get _myRole => isIncoming ? 'seller' : 'buyer';
+
+  /// Sırada karşı taraf mı var (yani offer.initiatedBy BENİM rolümse, en
+  /// son hamleyi ben yaptım demektir, cevap karşıdan bekleniyor).
+  bool get _isMyTurn => offer.initiatedBy != _myRole;
+
+  Future<void> _showCounterDialog(BuildContext context) async {
+    final controller = TextEditingController(text: offer.offerAmount.toString());
+    final amount = await showDialog<int>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('transferOffer.counterDialogTitle'.tr()),
+        content: TextField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          decoration: InputDecoration(labelText: 'transferOffer.counterAmountLabel'.tr()),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: Text('common.cancel'.tr())),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(int.tryParse(controller.text.trim())),
+            child: Text('transferOffer.counterAction'.tr()),
+          ),
+        ],
+      ),
+    );
+    if (amount == null || amount <= 0) return;
+    await onCounter?.call(amount);
+  }
 
   Color _statusColor() {
     switch (offer.status) {
@@ -77,32 +112,59 @@ class TransferOfferCard extends StatelessWidget {
               ? 'transferOffer.fromLabel'.tr(namedArgs: {'name': counterpartLabel})
               : 'transferOffer.toLabel'.tr(namedArgs: {'name': counterpartLabel})),
           const SizedBox(height: 6),
-          Text('${offer.offerAmount} GP', style: theme.textTheme.bodyLarge),
+          Row(
+            children: [
+              Text('${offer.offerAmount} GP', style: theme.textTheme.bodyLarge),
+              if (offer.isNegotiated) ...[
+                const SizedBox(width: 8),
+                Text(
+                  'transferOffer.roundLabel'.tr(namedArgs: {'round': offer.roundNumber.toString()}),
+                  style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey),
+                ),
+              ],
+            ],
+          ),
           if (offer.isPending) ...[
             const SizedBox(height: 12),
-            if (isIncoming && onRespond != null)
-              Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () => onRespond!(true),
-                      child: Text('transferOffer.accept'.tr()),
+            if (!_isMyTurn) ...[
+              Text('transferOffer.waitingOnOtherSide'.tr(), style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey, fontStyle: FontStyle.italic)),
+              if (!isIncoming && onWithdraw != null) ...[
+                const SizedBox(height: 8),
+                OutlinedButton(
+                  onPressed: onWithdraw,
+                  child: Text('transferOffer.withdrawAction'.tr()),
+                ),
+              ],
+            ] else ...[
+              if (onRespond != null)
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () => onRespond!(true),
+                        child: Text('transferOffer.accept'.tr()),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => onRespond!(false),
-                      child: Text('transferOffer.reject'.tr()),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => onRespond!(false),
+                        child: Text('transferOffer.reject'.tr()),
+                      ),
                     ),
+                  ],
+                ),
+              if (offer.canCounter && onCounter != null) ...[
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    onPressed: () => _showCounterDialog(context),
+                    child: Text('transferOffer.counterAction'.tr()),
                   ),
-                ],
-              )
-            else if (!isIncoming && onWithdraw != null)
-              OutlinedButton(
-                onPressed: onWithdraw,
-                child: Text('transferOffer.withdrawAction'.tr()),
-              ),
+                ),
+              ],
+            ],
           ],
           if (!offer.isPending && !isIncoming && offer.status == 'rejected' && onReoffer != null) ...[
             const SizedBox(height: 12),

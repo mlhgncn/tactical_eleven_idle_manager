@@ -382,6 +382,19 @@ class _TransferMarketScreenState extends State<TransferMarketScreen> {
                                         AppSnackBar.showErrorFromException(context, error);
                                       }
                                     },
+                                    onCounter: (counterAmount) async {
+                                      try {
+                                        await context.read<GameProvider>().counterTransferOffer(
+                                              offerId: offer.id,
+                                              counterAmount: counterAmount,
+                                            );
+                                        if (!context.mounted) return;
+                                        AppSnackBar.showSuccess(context, 'transferOffer.counterSent'.tr());
+                                      } catch (error) {
+                                        if (!context.mounted) return;
+                                        AppSnackBar.showErrorFromException(context, error);
+                                      }
+                                    },
                                   ),
                               ],
                               if (outgoing.isNotEmpty) ...[
@@ -393,6 +406,32 @@ class _TransferMarketScreenState extends State<TransferMarketScreen> {
                                   TransferOfferCard(
                                     offer: offer,
                                     isIncoming: false,
+                                    onRespond: (accept) async {
+                                      try {
+                                        await context.read<GameProvider>().respondToTransferOffer(
+                                              offerId: offer.id,
+                                              accept: accept,
+                                            );
+                                        if (!context.mounted) return;
+                                        AppSnackBar.showSuccess(context, accept ? 'transferMarket.offerAccepted'.tr() : 'transferMarket.offerRejected'.tr());
+                                      } catch (error) {
+                                        if (!context.mounted) return;
+                                        AppSnackBar.showErrorFromException(context, error);
+                                      }
+                                    },
+                                    onCounter: (counterAmount) async {
+                                      try {
+                                        await context.read<GameProvider>().counterTransferOffer(
+                                              offerId: offer.id,
+                                              counterAmount: counterAmount,
+                                            );
+                                        if (!context.mounted) return;
+                                        AppSnackBar.showSuccess(context, 'transferOffer.counterSent'.tr());
+                                      } catch (error) {
+                                        if (!context.mounted) return;
+                                        AppSnackBar.showErrorFromException(context, error);
+                                      }
+                                    },
                                     onWithdraw: () async {
                                       try {
                                         await context.read<GameProvider>().withdrawTransferOffer(offerId: offer.id);

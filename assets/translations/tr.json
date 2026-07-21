@@ -210,6 +210,15 @@
     "saveFailed": "Taktikler kaydedilemedi: {error}",
     "subtitleWithOpponent": "{opponent} maçı için oyun planı",
     "subtitleNoOpponent": "Sıradaki maç için oyun planı",
+    "presetsTitle": "TAKTİK ŞABLONLARI",
+    "noPresetsYet": "Henüz kayıtlı şablonunuz yok. Ayarları yapıp aşağıdan kaydedin.",
+    "savePresetAction": "Bu Ayarları Şablon Olarak Kaydet",
+    "savePresetTitle": "Şablonu Kaydet",
+    "presetNameLabel": "Şablon Adı",
+    "presetSaved": "Şablon kaydedildi.",
+    "presetApplied": "\"{name}\" şablonu uygulandı.",
+    "deletePresetTitle": "Şablonu Sil",
+    "deletePresetBody": "\"{name}\" şablonunu silmek istediğine emin misin?",
     "gameApproach": "OYUN ANLAYIŞI",
     "mentalityDefensive": "Savunmacı",
     "mentalityAttacking": "Hücumcu",
@@ -239,6 +248,7 @@
   },
   "common": {
     "cancel": "Vazgeç",
+    "delete": "Sil",
     "noDataYet": "Henüz bir veri yok."
   },
   "transferMarket": {
@@ -287,7 +297,13 @@
     "accept": "Kabul Et",
     "reject": "Reddet",
     "withdrawAction": "Teklifi Geri Çek",
-    "reofferAction": "Tekrar Teklif Yap"
+    "reofferAction": "Tekrar Teklif Yap",
+    "counterAction": "Karşı Teklif Ver",
+    "counterDialogTitle": "Karşı Teklif",
+    "counterAmountLabel": "Yeni Tutar (GP)",
+    "counterSent": "Karşı teklif gönderildi.",
+    "roundLabel": "Tur {round}",
+    "waitingOnOtherSide": "Karşı taraftan yanıt bekleniyor..."
   },
   "playerCard": {
     "power": "GÜÇ",

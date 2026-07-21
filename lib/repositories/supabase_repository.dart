@@ -12,6 +12,7 @@ import '../models/cup_match.dart';
 import '../models/inbox_message.dart';
 import '../models/leaderboard_entry.dart';
 import '../models/league_club_option.dart';
+import '../models/tactic_preset.dart';
 import '../models/referral_info.dart';
 import '../models/weekly_quest.dart';
 import '../models/match_result.dart';
@@ -578,18 +579,19 @@ class SupabaseRepository implements GameRepository {
         'p_player_id': playerId,
         'p_offer_amount': offerAmount,
         if (clubId != null) 'p_club_id': clubId,
-      }).select('id,player_id,from_club_id,to_club_id,offer_amount,status,created_at,responded_at,player:players(name),from_club:clubs!from_club_id(name),to_club:clubs!to_club_id(name)').single();
+      }).select('id,player_id,from_club_id,to_club_id,offer_amount,status,created_at,responded_at,parent_offer_id,round_number,initiated_by,player:players(name),from_club:clubs!from_club_id(name),to_club:clubs!to_club_id(name)').single();
 
       if (created == null) return null;
       return TransferOffer.fromMap(created as Map<String, dynamic>);
     });
   }
 
-  Future<void> respondToTransferOffer({required String offerId, required bool accept}) async {
+  Future<void> respondToTransferOffer({required String offerId, required bool accept, String? clubId}) async {
     return _wrap(() async {
       await _client.rpc('respond_to_transfer_offer', params: {
         'p_offer_id': offerId,
         'p_accept': accept,
+        if (clubId != null) 'p_club_id': clubId,
       });
     });
   }
@@ -602,11 +604,23 @@ class SupabaseRepository implements GameRepository {
     });
   }
 
+  Future<TransferOffer?> counterTransferOffer({required String offerId, required int counterAmount, String? clubId}) async {
+    return _wrap(() async {
+      final data = await _client.rpc('counter_transfer_offer', params: {
+        'p_offer_id': offerId,
+        'p_counter_amount': counterAmount,
+        if (clubId != null) 'p_club_id': clubId,
+      }).select('id,player_id,from_club_id,to_club_id,offer_amount,status,created_at,responded_at,parent_offer_id,round_number,initiated_by,player:players(name),from_club:clubs!from_club_id(name),to_club:clubs!to_club_id(name)').single();
+      if (data == null) return null;
+      return TransferOffer.fromMap(data as Map<String, dynamic>);
+    });
+  }
+
   Future<List<TransferOffer>> loadIncomingTransferOffers(String clubId) async {
     return _wrap(() async {
       final data = await _client
           .from('transfer_offers')
-          .select('id,player_id,from_club_id,to_club_id,offer_amount,status,created_at,responded_at,player:players(name),from_club:clubs!from_club_id(name),to_club:clubs!to_club_id(name)')
+          .select('id,player_id,from_club_id,to_club_id,offer_amount,status,created_at,responded_at,parent_offer_id,round_number,initiated_by,player:players(name),from_club:clubs!from_club_id(name),to_club:clubs!to_club_id(name)')
           .eq('to_club_id', clubId)
           .order('created_at', ascending: false);
 
@@ -619,7 +633,7 @@ class SupabaseRepository implements GameRepository {
     return _wrap(() async {
       final data = await _client
           .from('transfer_offers')
-          .select('id,player_id,from_club_id,to_club_id,offer_amount,status,created_at,responded_at,player:players(name),from_club:clubs!from_club_id(name),to_club:clubs!to_club_id(name)')
+          .select('id,player_id,from_club_id,to_club_id,offer_amount,status,created_at,responded_at,parent_offer_id,round_number,initiated_by,player:players(name),from_club:clubs!from_club_id(name),to_club:clubs!to_club_id(name)')
           .eq('from_club_id', clubId)
           .order('created_at', ascending: false);
 
@@ -1083,6 +1097,63 @@ class SupabaseRepository implements GameRepository {
 
       if (data == null) return null;
       return Tactics.fromMap(data as Map<String, dynamic>);
+    });
+  }
+
+  Future<List<TacticPreset>> loadTacticPresets(String clubId) async {
+    return _wrap(() async {
+      final data = await _client
+          .from('tactic_presets')
+          .select('id,club_id,name,formation,mentality,press_intensity,tempo,defensive_line,offside_trap,time_wasting')
+          .eq('club_id', clubId)
+          .order('created_at', ascending: true);
+      if (data is! List<dynamic>) return <TacticPreset>[];
+      return data.cast<Map<String, dynamic>>().map(TacticPreset.fromMap).toList();
+    });
+  }
+
+  Future<TacticPreset?> saveTacticPreset({
+    required String clubId,
+    required String name,
+    required Formation formation,
+    required Mentality mentality,
+    required int pressIntensity,
+    required int tempo,
+    required int defensiveLine,
+    required bool offsideTrap,
+    required bool timeWasting,
+  }) async {
+    return _wrap(() async {
+      final data = await _client.rpc('save_tactic_preset', params: {
+        'p_club_id': clubId,
+        'p_name': name,
+        'p_formation': formation.name,
+        'p_mentality': mentality.name,
+        'p_press_intensity': pressIntensity,
+        'p_tempo': tempo,
+        'p_defensive_line': defensiveLine,
+        'p_offside_trap': offsideTrap,
+        'p_time_wasting': timeWasting,
+      }).single();
+      if (data == null) return null;
+      return TacticPreset.fromMap(data as Map<String, dynamic>);
+    });
+  }
+
+  Future<Tactics?> applyTacticPreset({required String presetId, String? clubId}) async {
+    return _wrap(() async {
+      final data = await _client.rpc('apply_tactic_preset', params: {
+        'p_preset_id': presetId,
+        if (clubId != null) 'p_club_id': clubId,
+      }).single();
+      if (data == null) return null;
+      return Tactics.fromMap(data as Map<String, dynamic>);
+    });
+  }
+
+  Future<void> deleteTacticPreset(String presetId) async {
+    return _wrap(() async {
+      await _client.rpc('delete_tactic_preset', params: {'p_preset_id': presetId});
     });
   }
 

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../models/match_fixture.dart';
 import '../models/player_fm.dart';
+import '../models/tactic_preset.dart';
 import '../models/tactics.dart';
 import '../providers/game_provider.dart';
 import '../theme/app_theme.dart';
@@ -35,6 +36,8 @@ class TacticsScreen extends StatefulWidget {
 class _TacticsScreenState extends State<TacticsScreen> {
   late Tactics _tactics;
   bool _isSaving = false;
+  bool _presetsLoaded = false;
+  bool _isApplyingPreset = false;
 
   @override
   void didChangeDependencies() {
@@ -42,6 +45,11 @@ class _TacticsScreenState extends State<TacticsScreen> {
     final provider = context.read<GameProvider>();
     final squad = provider.squadPlayers;
     final saved = provider.tactics;
+
+    if (!_presetsLoaded) {
+      _presetsLoaded = true;
+      provider.loadTacticPresets();
+    }
 
     if (saved != null) {
       _tactics = saved;
@@ -54,6 +62,92 @@ class _TacticsScreenState extends State<TacticsScreen> {
       captainId: defaultPlayer,
       penaltyTakerId: defaultPlayer,
     );
+  }
+
+  Future<void> _saveAsPreset() async {
+    final nameController = TextEditingController();
+    final name = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('tactics.savePresetTitle'.tr()),
+        content: TextField(
+          controller: nameController,
+          autofocus: true,
+          maxLength: 30,
+          decoration: InputDecoration(labelText: 'tactics.presetNameLabel'.tr()),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: Text('common.cancel'.tr())),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(nameController.text.trim()),
+            child: Text('tactics.saveButton'.tr()),
+          ),
+        ],
+      ),
+    );
+    if (name == null || name.isEmpty || !mounted) return;
+
+    try {
+      await context.read<GameProvider>().saveTacticPreset(
+            name: name,
+            formation: _tactics.formation,
+            mentality: _tactics.mentality,
+            pressIntensity: _tactics.pressIntensity,
+            tempo: _tactics.tempo,
+            defensiveLine: _tactics.defensiveLine,
+            offsideTrap: _tactics.offsideTrap,
+            timeWasting: _tactics.timeWasting,
+          );
+      if (!mounted) return;
+      AppSnackBar.showSuccess(context, 'tactics.presetSaved'.tr());
+    } catch (error) {
+      if (!mounted) return;
+      AppSnackBar.showErrorFromException(context, error);
+    }
+  }
+
+  Future<void> _applyPreset(TacticPreset preset) async {
+    setState(() => _isApplyingPreset = true);
+    try {
+      await context.read<GameProvider>().applyTacticPreset(preset.id);
+      if (!mounted) return;
+      setState(() {
+        _tactics.formation = preset.formation;
+        _tactics.mentality = preset.mentality;
+        _tactics.pressIntensity = preset.pressIntensity;
+        _tactics.tempo = preset.tempo;
+        _tactics.defensiveLine = preset.defensiveLine;
+        _tactics.offsideTrap = preset.offsideTrap;
+        _tactics.timeWasting = preset.timeWasting;
+      });
+      AppSnackBar.showSuccess(context, 'tactics.presetApplied'.tr(namedArgs: {'name': preset.name}));
+    } catch (error) {
+      if (!mounted) return;
+      AppSnackBar.showErrorFromException(context, error);
+    } finally {
+      if (mounted) setState(() => _isApplyingPreset = false);
+    }
+  }
+
+  Future<void> _deletePreset(TacticPreset preset) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('tactics.deletePresetTitle'.tr()),
+        content: Text('tactics.deletePresetBody'.tr(namedArgs: {'name': preset.name})),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(dialogContext).pop(false), child: Text('common.cancel'.tr())),
+          TextButton(onPressed: () => Navigator.of(dialogContext).pop(true), child: Text('common.delete'.tr())),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    try {
+      await context.read<GameProvider>().deleteTacticPreset(preset.id);
+    } catch (error) {
+      if (!mounted) return;
+      AppSnackBar.showErrorFromException(context, error);
+    }
   }
 
   Future<void> _saveTactics() async {
@@ -196,6 +290,17 @@ class _TacticsScreenState extends State<TacticsScreen> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
         children: [
+          _SectionCard(
+            title: 'tactics.presetsTitle'.tr(),
+            child: _PresetsRow(
+              presets: provider.tacticPresets,
+              isBusy: _isApplyingPreset,
+              onSaveNew: _saveAsPreset,
+              onApply: _applyPreset,
+              onDelete: _deletePreset,
+            ),
+          ),
+          const SizedBox(height: 16),
           _SectionCard(
             title: 'tactics.gameApproach'.tr(),
             child: Row(
@@ -478,6 +583,88 @@ class _SetPieceSlot extends StatelessWidget {
           const SizedBox(height: 6),
           Text(_firstNameOf(player.name), style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600, fontSize: 12)),
         ],
+      ),
+    );
+  }
+}
+
+class _PresetsRow extends StatelessWidget {
+  const _PresetsRow({
+    required this.presets,
+    required this.isBusy,
+    required this.onSaveNew,
+    required this.onApply,
+    required this.onDelete,
+  });
+
+  final List<TacticPreset> presets;
+  final bool isBusy;
+  final VoidCallback onSaveNew;
+  final ValueChanged<TacticPreset> onApply;
+  final ValueChanged<TacticPreset> onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (presets.isEmpty)
+          Text('tactics.noPresetsYet'.tr(), style: const TextStyle(color: AppColors.textMuted, fontSize: 12.5))
+        else
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: presets.map((preset) {
+              return _PresetChip(
+                preset: preset,
+                isBusy: isBusy,
+                onTap: () => onApply(preset),
+                onLongPress: () => onDelete(preset),
+              );
+            }).toList(),
+          ),
+        const SizedBox(height: 12),
+        OutlinedButton.icon(
+          onPressed: onSaveNew,
+          icon: const Icon(Icons.bookmark_add_outlined, size: 16),
+          label: Text('tactics.savePresetAction'.tr()),
+        ),
+      ],
+    );
+  }
+}
+
+class _PresetChip extends StatelessWidget {
+  const _PresetChip({required this.preset, required this.isBusy, required this.onTap, required this.onLongPress});
+
+  final TacticPreset preset;
+  final bool isBusy;
+  final VoidCallback onTap;
+  final VoidCallback onLongPress;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: isBusy ? null : onTap,
+      onLongPress: isBusy ? null : onLongPress,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: AppColors.cardBottom,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: AppColors.gold.withValues(alpha: 0.4)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.bookmark, size: 14, color: AppColors.goldLight),
+            const SizedBox(width: 6),
+            Text(preset.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12.5)),
+            const SizedBox(width: 4),
+            Text('· ${preset.formation.label}', style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
+          ],
+        ),
       ),
     );
   }
