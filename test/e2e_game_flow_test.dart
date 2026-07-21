@@ -9,6 +9,7 @@ import 'package:tactical_eleven_idle_manager/models/cup_match.dart';
 import 'package:tactical_eleven_idle_manager/models/inbox_message.dart';
 import 'package:tactical_eleven_idle_manager/models/leaderboard_entry.dart';
 import 'package:tactical_eleven_idle_manager/models/league_club_option.dart';
+import 'package:tactical_eleven_idle_manager/models/referral_info.dart';
 import 'package:tactical_eleven_idle_manager/models/weekly_quest.dart';
 import 'package:tactical_eleven_idle_manager/models/opponent_scout_report.dart';
 import 'package:tactical_eleven_idle_manager/models/player_fm.dart';
@@ -50,7 +51,7 @@ class _FakeAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<dynamic> signUp(String email, String password, {String? username}) async {
+  Future<dynamic> signUp(String email, String password, {String? username, String? referralCode}) async {
     _currentUserId = 'test-user-1';
     return _FakeAuthResponse(
       user: _FakeUser(id: currentUserId!),
@@ -362,6 +363,9 @@ class _FakeGameRepository implements GameRepository {
 
   @override
   Future<List<CupMatch>> loadMyCupMatches() async => const [];
+
+  @override
+  Future<ReferralInfo> loadMyReferralInfo() async => const ReferralInfo(successfulReferrals: 0);
 
   @override
   Future<Map<String, dynamic>> claimWeeklyQuestReward({required String questKey, String? clubId}) async =>

@@ -48,6 +48,8 @@
     "email": "Email",
     "password": "Password",
     "username": "Username",
+    "referralCode": "Referral Code (optional)",
+    "referralShareMessage": "Play Tactical Eleven with me! Sign up with my referral code and we both get 15 diamonds: {code}",
     "subtitle": "Use your email and password to enter the manager world.",
     "no_account": "Don't have an account yet? Sign up",
     "have_account": "Already have an account? Sign in",
@@ -582,7 +584,12 @@
     "socialTitle": "Social Media",
     "socialEngagementButton": "Like & Comment on a Post (+10 Diamonds)",
     "socialRewardClaimed": "Reward added to your account!",
-    "followButton": "Follow"
+    "followButton": "Follow",
+    "referralTitle": "Invite a Friend",
+    "referralDescription": "Every friend who signs up with your referral code earns you both 15 diamonds. The reward is paid out once they set up their first club.",
+    "referralUnavailable": "Your referral code couldn't be loaded right now.",
+    "referralShareButton": "Share",
+    "referralCount": "{count} successful referrals"
   },
   "matchDetail": {
     "loadFailed": "Could not load match details: {error}",

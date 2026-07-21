@@ -48,6 +48,8 @@
     "email": "E-posta",
     "password": "Şifre",
     "username": "Kullanıcı Adı",
+    "referralCode": "Davet Kodu (opsiyonel)",
+    "referralShareMessage": "Tactical Eleven'da benimle oyna! Davet kodumla kayıt olursan ikimize de 15 elmas hediye: {code}",
     "subtitle": "Menajerlik dünyasına giriş yapmak için e-posta ve şifrenizi kullanın.",
     "no_account": "Henüz hesabın yok mu? Kayıt ol",
     "have_account": "Zaten hesabın var mı? Giriş yap",
@@ -582,7 +584,12 @@
     "socialTitle": "Sosyal Medya",
     "socialEngagementButton": "Paylaşımı Beğen ve Yorum Yap (+10 Elmas)",
     "socialRewardClaimed": "Ödül hesabınıza eklendi!",
-    "followButton": "Takip Et"
+    "followButton": "Takip Et",
+    "referralTitle": "Arkadaşını Davet Et",
+    "referralDescription": "Davet kodunla kayıt olan her arkadaşın için sana ve ona 15 elmas hediye edilir. Ödül, arkadaşın ilk kulübünü kurduğunda verilir.",
+    "referralUnavailable": "Davet kodu şu anda yüklenemedi.",
+    "referralShareButton": "Paylaş",
+    "referralCount": "{count} başarılı davet"
   },
   "matchDetail": {
     "loadFailed": "Maç detayı yüklenemedi: {error}",

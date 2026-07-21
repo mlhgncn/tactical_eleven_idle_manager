@@ -6,6 +6,7 @@ import '../models/cup_match.dart';
 import '../models/inbox_message.dart';
 import '../models/leaderboard_entry.dart';
 import '../models/league_club_option.dart';
+import '../models/referral_info.dart';
 import '../models/weekly_quest.dart';
 import '../models/opponent_scout_report.dart';
 import '../models/match_fixture.dart';
@@ -1196,6 +1197,11 @@ class GameProvider extends ChangeNotifier {
   /// Kullanıcının herhangi bir kulübünün yer aldığı kupa maçlarını (geçmiş+gelecek) getirir.
   Future<List<CupMatch>> loadMyCupMatches() {
     return _repository.loadMyCupMatches();
+  }
+
+  /// Kullanıcının kendi davet kodunu ve şimdiye kadarki başarılı davet sayısını getirir.
+  Future<ReferralInfo> loadMyReferralInfo() {
+    return _repository.loadMyReferralInfo();
   }
 
   /// StoreKit satın alımı tamamlandıktan sonra makbuzu sunucuda doğrular

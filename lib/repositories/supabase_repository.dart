@@ -12,6 +12,7 @@ import '../models/cup_match.dart';
 import '../models/inbox_message.dart';
 import '../models/leaderboard_entry.dart';
 import '../models/league_club_option.dart';
+import '../models/referral_info.dart';
 import '../models/weekly_quest.dart';
 import '../models/match_result.dart';
 import '../models/opponent_scout_report.dart';
@@ -1221,6 +1222,15 @@ class SupabaseRepository implements GameRepository {
       final data = await _client.rpc('get_my_cup_matches');
       if (data is! List<dynamic>) return <CupMatch>[];
       return data.cast<Map<String, dynamic>>().map(CupMatch.fromMap).toList();
+    });
+  }
+
+  @override
+  Future<ReferralInfo> loadMyReferralInfo() async {
+    return _wrap(() async {
+      final data = await _client.rpc('get_my_referral_info');
+      if (data is! List<dynamic> || data.isEmpty) return const ReferralInfo(successfulReferrals: 0);
+      return ReferralInfo.fromMap(data.first as Map<String, dynamic>);
     });
   }
 

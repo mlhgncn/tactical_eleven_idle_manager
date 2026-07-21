@@ -25,6 +25,7 @@ class _AuthScreenState extends State<AuthScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _usernameController = TextEditingController();
+  final _referralCodeController = TextEditingController();
   bool _isLoading = false;
   bool _isLoginMode = true;
 
@@ -126,9 +127,10 @@ class _AuthScreenState extends State<AuthScreen> {
 
     try {
       print('[AUTH] Starting auth flow. Mode: ${_isLoginMode ? 'login' : 'signup'}');
+      final referralCode = _referralCodeController.text.trim();
       final response = _isLoginMode
           ? await widget._authRepository.signIn(email, password)
-          : await widget._authRepository.signUp(email, password, username: username);
+          : await widget._authRepository.signUp(email, password, username: username, referralCode: referralCode);
 
       print('[AUTH] Got response. User: ${response.user}, Session: ${response.session}');
       
@@ -186,6 +188,7 @@ class _AuthScreenState extends State<AuthScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     _usernameController.dispose();
+    _referralCodeController.dispose();
     super.dispose();
   }
 
@@ -281,6 +284,22 @@ class _AuthScreenState extends State<AuthScreen> {
                             ),
                             validator: _validatePassword,
                           ),
+                          if (!_isLoginMode) ...[
+                            const SizedBox(height: 16),
+                            TextFormField(
+                              controller: _referralCodeController,
+                              autocorrect: false,
+                              textCapitalization: TextCapitalization.characters,
+                              style: const TextStyle(color: Colors.white),
+                              decoration: InputDecoration(
+                                labelText: 'auth.referralCode'.tr(),
+                                labelStyle: const TextStyle(color: Colors.white70),
+                                prefixIcon: const Icon(Icons.card_giftcard, color: Colors.white70),
+                                filled: true,
+                                fillColor: Colors.black.withValues(alpha: 0.35),
+                              ),
+                            ),
+                          ],
                           const SizedBox(height: 24),
                           GoldButton(
                             onPressed: _isLoading ? null : _submit,

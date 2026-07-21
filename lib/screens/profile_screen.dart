@@ -4,9 +4,11 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../models/profile.dart';
+import '../models/referral_info.dart';
 import '../providers/game_provider.dart';
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
@@ -471,6 +473,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             const SizedBox(height: 16),
           ],
+          const _ReferralCard(),
+          const SizedBox(height: 16),
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -666,6 +670,97 @@ class _SocialRow extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+class _ReferralCard extends StatefulWidget {
+  const _ReferralCard();
+
+  @override
+  State<_ReferralCard> createState() => _ReferralCardState();
+}
+
+class _ReferralCardState extends State<_ReferralCard> {
+  bool _loading = true;
+  ReferralInfo? _info;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      _info = await context.read<GameProvider>().loadMyReferralInfo();
+    } catch (_) {
+      _info = null;
+    }
+    if (mounted) setState(() => _loading = false);
+  }
+
+  void _share(String code) {
+    Share.share('auth.referralShareMessage'.tr(namedArgs: {'code': code}));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final code = _info?.referralCode;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.card_giftcard, color: AppColors.gold, size: 20),
+                const SizedBox(width: 8),
+                Text('profile.referralTitle'.tr(), style: Theme.of(context).textTheme.titleMedium),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'profile.referralDescription'.tr(),
+              style: const TextStyle(fontSize: 12.5, color: AppColors.textMuted, height: 1.4),
+            ),
+            const SizedBox(height: 12),
+            if (_loading)
+              const Center(child: CircularProgressIndicator())
+            else if (code == null)
+              Text('profile.referralUnavailable'.tr(), style: const TextStyle(color: AppColors.textMuted))
+            else ...[
+              Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: AppColors.cardTop,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: AppColors.cardBorder),
+                      ),
+                      child: Text(code, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, letterSpacing: 2)),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  ElevatedButton.icon(
+                    onPressed: () => _share(code),
+                    icon: const Icon(Icons.share, size: 16),
+                    label: Text('profile.referralShareButton'.tr()),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'profile.referralCount'.tr(namedArgs: {'count': (_info?.successfulReferrals ?? 0).toString()}),
+                style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }
