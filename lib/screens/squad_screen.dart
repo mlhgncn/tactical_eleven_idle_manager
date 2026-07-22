@@ -179,6 +179,11 @@ String _firstNameOf(String name) => name.trim().split(RegExp(r'\s+')).first;
 const _positionGroupOrder = ['GK', 'DEF', 'MID', 'FOR'];
 const _positionMismatchPenalties = [0.0, 0.15, 0.30, 0.50];
 
+/// Outfield players can't be dropped below this y (the goalkeeper's box,
+/// just above their fixed y=0.90 slot) - keeps a dragged player from
+/// visually landing on top of / past the keeper.
+const _goalkeeperBoxY = 0.80;
+
 /// A player's contribution when placed in [slotGroup] (GK/DEF/MID/FOR),
 /// scaled down the further [slotGroup] is from the player's own position
 /// group - full ability in their own group, increasingly weaker the more
@@ -543,7 +548,13 @@ class SquadScreen extends StatelessWidget {
 
     final movedPlayer = newLineup[targetIndex];
     if (movedPlayer == null || movedPlayer.positionGroup == 'GK') return;
-    positions[movedPlayer.id] = Offset(x, y);
+    // Keep outfield drops out of the goalkeeper's box - past this y, a
+    // dropped player would visually sit on top of (or past) the keeper and
+    // read as having taken their spot, even though the keeper themselves
+    // never moves. Clamping instead of rejecting the drop keeps the drag
+    // gesture feeling responsive rather than snapping back to origin.
+    final clampedY = y.clamp(0.0, _goalkeeperBoxY);
+    positions[movedPlayer.id] = Offset(x, clampedY);
 
     _saveLineup(context, provider, newLineup, positions: positions);
   }
