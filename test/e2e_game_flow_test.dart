@@ -602,10 +602,13 @@ void main() {
     );
     print('TEST: pumpWidget completed');
 
-    // AuthScreen no longer shows a login/signup form (App Store guideline
-    // 5.1.1 - non-account-based features must be reachable without forcing
-    // registration): it silently signs in anonymously and drops straight
-    // into club setup.
+    // AuthScreen shows a welcome screen (create account / continue as
+    // guest) instead of forcing a login form - App Store guideline 5.1.1
+    // requires non-account-based features to be reachable without forcing
+    // registration, so "guest" is offered right alongside "account".
+    await tester.pumpAndSettle(const Duration(seconds: 2));
+    expect(find.text('Misafir Olarak Devam Et'), findsOneWidget);
+    await tester.tap(find.text('Misafir Olarak Devam Et'));
     await tester.pumpAndSettle(const Duration(seconds: 2));
     print('TEST: pumpAndSettle completed');
 

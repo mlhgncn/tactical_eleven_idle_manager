@@ -61,7 +61,10 @@
     "username_short": "Kullanıcı adı en az 3 karakter olmalıdır.",
     "verification_failed": "Kullanıcı doğrulaması tamamlanamadı.",
     "generic_error": "Hata: {error}",
-    "loginExistingAccountNotice": "Daha önce kaydettiğin bir hesabın varsa, buradan giriş yapabilirsin."
+    "loginExistingAccountNotice": "Daha önce kaydettiğin bir hesabın varsa, buradan giriş yapabilirsin.",
+    "createOrSignIn": "Hesap Oluştur / Giriş Yap",
+    "continueAsGuest": "Misafir Olarak Devam Et",
+    "guestNotice": "Misafir modunda ilerlemeni istediğin zaman ayarlardan hesabına kaydedebilirsin."
   },
   "settings": {
     "title": "Ayarlar",

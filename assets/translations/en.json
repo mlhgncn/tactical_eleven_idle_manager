@@ -61,7 +61,10 @@
     "username_short": "Username must be at least 3 characters.",
     "verification_failed": "User verification could not be completed.",
     "generic_error": "Error: {error}",
-    "loginExistingAccountNotice": "If you've already saved an account, you can sign in here."
+    "loginExistingAccountNotice": "If you've already saved an account, you can sign in here.",
+    "createOrSignIn": "Create Account / Sign In",
+    "continueAsGuest": "Continue as Guest",
+    "guestNotice": "You can save your guest progress to an account anytime from settings."
   },
   "settings": {
     "title": "Settings",
