@@ -45,16 +45,6 @@ Future<void> main() async {
   };
   await AnalyticsService.instance.initialize();
 
-  // Apple requires the ATT prompt to appear before any data that could be
-  // used to track the user is collected - AdMob's SDK reads the IDFA as
-  // soon as it initializes, so this must be requested (and awaited) first.
-  if (Platform.isIOS) {
-    if (await AppTrackingTransparency.trackingAuthorizationStatus == TrackingStatus.notDetermined) {
-      await AppTrackingTransparency.requestTrackingAuthorization();
-    }
-  }
-  unawaited(AdService.instance.initialize());
-
   runZonedGuarded(() {
     runApp(
       EasyLocalization(
@@ -69,8 +59,40 @@ Future<void> main() async {
   });
 }
 
-class MyApp extends StatelessWidget {
+/// Requests the ATT permission dialog and then initializes AdMob (which
+/// reads the IDFA and must not run before the user has answered). Must be
+/// called AFTER the first frame is on screen - iOS's system permission
+/// sheet needs an actual foreground window to attach to, and calling this
+/// from main() before runApp() (the previous approach) meant there was no
+/// window yet, so the dialog would intermittently never appear at all.
+/// This is exactly what an App Store reviewer hit: the app launched but no
+/// ATT prompt showed up during their review.
+Future<void> _requestTrackingAndInitAds() async {
+  if (Platform.isIOS) {
+    if (await AppTrackingTransparency.trackingAuthorizationStatus == TrackingStatus.notDetermined) {
+      await AppTrackingTransparency.requestTrackingAuthorization();
+    }
+  }
+  unawaited(AdService.instance.initialize());
+}
+
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  @override
+  void initState() {
+    super.initState();
+    // Fires after this first frame is actually on screen, which is what
+    // the ATT permission sheet needs to attach to - see
+    // _requestTrackingAndInitAds's doc comment for why this can't run
+    // earlier (e.g. in main() before runApp()).
+    WidgetsBinding.instance.addPostFrameCallback((_) => _requestTrackingAndInitAds());
+  }
 
   @override
   Widget build(BuildContext context) {
